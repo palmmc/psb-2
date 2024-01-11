@@ -718,7 +718,7 @@ const commands = [
     info: "Opens the Beta Shop UI.",
     function: function (player: Player, message: string) {
       system.runTimeout(() => {
-        let test = new ChestFormData("red");
+        let test = new ChestFormData("blue");
         test.button(0, "Button Name", ["Button Lore"], "minecraft:diamond", 10);
         test.show(player).then(() => {});
       }, 2);
