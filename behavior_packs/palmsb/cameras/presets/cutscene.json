@@ -1,0 +1,12 @@
+{ 
+  "format_version": "1.19.50", 
+  "minecraft:camera_preset": { 
+    "identifier": "palm:cutscene", 
+    "inherit_from": "minecraft:free", 
+    "pos_x": 0, 
+    "pos_y": 120, 
+    "pos_z": 0, 
+    "rot_x": 0, 
+    "rot_y": 0 
+  } 
+} 

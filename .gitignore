@@ -1,0 +1,7 @@
+/.mcattributes
+/.prettierrc.json
+/.vscode
+/gulpfile.js
+/node_modules
+/package-lock.json
+/build

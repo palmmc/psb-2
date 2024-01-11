@@ -1,0 +1,78 @@
+{
+	"format_version": "1.13.0",
+	"minecraft:entity": {
+		"description": {
+			"identifier": "palm:slapper_miner",
+			"is_spawnable": true,
+			"is_summonable": true,
+			"is_experimental": false
+		},
+		"component_groups": {
+			"trigger": {
+				"minecraft:is_charged": {}
+			},
+			"kill": {
+				"minecraft:despawn": {
+					"remove_child_entities": true
+				}
+			}
+		},
+		"components": {
+			"minecraft:type_family": {
+				"family": [
+					"npc",
+					"mob"
+				]
+			},
+			"minecraft:nameable": {
+				"always_show": true,
+				"allow_name_tag_renaming": false
+			},
+			"minecraft:breathable": {
+				"total_supply": 15,
+				"suffocate_time": 0,
+				"breathes_water": true
+			},
+			"minecraft:health": {
+				"value": 20,
+				"max": 20
+			},
+			"minecraft:damage_sensor": {
+				"triggers": {
+					"cause": "all",
+					"deals_damage": false
+				}
+			},
+			"minecraft:collision_box": {
+				"width": 0.6,
+				"height": 1.8
+			},
+			"minecraft:movement": {
+				"value": 0.43,
+				"max": 0.43
+			},
+			"minecraft:scale": {
+				"value": 1.0
+			},
+			"minecraft:knockback_resistance": {
+				"value": 1.0
+			},
+			"minecraft:behavior.look_at_player": {
+				"priority": 10,
+				"target_distance": 6.0,
+				"probability": 0.15
+			},
+			"minecraft:persistent": {},
+			"minecraft:physics": {}
+		},
+		"events": {
+			"slap:kill": {
+				"add": {
+					"component_groups": [
+						"kill"
+					]
+				}
+			}
+		}
+	}
+}
