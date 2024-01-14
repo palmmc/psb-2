@@ -8,9 +8,16 @@ import { BlockOres } from "../island/cobblegens";
 import { PREFIX, randomIntFromInterval } from "../main";
 import { itemsBanned } from "./miscellaneous";
 import { BREAK_XP } from "../island/levels";
+import { genItems } from "./generators";
 
 // EVENT HANDLER
 world.afterEvents.playerBreakBlock.subscribe((data) => {
+  if (
+    Object.values(genItems).includes(
+      data.brokenBlockPermutation.type.id.slice(10)
+    )
+  )
+    return;
   const inv = (<EntityInventoryComponent>data.player.getComponent("inventory"))
     ?.container;
   if (inv && inv.emptySlotsCount == 0) {

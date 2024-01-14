@@ -25,6 +25,7 @@ import "./island/manage";
 import "./island/permissions";
 import "./systems/telepathy";
 import "./systems/miscellaneous";
+import "./systems/events";
 import {
   exportToCloud,
   formatItemName,
@@ -35,15 +36,21 @@ import {
 import "./economy/itemcloud";
 import "./economy/shop";
 import "./systems/enchantments";
+import "./systems/generators";
 import "./custom_enchants/enchantHandler";
 import "./custom_enchants/customEnchants";
-import { OpenShop, ShopItems, ShopTabEnchantments } from "./economy/shop";
+import {
+  OpenShop,
+  OpenShopBeta,
+  ShopItems,
+  ShopTabEnchantments,
+} from "./economy/shop";
 import {
   EnchantEntries,
   EnchantInfo,
   VanillaEnchItem,
 } from "./systems/enchantments";
-import { islandExpand, visitIsland } from "./island/manage";
+import { getIslandOn, islandExpand, visitIsland } from "./island/manage";
 import {
   islandEditPerms,
   islandInvite,
@@ -65,11 +72,12 @@ world.sendMessage("hello world");
 export function sendAlert(
   player: Player,
   msg: string,
-  prefix: typeof PREFIX.server,
-  sound?: string
+  prefix?: typeof PREFIX.server,
+  sound?: string,
+  volume?: number
 ) {
-  player.sendMessage(`${prefix} ${msg}`);
-  if (sound) player.playSound(sound, { volume: 0.25 });
+  player.sendMessage(`${prefix ?? PREFIX.server} ${msg}`);
+  if (sound) player.playSound(sound, { volume: volume ?? 0.25 });
   else {
     if (randomIntFromInterval(1, 3) == 1)
       player.playSound(`note.hat`, { volume: 0.25 });
@@ -79,9 +87,9 @@ export function sendAlert(
 export function sendError(
   player: Player,
   msg: string,
-  prefix: typeof PREFIX.server
+  prefix?: typeof PREFIX.server
 ) {
-  player.sendMessage(`${prefix} §4Error: §c${msg}`);
+  player.sendMessage(`${prefix ?? PREFIX.server} §4Error: §c${msg}`);
   if (randomIntFromInterval(1, 3) == 1)
     player.playSound(`note.bass`, { volume: 0.25, pitch: 0.75 });
   else player.playSound(`note.bassattack`, { volume: 0.25, pitch: 0.75 });
@@ -164,7 +172,7 @@ export function getItemAmount(
 }
 
 export function toRomanNumeral(num: number) {
-  if (isNaN(num)) return NaN;
+  if (isNaN(num)) return "NaN";
   var digits = String(+num).split(""),
     key = [
       "",
@@ -203,6 +211,18 @@ export function toRomanNumeral(num: number) {
   //@ts-ignore
   while (i--) roman = (key[+digits.pop() + i * 10] || "") + roman;
   return Array(+digits.join("") + 1).join("M") + roman;
+}
+
+export function fromRomanNumeral(roman: string): number {
+  let res: number = 0;
+  const romanMap = { M: 1000, D: 500, C: 100, L: 50, X: 10, V: 5, I: 1 };
+  const others = ["CD", "CM", "XL", "XC", "IV", "IX"];
+  for (let i = 0; i < roman.length; i++) {
+    others.indexOf(roman[i] + roman[i + 1]) === -1
+      ? (res += romanMap[roman[i] as keyof typeof romanMap])
+      : (res -= romanMap[roman[i] as keyof typeof romanMap]);
+  }
+  return res;
 }
 
 // INITALIZE DATABASES
@@ -277,14 +297,41 @@ system.runInterval(() => {
     // Fetch island info.
     let pdata = playerDB.get(player.id);
     let coins = pdata.coins;
-    let island = islandDB.get(pdata.island);
-    if (!island) island = { points: 0, size: 16, funds: 0 };
-    let points = island.points;
-    let level = xpToLevel(points);
-    let pointsNeeded = levelToXp(level - 1);
-    let pointsBefore = levelToXp(level - 2);
-    pointsBefore = level > 1 ? pointsBefore : 0;
+    let island = islandDB.get(getIslandOn(player)?.island);
+    if (pdata.island == "") {
+      island = { owner: "??", points: 0, size: 16, funds: 0 };
+      pdata.island = "-is create";
+    }
+    let sidebarText = `\n\n §7|§f ${
+      world.getPlayers().length
+    }/10 §7| §f ${TicksPerSecond}t §7| §e 0 §7|\n\n§g §aUser §7» §f${
+      player.name.length > 15 ? player.name.slice(0, 15) + "..." : player.name
+    }\n §eWallet §7»  §f$${formatNumber(
+      coins
+    )}\n§g §6Time Played §7» §f${formatTime(getScore("time", player))}`;
+    if (island && island.owner != "??") {
+      let points = island.points;
+      let level = xpToLevel(points);
+      let pointsNeeded = levelToXp(level - 1);
+      let pointsBefore = levelToXp(level - 2);
+      pointsBefore = level > 1 ? pointsBefore : 0;
+      sidebarText += `\n\n §e§l[ §r§bIsland §fInfo §l§e]§r\n §l§6│§r §eIsland §7» §f${
+        (pdata.island.length > 11
+          ? pdata.island.slice(0, 11) + "..."
+          : pdata.island) ?? "-is create"
+      }\n §l§6│§r §6Owner §7» §f${
+        island.owner.length > 11
+          ? island.owner.slice(0, 11) + "..."
+          : island.owner
+      }\n §l§6│§r §2Level §7» §f${level} §2(§f${points - pointsBefore}§2/§f${
+        pointsNeeded - pointsBefore
+      }§2)\n §l§6│§r §eSize §7» §d(§f${island.size} §dx §f${
+        island.size
+      }§d)\n §l§6│§r §6Funds §7» §f$${formatNumber(island.funds)}`;
+    }
+    sidebarText += `\n §f> §7Use -help for info §f<\n`;
 
+    /*
     const sidebarText = `\n §f⟩ §ediscord.palmskyblock.fun §f⟨\n§g⦿ §aUser: §f${
       player.name
     }\n§g⦿ §bPlayers: §f${
@@ -304,6 +351,7 @@ system.runInterval(() => {
     } §dx §f${island.size}§d)\n  §l§6↳§r §6Funds: §f$${formatNumber(
       island.funds
     )}\n  §l§6↳§r §bTPS: §f${TicksPerSecond}\n §f⟩ §7Use -help for commands §f⟨`;
+    */
     player.onScreenDisplay.setTitle(sidebarText);
   }
 }, 40);
@@ -461,7 +509,7 @@ const commands = [
         info: "Opens the island creator.",
         function: function (player: Player, message: string) {
           let island = playerDB.get(player.id).island;
-          if (island) {
+          if (island && island != "-is create") {
             sendError(
               player,
               `§cYou already own the §d${island}§c island.\nUse §e-is go§c to warp to it.`,
@@ -718,9 +766,7 @@ const commands = [
     info: "Opens the Beta Shop UI.",
     function: function (player: Player, message: string) {
       system.runTimeout(() => {
-        let test = new ChestFormData("blue");
-        test.button(0, "Button Name", ["Button Lore"], "minecraft:diamond", 10);
-        test.show(player).then(() => {});
+        OpenShopBeta(player);
       }, 2);
     },
     arguments: [],
@@ -802,10 +848,16 @@ const commands = [
             )}`,
             PREFIX.shop
           );
-          system.runTimeout(() => {
-            player.playSound(`note.iron_xylophone`, { volume: 1, pitch: 1 });
-            player.playSound(`note.iron_xylophone`, { volume: 1, pitch: 2 });
-          }, 2);
+          system.run(() => {
+            player.playSound(`note.iron_xylophone`, {
+              volume: 1,
+              pitch: 2,
+            });
+            player.playSound(`note.iron_xylophone`, {
+              volume: 1,
+              pitch: 3,
+            });
+          });
         }
       }
     },

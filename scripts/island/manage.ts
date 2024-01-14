@@ -1,5 +1,21 @@
-import { world, system, Player, Vector, Vector3, Direction } from "@minecraft/server";
-import { PREFIX, playerDB, sendAlert, readIsland, islandDB, sendError, formatNumber, storeIsland } from "../main";
+import {
+  world,
+  system,
+  Player,
+  Vector,
+  Vector3,
+  Direction,
+} from "@minecraft/server";
+import {
+  PREFIX,
+  playerDB,
+  sendAlert,
+  readIsland,
+  islandDB,
+  sendError,
+  formatNumber,
+  storeIsland,
+} from "../main";
 import { ISLAND_GENERATOR } from "./create";
 import { ActionFormData, MessageFormData } from "@minecraft/server-ui";
 import { xpToLevel } from "./levels";
@@ -19,7 +35,9 @@ export function getIslandLoc(slot: number) {
 }
 
 export function getIslandOn(player: Player) {
-  let slot = Math.floor((player.location.x - ISLAND_GENERATOR.start + 128) / ISLAND_GENERATOR.dist);
+  let slot = Math.floor(
+    (player.location.x - ISLAND_GENERATOR.start + 128) / ISLAND_GENERATOR.dist
+  );
   if (slot < 0 || slot > 9) return;
   let owner: Player | undefined;
   for (const [key, value] of playerDB) {
@@ -31,14 +49,23 @@ export function getIslandOn(player: Player) {
   return { owner: owner, slot: slot, island: "" };
 }
 
-export function checkBounds(islandLoc: Vector, loc: Vector3, size: number, face?: Direction) {
+export function checkBounds(
+  islandLoc: Vector,
+  loc: Vector3,
+  size: number,
+  face?: Direction
+) {
   if (face) {
     if (face == Direction.North) loc.z--;
     if (face == Direction.East) loc.x++;
     if (face == Direction.South) loc.z++;
     if (face == Direction.West) loc.x--;
   }
-  let isDist = Math.floor(Math.sqrt(Math.pow(islandLoc.x - loc.x, 2) + Math.pow(islandLoc.z - loc.z, 2)));
+  let isDist = Math.floor(
+    Math.sqrt(
+      Math.pow(islandLoc.x - loc.x, 2) + Math.pow(islandLoc.z - loc.z, 2)
+    )
+  );
   if (isDist > size && isDist < size + 16) return true;
 }
 
@@ -48,8 +75,16 @@ export function visitIsland(player: Player, player2: Player) {
   let slot = p2data.slot;
   let island = p2data.island;
   player.teleport(getIslandLoc(slot));
-  sendAlert(player, `§aYou have been teleported to the §e${island} §aisland.`, PREFIX.server);
-  sendAlert(player2, `§a${player.name} §eteleported to your island.`, PREFIX.server);
+  sendAlert(
+    player,
+    `§aYou have been teleported to the §e${island} §aisland.`,
+    PREFIX.server
+  );
+  sendAlert(
+    player2,
+    `§a${player.name} §eteleported to your island.`,
+    PREFIX.server
+  );
 }
 
 // ISLAND BORDER CHECK
@@ -57,19 +92,29 @@ system.runInterval(() => {
   for (let player of world.getPlayers()) {
     // ANTI FARMLAND TRAMPLE
     //if (player.isFalling == true) player.addEffect("slow_falling", 9, { showParticles: false });
-    if (!player.isOnGround) player.addEffect("slow_falling", 9, { showParticles: false });
+    if (!player.isOnGround)
+      player.addEffect("slow_falling", 9, { showParticles: false });
     //
     const loc = player.location;
     const idata = getIslandOn(player);
     if (!idata) continue;
     let islandLoc = getIslandLoc(idata.slot);
-    if (checkBounds(islandLoc, loc, readIsland(idata.island, "size")) != true) continue;
-    player.applyKnockback(-(loc.x - islandLoc.x), -(loc.z - islandLoc.z), 1, 0.5);
+    if (checkBounds(islandLoc, loc, readIsland(idata.island, "size")) != true)
+      continue;
+    player.applyKnockback(
+      -(loc.x - islandLoc.x),
+      -(loc.z - islandLoc.z),
+      1,
+      0.5
+    );
     player.playSound(`item.trident.return`, { volume: 0.6 });
     player.sendMessage(
       `${PREFIX.island} §cYou have reached the bounds of this island.\n§dUse §e-is expand §dto increase them.`
     );
-    overworld.spawnParticle(`minecraft:explosion_manual`, player.getHeadLocation());
+    overworld.spawnParticle(
+      `minecraft:explosion_manual`,
+      player.getHeadLocation()
+    );
   }
 }, 5);
 
@@ -125,16 +170,28 @@ export function islandExpand(player: Player) {
     return;
   }
   let limits = idata.limits;
-  sendAlert(player, `§eYour island has been expanded for §a$${formatNumber(price)}§e.`, PREFIX.island);
+  sendAlert(
+    player,
+    `§eYour island has been expanded for §a$${formatNumber(price)}§e.`,
+    PREFIX.island
+  );
   player.sendMessage(`§f===----------------===`);
   player.sendMessage(` §8- §eSize: §2${size} §f-> §a${nextSize}`);
   const maxLava = limits.maxLava;
-  player.sendMessage(` §8- §6Lava: §3${maxLava} §f-> §b${maxLava + LAVA_INCREASE}`);
+  player.sendMessage(
+    ` §8- §6Lava: §3${maxLava} §f-> §b${maxLava + LAVA_INCREASE}`
+  );
   const maxCrops = limits.maxCrops;
-  player.sendMessage(` §8- §aCrops: §3${limits.maxCrops} §f-> §b${limits.maxCrops + CROPS_INCREASE}`);
+  player.sendMessage(
+    ` §8- §aCrops: §3${limits.maxCrops} §f-> §b${
+      limits.maxCrops + CROPS_INCREASE
+    }`
+  );
   const maxSpawners = limits.maxSpawners;
   player.sendMessage(
-    ` §8- §cSpawners: §3${limits.maxSpawners} §f-> §b${limits.maxSpawners + SPAWNER_INCREASE}\n§f===----------------===`
+    ` §8- §cSpawners: §3${limits.maxSpawners} §f-> §b${
+      limits.maxSpawners + SPAWNER_INCREASE
+    }\n§f===----------------===`
   );
   player.playSound(`conduit.deactivate`, { volume: 0.4 });
   player.playSound(`respawn_anchor.set_spawn`, { volume: 0.4 });

@@ -1,7 +1,28 @@
-import { world, system, Player, Vector, BlockTypes, BlockPermutation, BlockType } from "@minecraft/server";
-import { ActionFormData, ModalFormData, ModalFormResponse } from "@minecraft/server-ui";
+import {
+  world,
+  system,
+  Player,
+  Vector,
+  BlockTypes,
+  BlockPermutation,
+  BlockType,
+} from "@minecraft/server";
+import {
+  ActionFormData,
+  ModalFormData,
+  ModalFormResponse,
+} from "@minecraft/server-ui";
 import { bannedWords } from "../resources/bannedwords";
-import { PREFIX, playerDB, islandDB, writeIsland, storeIsland, sendError, sendAlert, readIsland } from "../main";
+import {
+  PREFIX,
+  playerDB,
+  islandDB,
+  writeIsland,
+  storeIsland,
+  sendError,
+  sendAlert,
+  readIsland,
+} from "../main";
 
 // SETTINGS //
 const defaultData = { slot: -1, coins: 0 }; // { slot: -1, coins: 0, island: '', }
@@ -9,6 +30,13 @@ export const ISLAND_GENERATOR = {
   start: 3000,
   dist: 1000,
 };
+
+world.afterEvents.playerSpawn.subscribe((data) => {
+  if (!data.initialSpawn) return;
+  if (data.player.hasTag("setData")) return;
+  playerDB.set(data.player.id, { slot: -1, coins: 0, island: "" });
+  data.player.addTag("setData");
+});
 
 // SETTINGS //
 const overworld = world.getDimension("overworld");
@@ -69,7 +97,8 @@ world.afterEvents.playerSpawn.subscribe((data) => {
   let slots = new Array();
   for (const [key, value] of playerDB) {
     let findPlayer = players.find((x) => x.id == key);
-    if (findPlayer && value && findPlayer.name != data.player.name) slots.push(value.slot);
+    if (findPlayer && value && findPlayer.name != data.player.name)
+      slots.push(value.slot);
   }
   let playerData = playerDB.get(data.player.id);
   if (!playerData) playerData = defaultData;
@@ -86,13 +115,17 @@ world.afterEvents.playerSpawn.subscribe((data) => {
   );
   let player = world.getPlayers({ name: data.player.name })[0];
   if (playerData.island) {
-    player.runCommandAsync(`tp @s ${islandLoc.x + 0.5} ${islandLoc.y + 3} ${islandLoc.z + 0.5}`);
+    player.runCommandAsync(
+      `tp @s ${islandLoc.x + 0.5} ${islandLoc.y + 3} ${islandLoc.z + 0.5}`
+    );
     console.warn(3);
     system.runTimeout(() => {
       for (let i = 0; i < 9; i++) {
         let chunk = CHUNKS[i];
         player.runCommandAsync(
-          `structure load "${data.player.id}-${chunk.id}" ${islandLoc.x - 31 + chunk.x} 0 ${islandLoc.z - 31 + chunk.z}`
+          `structure load "${data.player.id}-${chunk.id}" ${
+            islandLoc.x - 31 + chunk.x
+          } 0 ${islandLoc.z - 31 + chunk.z}`
         );
       }
     }, 20);
@@ -113,9 +146,11 @@ world.afterEvents.playerLeave.subscribe((data) => {
   for (let i = 0; i < 9; i++) {
     let chunk = CHUNKS[i];
     overworld.runCommandAsync(
-      `structure save "${data.playerId}-${chunk.id}" ${islandLoc.x - 31 + chunk.x} 0 ${islandLoc.x - 31 + chunk.z} ${
-        islandLoc.x + 31 + chunk.x
-      } 100 ${islandLoc.x + 31 + chunk.z} disk`
+      `structure save "${data.playerId}-${chunk.id}" ${
+        islandLoc.x - 31 + chunk.x
+      } 0 ${islandLoc.x - 31 + chunk.z} ${islandLoc.x + 31 + chunk.x} 100 ${
+        islandLoc.x + 31 + chunk.z
+      } disk`
     );
   }
   playerData.slot = -1;
@@ -181,14 +216,23 @@ export function islandCreator(player: Player) {
         let y = 120;
         let r = system.runInterval(() => {
           if (y == 110 && fx == true)
-            player.camera.fade({ fadeTime: { fadeInTime: 1.5, holdTime: 6.5, fadeOutTime: 1.5 } });
-          if (y == 90) sendAlert(player, `§6Setting up your §eisland§6...`, PREFIX.island);
-          if (y == 65 && fx == true) player.playSound(`dig.grass`, { volume: 1, pitch: 0.6 });
-          if (y == 56 && fx == true) player.playSound(`dig.grass`, { volume: 1, pitch: 0.6 });
-          if (y == 46 && fx == true) player.playSound(`dig.grass`, { volume: 1, pitch: 0.6 });
-          if (y == 32 && fx == true) player.playSound(`dig.wood`, { volume: 1, pitch: 0.6 });
-          if (y == 20 && fx == true) player.playSound(`dig.stone`, { volume: 1, pitch: 0.6 });
-          if (y == 11 && fx == true) player.playSound(`dig.stone`, { volume: 1, pitch: 0.6 });
+            player.camera.fade({
+              fadeTime: { fadeInTime: 1.5, holdTime: 6.5, fadeOutTime: 1.5 },
+            });
+          if (y == 90)
+            sendAlert(player, `§6Setting up your §eisland§6...`, PREFIX.island);
+          if (y == 65 && fx == true)
+            player.playSound(`dig.grass`, { volume: 1, pitch: 0.6 });
+          if (y == 56 && fx == true)
+            player.playSound(`dig.grass`, { volume: 1, pitch: 0.6 });
+          if (y == 46 && fx == true)
+            player.playSound(`dig.grass`, { volume: 1, pitch: 0.6 });
+          if (y == 32 && fx == true)
+            player.playSound(`dig.wood`, { volume: 1, pitch: 0.6 });
+          if (y == 20 && fx == true)
+            player.playSound(`dig.stone`, { volume: 1, pitch: 0.6 });
+          if (y == 11 && fx == true)
+            player.playSound(`dig.stone`, { volume: 1, pitch: 0.6 });
           if (y <= 0) system.clearRun(r);
           try {
             overworld.fillBlocks(
@@ -199,25 +243,46 @@ export function islandCreator(player: Player) {
           } catch (e) {}
           y = y - 1;
         });
-        storeIsland(nameInput, player.name, player.id.toString(), new Array<string>(), 0, 16, 0, {
-          lava: 2,
-          maxLava: 5,
-          crops: 0,
-          maxCrops: 100,
-          spawners: 0,
-          maxSpawners: 0,
-        });
+        storeIsland(
+          nameInput,
+          player.name,
+          player.id.toString(),
+          new Array<string>(),
+          0,
+          16,
+          0,
+          {
+            lava: 2,
+            maxLava: 5,
+            crops: 0,
+            maxCrops: 100,
+            spawners: 0,
+            maxSpawners: 0,
+          }
+        );
         pdata.island = nameInput;
         playerDB.set(player.id, pdata);
         system.runTimeout(() => {
-          player.runCommandAsync(`tp @s ${islandLoc.x + 0.5} ${islandLoc.y + 1} ${islandLoc.z + 0.5}`);
+          player.runCommandAsync(
+            `tp @s ${islandLoc.x + 0.5} ${islandLoc.y + 1} ${islandLoc.z + 0.5}`
+          );
           system.runTimeout(() => {
-            player.runCommandAsync(`structure load island:island_default ~-6 ~-14 ~-6`);
+            player.runCommandAsync(
+              `structure load island:island_default ~-6 ~-14 ~-6`
+            );
           }, 2);
           player.runCommandAsync("gamemode survival @s");
-          sendAlert(player, `§aYour island was generated successfully!`, PREFIX.island);
+          sendAlert(
+            player,
+            `§aYour island was generated successfully!`,
+            PREFIX.island
+          );
           system.runTimeout(() => {
-            sendAlert(player, `§eWelcome to §a${nameInput}§e, your new island!`, PREFIX.island);
+            sendAlert(
+              player,
+              `§eWelcome to §a${nameInput}§e, your new island!`,
+              PREFIX.island
+            );
             player.playSound(`beacon.ambient`);
           }, 25);
         }, 130);
@@ -229,19 +294,29 @@ export function islandCreator(player: Player) {
 // Check island names
 export function testValidName(player: Player, name: string) {
   if (testDuplicate(name) == true) {
-    player.sendMessage(`${PREFIX.island} §4Error: §cIsland name is already taken.`);
+    player.sendMessage(
+      `${PREFIX.island} §4Error: §cIsland name is already taken.`
+    );
     return false;
   } else if (bannedWords.find((x) => x.includes(name))) {
-    player.sendMessage(`${PREFIX.island} §4Error: §cIsland name contains a banned word.`);
+    player.sendMessage(
+      `${PREFIX.island} §4Error: §cIsland name contains a banned word.`
+    );
     return false;
   } else if (name.length < 3) {
-    player.sendMessage(`${PREFIX.island} §4Error: §cIsland name must be at least 3 characters long.`);
+    player.sendMessage(
+      `${PREFIX.island} §4Error: §cIsland name must be at least 3 characters long.`
+    );
     return false;
   } else if (name.length > 19) {
-    player.sendMessage(`${PREFIX.island} §4Error: §cIsland name must be at most 18 characters long.`);
+    player.sendMessage(
+      `${PREFIX.island} §4Error: §cIsland name must be at most 18 characters long.`
+    );
     return false;
   } else if (/^[a-zA-Z]+$/.test(name) === false) {
-    player.sendMessage(`${PREFIX.island} §4Error: §cIsland name must not contain symbols, numbers, or spaces.`);
+    player.sendMessage(
+      `${PREFIX.island} §4Error: §cIsland name must not contain symbols, numbers, or spaces.`
+    );
     return false;
   }
   return true;

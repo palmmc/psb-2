@@ -14,8 +14,20 @@ import {
   system,
   world,
 } from "@minecraft/server";
-import { PREFIX, islandDB, playerDB, randomIntFromInterval, sendError } from "../main";
-import { BlockOres, DEF_CROPS_BREAK, DEF_CROPS_PLACE, DEF_ORES, DEF_SEEDS_BREAK } from "./cobblegens";
+import {
+  PREFIX,
+  islandDB,
+  playerDB,
+  randomIntFromInterval,
+  sendError,
+} from "../main";
+import {
+  BlockOres,
+  DEF_CROPS_BREAK,
+  DEF_CROPS_PLACE,
+  DEF_ORES,
+  DEF_SEEDS_BREAK,
+} from "./cobblegens";
 import { getIslandOn } from "./manage";
 
 const overworld = world.getDimension("overworld");
@@ -51,8 +63,12 @@ const islandRewards = [
     id: 0,
     level: 2,
     reward: function rewardOne(player: Player) {
-      player.sendMessage(`${PREFIX.island} §aCongratulations on §f§l[ §r§eLevel 2§f§l ]§r§f!`);
-      player.sendMessage(`${PREFIX.island} §bHere's a little reward to help you along. §3Enjoy!`);
+      player.sendMessage(
+        `${PREFIX.island} §aCongratulations on §f§l[ §r§eLevel 2§f§l ]§r§f!`
+      );
+      player.sendMessage(
+        `${PREFIX.island} §bHere's a little reward to help you along. §3Enjoy!`
+      );
       let pdata = playerDB.get(player.id);
       pdata.coins += 2500;
       playerDB.set(player.id, pdata);
@@ -62,8 +78,12 @@ const islandRewards = [
     id: 1,
     level: 5,
     reward: function rewardTwo(player: Player) {
-      player.sendMessage(`${PREFIX.island} §aCongratulations on §f§l[ §r§eLevel 5§f§l ]§r§f!`);
-      player.sendMessage(`${PREFIX.island} §bHere's to your continued success! §3Cheers!`);
+      player.sendMessage(
+        `${PREFIX.island} §aCongratulations on §f§l[ §r§eLevel 5§f§l ]§r§f!`
+      );
+      player.sendMessage(
+        `${PREFIX.island} §bHere's to your continued success! §3Cheers!`
+      );
       let pdata = playerDB.get(player.id);
       pdata.coins += 7500;
       playerDB.set(player.id, pdata);
@@ -86,28 +106,51 @@ system.runInterval(() => {
   for (let player of world.getPlayers()) {
     let pdata = playerDB.get(player.id);
     let idata = islandDB.get(pdata.island);
-    if (!idata) return;
+    if (!idata) continue;
     let level = xpToLevel(idata.points);
-    let lastLevel = world.scoreboard.getObjective("lastLevel")?.getScore(player) ?? -1;
+    let lastLevel =
+      world.scoreboard.getObjective("lastLevel")?.getScore(player) ?? -1;
     if (lastLevel == -1) {
       player.runCommandAsync(`scoreboard players add @s lastLevel 0`);
-      return;
+      continue;
     } else if (level > lastLevel) {
       player.runCommandAsync(`scoreboard players add @s lastLevel 1`);
-      player.onScreenDisplay.setActionBar(`§f[§eIsland§f] >> §e${lastLevel} §a-> §e${lastLevel + 1}`);
+      player.onScreenDisplay.setActionBar(
+        `§f[§eIsland§f] >> §e${lastLevel} §a-> §e${lastLevel + 1}`
+      );
       player.sendMessage(
-        `${PREFIX.island} §kaa§r §l§6Level Up!§r §kaa§r §l[§r§e${lastLevel} §a-> §e${lastLevel + 1}§f§l]§r`
+        `${
+          PREFIX.island
+        } §kaa§r §l§6Level Up!§r §kaa§r §l[§r§e${lastLevel} §a-> §e${
+          lastLevel + 1
+        }§f§l]§r`
       );
       let reward = islandRewards.find((x) => level == lastLevel);
-      if (reward && (world.scoreboard.getObjective("isReward")?.getScore(player) ?? 0) < reward.id + 1) {
+      if (
+        reward &&
+        (world.scoreboard.getObjective("isReward")?.getScore(player) ?? 0) <
+          reward.id + 1
+      ) {
         reward.reward(player);
         player.runCommandAsync(`scoreboard players add @s isReward 1`);
       }
       player.playSound(`firework.launch`, { volume: 0.5 });
-      system.runTimeout(() => player.playSound(`firework.large_blast`, { volume: 0.5 }), 5);
-      system.runTimeout(() => player.playSound(`firework.blast`, { volume: 0.5 }), 2);
-      system.runTimeout(() => player.playSound(`firework.twinkle`, { volume: 0.5 }), 3);
-      system.runTimeout(() => player.playSound(`random.levelup`, { volume: 0.5 }), 3);
+      system.runTimeout(
+        () => player.playSound(`firework.large_blast`, { volume: 0.5 }),
+        5
+      );
+      system.runTimeout(
+        () => player.playSound(`firework.blast`, { volume: 0.5 }),
+        2
+      );
+      system.runTimeout(
+        () => player.playSound(`firework.twinkle`, { volume: 0.5 }),
+        3
+      );
+      system.runTimeout(
+        () => player.playSound(`random.levelup`, { volume: 0.5 }),
+        3
+      );
     }
   }
 }, 100);
@@ -166,7 +209,8 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
     if (block.getState("growth") != 7) return;
   }
   let xp = ldata[1] as number;
-  if (ldata[2]) xp = randomIntFromInterval(ldata[1] as number, ldata[2] as number);
+  if (ldata[2])
+    xp = randomIntFromInterval(ldata[1] as number, ldata[2] as number);
   if (!xp) return;
   let island = isle?.island;
   let idata = islandDB.get(island);
@@ -208,8 +252,14 @@ world.beforeEvents.chatSend.subscribe((data) => {
   }
 });
 
-function getBlockAtFace(data: PlayerInteractWithBlockBeforeEvent, face: Direction) {
-  let loc = Vector.add(data.block.location, new Vector(data.faceLocation.x, data.faceLocation.y, data.faceLocation.z));
+function getBlockAtFace(
+  data: PlayerInteractWithBlockBeforeEvent,
+  face: Direction
+) {
+  let loc = Vector.add(
+    data.block.location,
+    new Vector(data.faceLocation.x, data.faceLocation.y, data.faceLocation.z)
+  );
   if (face == Direction.North) loc.z--;
   else if (face == Direction.West) loc.x--;
   else if (face == Direction.Down) loc.y--;
@@ -223,7 +273,10 @@ function setIslandLimit(player: Player, type: string, amount: number) {
   let island = isle?.island;
   if (!island) return false;
   let idata = islandDB.get(island);
-  if (Number(idata.limits[type.toLowerCase()]) >= Number(idata.limits[`max${type}`])) {
+  if (
+    Number(idata.limits[type.toLowerCase()]) >=
+    Number(idata.limits[`max${type}`])
+  ) {
     system.run(() =>
       sendError(
         player,
@@ -245,16 +298,22 @@ world.beforeEvents.playerInteractWithBlock.subscribe((data) => {
   if (item.typeId == "minecraft:lava") data.cancel = true;
   else if (DEF_CROPS_PLACE[DEF_CROPS_PLACE.indexOf(item.typeId) ?? -1]) {
     system.run(() => {
-      const getItem = (<EntityEquippableComponent>player.getComponent("equippable")).getEquipment(
-        EquipmentSlot.Mainhand
-      );
-      if (!getItem || (getItem?.typeId == item?.typeId && getItem.amount == item.amount - 1))
+      const getItem = (<EntityEquippableComponent>(
+        player.getComponent("equippable")
+      )).getEquipment(EquipmentSlot.Mainhand);
+      if (
+        !getItem ||
+        (getItem?.typeId == item?.typeId && getItem.amount == item.amount - 1)
+      )
         setIslandLimit(player, "Crops", 1);
       else return;
     });
   } else {
     const block = getBlockAtFace(data, data.blockFace);
-    if (block?.typeId.includes("lava") && ((block.permutation.getState("liquid_depth") ?? 0) as number) == 0) {
+    if (
+      block?.typeId.includes("lava") &&
+      ((block.permutation.getState("liquid_depth") ?? 0) as number) == 0
+    ) {
       data.cancel = true;
       system.run(() => block.setType("minecraft:air"));
       setIslandLimit(player, "Lava", -1);

@@ -18,6 +18,7 @@ declare class ChestFormData {
       | "pink"
       | "red"
       | "vault"
+      | "shop"
       | "yellow"
   );
   /**
@@ -40,7 +41,8 @@ declare class ChestFormData {
     itemDesc?: string[],
     texture?: string,
     stackAmount?: number,
-    enchanted?: boolean
+    enchanted?: boolean,
+    backupTexture?: string
   ): ChestFormData;
   /**
 	* @remarks Fills slots based off of strings and a key, with the first slot being the cordinate that the pattern starts at.

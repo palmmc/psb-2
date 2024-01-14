@@ -16,6 +16,7 @@ const sizes = new Map([
   ["pink", [`§p§i§n§k§c§h§e§s§t`, 27]],
   ["red", [`§r§e§d§c§h§e§s§t`, 27]],
   ["vault", [`§v§a§u§l§t§c§h§e§s§t`, 27]],
+  ["shop", [`§s§h§o§p§c§h§e§s§t`, 27]],
   ["yellow", [`§y§e§l§l§o§w§c§h§e§s§t`, 27]],
 ]);
 class ChestFormData {
@@ -30,13 +31,22 @@ class ChestFormData {
     for (let i = 0; i < sizing[1]; i++) this.#buttonArray.push(["", undefined]);
   }
   title(text) {
-    this.#titleText += text;
+    this.#titleText += "§r" + text;
     return this;
   }
-  button(slot, itemName, itemDesc, iconPath, stackSize = 1, enchanted = false) {
+  button(
+    slot,
+    itemName,
+    itemDesc,
+    iconPath,
+    stackSize = 1,
+    enchanted = false,
+    backupTexture
+  ) {
     const ID = typeIdToID.get(
       iconPath.includes(":") ? iconPath : "minecraft:" + iconPath
     );
+    if (!ID) iconPath = backupTexture;
     this.#buttonArray.splice(slot, 1, [
       `stack#${Math.min(Math.max(stackSize, 1) || 1, 99)
         .toString()
