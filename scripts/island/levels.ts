@@ -27,7 +27,7 @@ import {
   DEF_CROPS_PLACE,
   DEF_ORES,
   DEF_SEEDS_BREAK,
-} from "./cobblegens";
+} from "../systems/miscellaneous";
 import { getIslandOn } from "./manage";
 
 const overworld = world.getDimension("overworld");
@@ -202,9 +202,6 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
   if (!ldata) return;
   if (id.includes("ore") && randomIntFromInterval(1, 5) != 1) return;
   const player = data.player;
-  let isle = getIslandOn(player);
-  let owner = isle?.owner;
-  if (!owner) return;
   if (ldata[3] && (ldata[3] as boolean) == true) {
     if (block.getState("growth") != 7) return;
   }
@@ -212,10 +209,10 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
   if (ldata[2])
     xp = randomIntFromInterval(ldata[1] as number, ldata[2] as number);
   if (!xp) return;
-  let island = isle?.island;
-  let idata = islandDB.get(island);
-  idata.points = Number(idata.points) + xp;
-  islandDB.set(island, idata);
+  let idata = getIslandOn(player);
+  if (!idata) return;
+  idata.addPoints(xp);
+  idata.updateData();
 });
 
 world.afterEvents.playerPlaceBlock.subscribe((data) => {
@@ -229,28 +226,13 @@ world.afterEvents.playerPlaceBlock.subscribe((data) => {
   }
   if (!ldata) return;
   const player = data.player;
-  let isle = getIslandOn(player);
-  let owner = isle?.owner;
-  if (!owner) return;
-  let island = isle?.island;
-  let idata = islandDB.get(island);
-  idata.points = Number(idata.points) + (ldata[1] as number);
-  islandDB.set(island, idata);
+  let idata = getIslandOn(player);
+  if (!idata) return;
+  idata.addPoints(ldata[1] as number);
+  idata.updateData();
 });
 
 // LIMIT EVENTS
-
-world.beforeEvents.chatSend.subscribe((data) => {
-  if (data.message == "!setlava") {
-    let isle = getIslandOn(data.sender);
-    let owner = isle?.owner;
-    if (!owner) return;
-    let island = isle?.island;
-    let idata = islandDB.get(island);
-    idata.limits.lava = 0 as number;
-    islandDB.set(island, idata);
-  }
-});
 
 function getBlockAtFace(
   data: PlayerInteractWithBlockBeforeEvent,
@@ -267,114 +249,3 @@ function getBlockAtFace(
   //console.warn(overworld.getBlock(loc)?.typeId);
   return overworld.getBlock(loc);
 }
-
-function setIslandLimit(player: Player, type: string, amount: number) {
-  let isle = getIslandOn(player);
-  let island = isle?.island;
-  if (!island) return false;
-  let idata = islandDB.get(island);
-  if (
-    Number(idata.limits[type.toLowerCase()]) >=
-    Number(idata.limits[`max${type}`])
-  ) {
-    system.run(() =>
-      sendError(
-        player,
-        `You have reached your island limit for this block.\n§dUse §e-is expand§d to increase it.`,
-        PREFIX.island
-      )
-    );
-    return false;
-  } else idata.limits[type.toLowerCase()] += amount as number;
-  islandDB.set(island, idata);
-  console.warn(idata.limits[type.toLowerCase()]);
-  return true;
-}
-
-world.beforeEvents.playerInteractWithBlock.subscribe((data) => {
-  const player = data.player;
-  let item = data.itemStack;
-  if (!item) return;
-  if (item.typeId == "minecraft:lava") data.cancel = true;
-  else if (DEF_CROPS_PLACE[DEF_CROPS_PLACE.indexOf(item.typeId) ?? -1]) {
-    system.run(() => {
-      const getItem = (<EntityEquippableComponent>(
-        player.getComponent("equippable")
-      )).getEquipment(EquipmentSlot.Mainhand);
-      if (
-        !getItem ||
-        (getItem?.typeId == item?.typeId && getItem.amount == item.amount - 1)
-      )
-        setIslandLimit(player, "Crops", 1);
-      else return;
-    });
-  } else {
-    const block = getBlockAtFace(data, data.blockFace);
-    if (
-      block?.typeId.includes("lava") &&
-      ((block.permutation.getState("liquid_depth") ?? 0) as number) == 0
-    ) {
-      data.cancel = true;
-      system.run(() => block.setType("minecraft:air"));
-      setIslandLimit(player, "Lava", -1);
-      return;
-    } else return;
-  }
-  system.run(() => {
-    const block = getBlockAtFace(data, data.blockFace);
-    const bid = block?.typeId;
-    if (bid != "minecraft:air") return;
-    if (!setIslandLimit(player, "Lava", 1)) return;
-    block?.setType("lava");
-    const equip = <EntityEquippableComponent>player.getComponent("equippable");
-    const getItem = equip.getEquipment(EquipmentSlot.Mainhand);
-    if (item && getItem?.typeId == item.typeId && getItem?.amount)
-      if (item.amount == 1) {
-        equip.setEquipment(EquipmentSlot.Mainhand);
-      } else {
-        item.amount--;
-        equip.setEquipment(EquipmentSlot.Mainhand, item);
-      }
-    else return;
-  });
-});
-
-world.afterEvents.playerBreakBlock.subscribe((data) => {
-  let block = data.block;
-  let id = block.type.id;
-  let type: string;
-  if (DEF_SEEDS_BREAK[DEF_SEEDS_BREAK.indexOf(id) ?? -1]) type = "Crops";
-  else if (id == "minecraft:mob_spawner") type = "Spawners";
-  else return;
-  const player = data.player;
-  setIslandLimit(player, type, -1);
-});
-
-/*
-world.beforeEvents.playerPlaceBlock.subscribe((data) => {
-  let id = data.itemStack.typeId;
-  let type = "";
-  const player = data.player;
-  if (id == "minecraft:mob_spawner") type = "Spawners";
-  else if (id == "minecraft:lava" && !getBlockAtFace(data, data.face)?.typeId.includes("lava")) type = "Lava";
-  else return;
-  let isle = getIslandOn(player);
-  let owner = isle?.owner;
-  if (!owner) return;
-  let island = isle?.island;
-  let idata = islandDB.get(island);
-  if (Number(idata.limits[type.toLowerCase()]) >= Number(idata.limits[`max${type}`])) {
-    data.cancel = true;
-    system.run(() =>
-      sendError(
-        player,
-        `You have reached your island limit for this block.\n§dUse §e-is expand§d to increase it.`,
-        PREFIX.island
-      )
-    );
-    return;
-  } else idata.limits[type.toLowerCase()]++ as number;
-  console.warn(idata.limits[type.toLowerCase()]);
-  islandDB.set(island, idata);
-});
-*/

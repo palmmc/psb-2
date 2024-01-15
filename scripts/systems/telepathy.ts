@@ -4,7 +4,7 @@ import {
   ItemStack,
   world,
 } from "@minecraft/server";
-import { BlockOres } from "../island/cobblegens";
+import { BlockOres } from "../systems/miscellaneous";
 import { PREFIX, randomIntFromInterval } from "../main";
 import { itemsBanned } from "./miscellaneous";
 import { BREAK_XP } from "../island/levels";

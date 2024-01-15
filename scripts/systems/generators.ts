@@ -1,4 +1,5 @@
 import {
+  Block,
   Direction,
   ItemStack,
   Player,
@@ -19,7 +20,7 @@ import {
   toRomanNumeral,
 } from "../main";
 import { getIslandOn } from "../island/manage";
-import { BlockOres, DEF_ORES, selectOre } from "../island/cobblegens";
+import { BlockOres, DEF_ORES } from "../systems/miscellaneous";
 import { ChestFormData } from "../chest-ui/forms";
 
 const generatorDB = new JsonDatabase("generatorDB", world);
@@ -565,7 +566,8 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
     data.cancel = true;
     return;
   }
-  if (getIslandOn(player)?.owner != player) {
+  let island = getIslandOn(player);
+  if (!island || !island?.owners.find((x) => x.id == player.id)) {
     data.cancel = true;
     system.run(() =>
       sendError(player, `§cYou must be §eIsland Owner §cto place that here.`)
@@ -605,6 +607,8 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
       z: gen.location.z,
     });
     generatorDB.set(key, gen);
+    island?.addLimit(type, 1);
+    island?.updateData();
     // Send alert.
     sendAlert(
       player,
@@ -633,7 +637,7 @@ world.beforeEvents.playerBreakBlock.subscribe((data) => {
     data.cancel = true;
     return;
   }
-  if (getIslandOn(player)?.owner != player) {
+  if (!getIslandOn(player)?.owners.find((x) => x.id == player.id)) {
     data.cancel = true;
     system.run(() =>
       sendError(player, `§cYou must be §eIsland Owner §cto break that here.`)
@@ -671,6 +675,34 @@ world.beforeEvents.playerBreakBlock.subscribe((data) => {
     */
   });
 });
+
+type CHANCE = {
+  cobblestone: number;
+  netherrack: number;
+  coal: number;
+  iron: number;
+  lapis: number;
+  gold: number;
+  diamond: number;
+  emerald: number;
+};
+
+// ORE RANDOMIZER
+export function selectOre(block: Block, CHANCE: CHANCE) {
+  let ore = "air";
+  let roll = randomIntFromInterval(1, 100);
+  let choice = 100;
+  if (roll >= (choice -= CHANCE.emerald)) ore = "emerald_ore";
+  else if (roll >= (choice -= CHANCE.diamond)) ore = "diamond_ore";
+  else if (roll >= (choice -= CHANCE.gold)) ore = "gold_ore";
+  else if (roll >= (choice -= CHANCE.lapis)) ore = "lapis_ore";
+  else if (roll >= (choice -= CHANCE.iron)) ore = "iron_ore";
+  else if (roll >= (choice -= CHANCE.coal)) ore = "coal_ore";
+  else if (roll >= (choice -= CHANCE.netherrack)) ore = "netherrack";
+  else ore = "cobblestone";
+  block.setType(ore);
+  return ore;
+}
 
 const genBehavior = {
   oregen: function placeOre(gen: Generator) {

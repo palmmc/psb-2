@@ -9,24 +9,8 @@ import {
   EntityLifetimeState,
   BlockInventoryComponent,
 } from "@minecraft/server";
-import {
-  PREFIX,
-  playerDB,
-  sendAlert,
-  readIsland,
-  sendError,
-  islandDB,
-} from "../main";
-import { ISLAND_GENERATOR } from "./create";
-import { checkBounds, getIslandLoc, getIslandOn } from "./manage";
-import { JsonDatabase } from "../database";
-import { ActionFormData, ModalFormData } from "@minecraft/server-ui";
-import {
-  DEF_CROPS_BREAK,
-  DEF_CROPS_PLACE,
-  DEF_ORES,
-  DEF_XP_BLOCKS,
-} from "./cobblegens";
+import { PREFIX, playerDB, sendAlert, sendError, islandDB } from "../main";
+import { ModalFormData } from "@minecraft/server-ui";
 
 // DEFINITIONS
 const overworld = world.getDimension("overworld");

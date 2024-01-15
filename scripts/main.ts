@@ -12,6 +12,7 @@ import {
   Player,
   TicksPerSecond,
   Vector,
+  Vector3,
   system,
   world,
 } from "@minecraft/server";
@@ -19,7 +20,6 @@ import { ISLAND_GENERATOR, islandCreator } from "./island/create";
 
 // SCRIPT MODULES
 
-import "./island/cobblegens";
 import "./island/create";
 import "./island/manage";
 import "./island/permissions";
@@ -50,7 +50,14 @@ import {
   EnchantInfo,
   VanillaEnchItem,
 } from "./systems/enchantments";
-import { getIslandOn, islandExpand, visitIsland } from "./island/manage";
+import {
+  MAX_SIZE,
+  UPGRADE_SIZE,
+  getIslandOn,
+  islandExpand,
+  islandInfo,
+  visitIsland,
+} from "./island/manage";
 import {
   islandEditPerms,
   islandInvite,
@@ -229,49 +236,225 @@ export function fromRomanNumeral(roman: string): number {
 export const playerDB = new JsonDatabase("playerDB", world);
 export const islandDB = new JsonDatabase("islandDB", world);
 
-// READ/WRITE ISLAND DATA
-export function readIsland(
-  name: string,
-  key: "owner" | "ownerId" | "members" | "points" | "size" | "funds" | "limits"
-) {
-  return islandDB.get(name)[key];
+// ISLAND CLASS DEFINITIONS
+
+interface IslandMember {
+  name: string;
+  id: string;
+  permissions: MemberPermissions;
 }
-export function writeIsland(
-  name: string,
-  key: "owner" | "ownerId" | "members" | "points" | "size" | "funds" | "limits",
-  push: any
-) {
-  let data = islandDB.get(name);
-  data[key] = push;
-  islandDB.set(name, data);
+
+interface IslandOwner extends IslandMember {
+  name: string;
+  id: string;
+  permissions: MemberPermissions;
 }
-const limitEx = {
-  lava: 0,
-  maxLava: 0,
-  crops: 0,
-  maxCrops: 0,
-  spawners: 0,
-  maxSpawners: 0,
+
+interface MemberPermissions {
+  break: boolean;
+  place: boolean;
+  interact: boolean;
+  attack: boolean;
+  container: boolean;
+  mine: boolean;
+  farm: boolean;
+  build: boolean;
+}
+
+export const ISLAND_PERMISSIONS = {
+  default: {
+    break: false,
+    place: false,
+    interact: false,
+    attack: false,
+    container: false,
+    mine: false,
+    farm: false,
+    build: false,
+  },
 };
-export function storeIsland(
-  name: string,
-  owner: string,
-  ownerId: string,
-  members: Array<string>,
-  points: number,
-  size: number,
-  funds: number,
-  limits: typeof limitEx
-) {
-  islandDB.set(name, {
-    owner: owner,
-    ownerId: ownerId,
-    members: members,
-    points: points,
-    size: size,
-    funds: funds,
-    limits: limits,
-  });
+
+interface IslandLimits {
+  oregen: { amount: number; max: number };
+  autominer: { amount: number; max: number };
+  spawner: { amount: number; max: number };
+  crop: { amount: number; max: number };
+  homes: { amount: number; max: number };
+  members: { amount: number; max: number };
+  owners: { amount: number; max: number };
+}
+
+interface IslandHome {
+  name: string;
+  location: Vector | Vector3;
+}
+
+export class Island {
+  public name: string;
+  public spawn: Vector | Vector3;
+  public owners: Array<IslandOwner>;
+  public operator: IslandOwner;
+  public members: Array<IslandMember>;
+  public size: number;
+  public points: number;
+  public funds: number;
+  public limits: IslandLimits;
+  public homes: Array<IslandHome>;
+  public status: boolean;
+
+  constructor(
+    name: string,
+    spawn: Vector | Vector3,
+    owner: IslandOwner,
+    status: boolean
+  ) {
+    this.name = name;
+    this.spawn = spawn;
+    this.owners = [owner];
+    this.operator = owner;
+    this.members = new Array();
+    this.size = 16;
+    this.points = 0;
+    this.funds = 0;
+    this.limits = {
+      oregen: { amount: 0, max: 5 },
+      autominer: { amount: 0, max: 2 },
+      spawner: { amount: 0, max: 0 },
+      crop: { amount: 0, max: 100 },
+      homes: { amount: 0, max: 3 },
+      members: { amount: 0, max: 3 },
+      owners: { amount: 1, max: 2 },
+    };
+    this.homes = new Array();
+    this.status = status;
+  }
+
+  setName(name: string): string {
+    return (this.name = name);
+  }
+
+  setSpawn(location: Vector | Vector3): Vector | Vector3 {
+    this.spawn = location;
+    return this.spawn;
+  }
+
+  addMember(player: Player, permissions: MemberPermissions) {
+    this.members.push({
+      name: player.name,
+      id: player.id,
+      permissions: permissions,
+    });
+  }
+
+  removeMember(player: Player): boolean | Error {
+    let member = this.members.find((x) => x.id == player.id);
+    if (!member) return new Error("Player is not an existing member.");
+    return delete this.members[this.members.indexOf(member)];
+  }
+
+  addOwner(player: Player, permissions?: MemberPermissions) {
+    this.owners.push({
+      name: player.name,
+      id: player.id,
+      permissions: permissions ?? ISLAND_PERMISSIONS.default,
+    });
+    playerDB.set(player.id, (playerDB.get(player.id).island = this.name));
+  }
+
+  removeOwner(player: Player): boolean | Error {
+    let owner = this.owners.find((x) => x.id == player.id);
+    if (!owner) return new Error("Player is not an existing owner.");
+    return delete this.owners[this.owners.indexOf(owner)];
+  }
+
+  setOperator(operator: Player, permissions?: MemberPermissions) {
+    this.operator = {
+      name: operator.name,
+      id: operator.id,
+      permissions: permissions ?? ISLAND_PERMISSIONS.default,
+    };
+  }
+
+  increaseSize(): number | Error {
+    return this.size + UPGRADE_SIZE <= MAX_SIZE
+      ? (this.size += UPGRADE_SIZE)
+      : new Error("Island has reached maximum size.");
+  }
+
+  decreaseSize(): number | Error {
+    return this.size - UPGRADE_SIZE <= 0
+      ? new Error("Island has reached maximum size.")
+      : (this.size -= UPGRADE_SIZE);
+  }
+
+  addPoints(amount: number): number {
+    return (this.points += amount);
+  }
+
+  removePoints(amount: number): number {
+    return (this.points -= amount);
+  }
+
+  addFunds(amount: number): number {
+    return (this.funds += amount);
+  }
+
+  removeFunds(amount: number): number {
+    return (this.funds -= amount);
+  }
+
+  addLimit(property: keyof IslandLimits, amount: number): number | Error {
+    return this.limits[property].amount + amount < this.limits[property].max
+      ? (this.limits[property].amount += amount)
+      : new Error("Limit has reached maximum.");
+  }
+
+  removeLimit(property: keyof IslandLimits, amount: number): number | Error {
+    return this.limits[property].amount - amount >= 0
+      ? (this.limits[property].amount -= amount)
+      : new Error("Value cannot be less than 0.");
+  }
+
+  increaseLimit(property: keyof IslandLimits, amount: number): number {
+    return (this.limits[property].max += amount);
+  }
+
+  decreaseLimit(property: keyof IslandLimits, amount: number): number | Error {
+    return this.limits[property].max - amount >= 0
+      ? (this.limits[property].max -= amount)
+      : new Error("Value cannot be less than 0.");
+  }
+
+  addHome(name: string, location: Vector | Vector3) {
+    this.homes.push({ name: name, location: location });
+  }
+
+  removeHome(name: string): boolean | Error {
+    let home = this.homes.find((x) => x.name == name);
+    if (!home) return new Error("Home does not exist.");
+    return delete this.homes[this.homes.indexOf(home)];
+  }
+
+  toggleStatus(): boolean {
+    return this.status == true ? (this.status = false) : (this.status = true);
+  }
+
+  isInBounds(player: Player): boolean {
+    return Math.floor(
+      Math.sqrt(
+        Math.pow(this.spawn.x - player.location.x, 2) +
+          Math.pow(this.spawn.z - player.location.z, 2)
+      )
+    ) > this.size
+      ? false
+      : true;
+  }
+
+  showInfo(player: Player) {}
+
+  updateData(): boolean {
+    return islandDB.set(this.name, this) ? true : false;
+  }
 }
 
 // DEFINTIIONS
@@ -297,11 +480,7 @@ system.runInterval(() => {
     // Fetch island info.
     let pdata = playerDB.get(player.id);
     let coins = pdata.coins;
-    let island = islandDB.get(getIslandOn(player)?.island);
-    if (pdata.island == "") {
-      island = { owner: "??", points: 0, size: 16, funds: 0 };
-      pdata.island = "-is create";
-    }
+    let island = getIslandOn(player);
     let sidebarText = `\n\n §7|§f ${
       world.getPlayers().length
     }/10 §7| §f ${TicksPerSecond}t §7| §e 0 §7|\n\n§g §aUser §7» §f${
@@ -309,7 +488,8 @@ system.runInterval(() => {
     }\n §eWallet §7»  §f$${formatNumber(
       coins
     )}\n§g §6Time Played §7» §f${formatTime(getScore("time", player))}`;
-    if (island && island.owner != "??") {
+    let owner = island?.operator.name;
+    if (island && owner) {
       let points = island.points;
       let level = xpToLevel(points);
       let pointsNeeded = levelToXp(level - 1);
@@ -320,9 +500,7 @@ system.runInterval(() => {
           ? pdata.island.slice(0, 11) + "..."
           : pdata.island) ?? "-is create"
       }\n §l§6│§r §6Owner §7» §f${
-        island.owner.length > 11
-          ? island.owner.slice(0, 11) + "..."
-          : island.owner
+        owner.length > 11 ? owner.slice(0, 11) + "..." : owner
       }\n §l§6│§r §2Level §7» §f${level} §2(§f${points - pointsBefore}§2/§f${
         pointsNeeded - pointsBefore
       }§2)\n §l§6│§r §eSize §7» §d(§f${island.size} §dx §f${
@@ -552,7 +730,7 @@ const commands = [
         info: "Teleports you to another player's island.",
         function: function (player: Player, message: string) {
           let islandName = message.split(" ")[2];
-          let island = islandDB.get(islandName);
+          let island: Island = islandDB.get(islandName);
           if (!island) {
             sendError(
               player,
@@ -561,9 +739,10 @@ const commands = [
             );
             return;
           }
-          let ownerName = island.owner;
-          let owner = world.getPlayers({ name: ownerName })[0];
-          if (!owner) {
+          let owners = world.getPlayers({
+            excludeNames: island.owners.map((x) => x.name),
+          });
+          if (owners.length == world.getPlayers().length) {
             sendError(
               player,
               `The island owner must be online to visit it.`,
@@ -571,7 +750,7 @@ const commands = [
             );
             return;
           }
-          visitIsland(player, owner);
+          visitIsland(player, owners[0]);
         },
       },
       {
@@ -607,49 +786,15 @@ const commands = [
         info: "Shows info for your island.",
         function: function (player: Player, message: string) {
           let island = message.split("info ")[1];
-          if (!islandDB.get(island)) island = playerDB.get(player.id).island;
-          if (!island) {
-            sendError(player, `Island is invalid.`, PREFIX.island);
-            return;
-          }
-          function islandInfo(player: Player, island: string) {
-            const idata = islandDB.get(island);
-            // Level Data
-            let points = idata.points;
-            let level = xpToLevel(points);
-            let pointsNeeded = levelToXp(level - 1);
-            let pointsBefore = levelToXp(level - 2);
-            pointsBefore = level > 1 ? pointsBefore : 0;
-            // Status
-            let status = "§aOPEN";
-            if ((idata.status = false)) status = "§6CLOSED";
-            if (!world.getPlayers({ name: idata.owner })[0])
-              status = "§cOFFLINE";
-            const gui = new ActionFormData();
-            gui.title(`Island Info`);
-            const info = [
-              `§aIsland: §f${island}`,
-              `§bOwner: §f${idata.owner}`,
-              `§6Level: §e${level} §7/ §gPoints: §2(§a${
-                points - pointsBefore
-              }§2/§a${pointsNeeded - pointsBefore}§2)`,
-              `§dSize: §u(§f${idata.size} §dx §f${idata.size}§u)`,
-              `§gFunds: §f$${formatNumber(idata.funds as number)}`,
-              `§cMembers: §f${
-                idata.members.length > 0 ? idata.members : "§7..."
-              }`,
-              `§9Status: §l§f[§r ${status} §f§l]§r`,
-              `§dLimits:\n §8- §6Lava: §8[§f${idata.limits.lava}§7/§f${idata.limits.maxLava}§8]\n §8- §aCrops: §8[§f${idata.limits.crops}§7/§f${idata.limits.maxCrops}§8]\n §8- §cSpawners: §8[§f${idata.limits.spawners}§7/§f${idata.limits.maxSpawners}§8]\n`,
-            ];
-            let infoStr = "\n";
-            for (let i of info) {
-              infoStr = infoStr + " " + i + `\n`;
-            }
-            gui.body(infoStr);
-            gui.button("Submit");
-            gui.show(player);
-          }
-          system.runTimeout(() => islandInfo(player, island), 2);
+          system.runTimeout(
+            () =>
+              islandInfo(
+                player,
+                islandDB.get(island) ??
+                  islandDB.get(playerDB.get(player.id).island)
+              ),
+            2
+          );
         },
       },
       {
@@ -661,7 +806,7 @@ const commands = [
             island: string,
             amount: number
           ) {
-            let idata = islandDB.get(island);
+            let idata: Island = islandDB.get(island);
             let pdata = playerDB.get(player.id);
             if (amount > pdata.coins) {
               sendError(
@@ -672,9 +817,9 @@ const commands = [
               return;
             }
             pdata.coins -= amount;
-            idata.funds += amount;
+            idata.addFunds(amount);
+            idata.updateData();
             playerDB.set(player.id, pdata);
-            islandDB.set(island, idata);
             sendAlert(
               player,
               `§eDeposited §c$${formatNumber(
@@ -709,7 +854,7 @@ const commands = [
             island: string,
             amount: number
           ) {
-            let idata = islandDB.get(island);
+            let idata: Island = islandDB.get(island);
             let pdata = playerDB.get(player.id);
             if (amount > idata.funds) {
               sendError(
@@ -719,9 +864,9 @@ const commands = [
               );
               return;
             }
-            idata.funds -= amount;
+            idata.removeFunds(amount);
+            idata.updateData();
             pdata.coins += amount;
-            islandDB.set(island, idata);
             playerDB.set(player.id, pdata);
             sendAlert(
               player,
@@ -1165,61 +1310,22 @@ const commands = [
     closeChat: true,
   },
   {
-    alias: ["islandadmin", "isadmin"],
+    alias: ["isadmin", "islandadmin"],
     permission: COMMAND_PERMS.ADMIN,
-    info: "Sets island stats.",
+    info: "Executes an island function as admin.",
     function: function (player: Player, message: string) {
-      // Allowed modifiers: 'add' | 'set' | 'remove'
-      let mod = message.split(" ")[1];
-      if (!["add", "set", "remove"].includes(mod)) {
-        sendError(
-          player,
-          `Invalid modifier.\n§cFormat: §e-isadmin [§gset §6| §gadd §6| §gremove§e] [§astat§e] <§gisland§e> [§gvalue§e]`,
-          PREFIX.server
-        );
-        return;
-      }
-      let island = message.split(" ")[3];
-      let idata = islandDB.get(island);
+      let island = message.split(" ")[1];
+      let idata: Island = islandDB.get(island);
       if (!idata) {
         sendError(
           player,
-          `Island does not exist.\n§cFormat: §e-isadmin [§gset §6| §gadd §6| §gremove§e] [§astat§e] <§gisland§e> [§gvalue§e]`,
+          `Island does not exist.\n§cFormat: §e-isadmin <§gisland§e> [§9function§e]`,
           PREFIX.server
         );
         return;
       }
-      let stat = message.split(" ")[2];
-      if (!idata[stat] && idata[stat] != 0) {
-        sendError(
-          player,
-          `Invalid statistic '§4${stat}§c'.\n§cFormat: §e-isadmin [§gset §6| §gadd §6| §gremove§e] [§astat§e] <§gisland§e> [§gvalue§e]`,
-          PREFIX.server
-        );
-        return;
-      }
-      let value = message.split(" ")[4];
-      if (!value) {
-        sendError(
-          player,
-          `Invalid value.\n§cFormat: §e-isadmin [§gset §6| §gadd §6| §gremove§e] [§astat§e] <§gisland§e> [§gvalue§e]`,
-          PREFIX.server
-        );
-        return;
-      }
-      if (mod == "add" && !Number.isNaN(value))
-        idata[stat] = Number(idata[stat]) + Number(value);
-      else if (mod == "set") idata[stat] = value;
-      else if (mod == "remove" && !Number.isNaN(value))
-        idata[stat] = Number(idata[stat]) - Number(value);
-      sendAlert(
-        player,
-        `§a${
-          mod.charAt(0).toUpperCase() + mod.slice(1)
-        } §c${value} §ato §d${stat} §afor §e${island}§a.`,
-        PREFIX.server
-      );
-      islandDB.set(island, idata);
+      let func = message.split(" ")[2];
+      eval(`islandDB.get(island)[func]`);
     },
     arguments: [],
     allowSigns: true,

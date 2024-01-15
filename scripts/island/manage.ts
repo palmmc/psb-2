@@ -10,15 +10,15 @@ import {
   PREFIX,
   playerDB,
   sendAlert,
-  readIsland,
   islandDB,
   sendError,
   formatNumber,
-  storeIsland,
+  Island,
+  ISLAND_PERMISSIONS,
 } from "../main";
 import { ISLAND_GENERATOR } from "./create";
 import { ActionFormData, MessageFormData } from "@minecraft/server-ui";
-import { xpToLevel } from "./levels";
+import { levelToXp, xpToLevel } from "./levels";
 
 // DEFINTIONS
 
@@ -26,84 +26,82 @@ const overworld = world.getDimension("overworld");
 
 // ESSENTIAL FUNCTIONS
 
-export function getIslandLoc(slot: number) {
-  return new Vector(
-    ISLAND_GENERATOR.start + slot * ISLAND_GENERATOR.dist,
-    64,
-    ISLAND_GENERATOR.start + slot * ISLAND_GENERATOR.dist
-  );
-}
-
-export function getIslandOn(player: Player) {
-  let slot = Math.floor(
-    (player.location.x - ISLAND_GENERATOR.start + 128) / ISLAND_GENERATOR.dist
-  );
-  if (slot < 0 || slot > 9) return;
-  let owner: Player | undefined;
-  for (const [key, value] of playerDB) {
-    if (value.slot == slot) {
-      owner = world.getPlayers().find((x) => x.id == key);
-      return { owner: owner, slot: slot, island: value.island };
-    }
+export function getIslandOn(player: Player): Island | undefined {
+  let island: Island;
+  for (island of islandDB.values()) {
+    if (true == true) return island;
+    else continue;
   }
-  return { owner: owner, slot: slot, island: "" };
-}
-
-export function checkBounds(
-  islandLoc: Vector,
-  loc: Vector3,
-  size: number,
-  face?: Direction
-) {
-  if (face) {
-    if (face == Direction.North) loc.z--;
-    if (face == Direction.East) loc.x++;
-    if (face == Direction.South) loc.z++;
-    if (face == Direction.West) loc.x--;
-  }
-  let isDist = Math.floor(
-    Math.sqrt(
-      Math.pow(islandLoc.x - loc.x, 2) + Math.pow(islandLoc.z - loc.z, 2)
-    )
-  );
-  if (isDist > size && isDist < size + 16) return true;
 }
 
 // ISLAND VISITATION
-export function visitIsland(player: Player, player2: Player) {
-  let p2data = playerDB.get(player2.id);
-  let slot = p2data.slot;
-  let island = p2data.island;
-  player.teleport(getIslandLoc(slot));
+export function visitIsland(player: Player, islandPlayer: Player) {
+  0;
+  let island: Island = islandDB.get(playerDB.get(islandPlayer.id).island);
+  player.teleport(island.spawn);
   sendAlert(
     player,
-    `§aYou have been teleported to the §e${island} §aisland.`,
+    `§aYou have been teleported to the §e${island.name} §aisland.`,
     PREFIX.server
   );
   sendAlert(
-    player2,
+    islandPlayer,
     `§a${player.name} §eteleported to your island.`,
     PREFIX.server
   );
+}
+
+export function islandInfo(player: Player, idata: Island) {
+  // Level Data
+  let points = idata.points;
+  let level = xpToLevel(points);
+  let pointsNeeded = levelToXp(level - 1);
+  let pointsBefore = levelToXp(level - 2);
+  pointsBefore = level > 1 ? pointsBefore : 0;
+  // Status
+  let status = "§aOPEN";
+  if ((idata.status = false)) status = "§6CLOSED";
+  if (
+    world.getPlayers({ excludeNames: idata.owners.map((x) => x.name) })
+      .length == world.getPlayers().length
+  )
+    status = "§cOFFLINE";
+  const gui = new ActionFormData();
+  gui.title(`Island Info`);
+  const info = [
+    `§aIsland: §f${idata.name}`,
+    `§bOwner: §f${idata.operator.name}`,
+    `§6Level: §e${level} §7/ §gPoints: §2(§a${points - pointsBefore}§2/§a${
+      pointsNeeded - pointsBefore
+    }§2)`,
+    `§dSize: §u(§f${idata.size} §dx §f${idata.size}§u)`,
+    `§gFunds: §f$${formatNumber(idata.funds as number)}`,
+    `§cMembers: §f${idata.members.length > 0 ? idata.members : "§7..."}`,
+    `§9Status: §l§f[§r ${status} §f§l]§r`,
+    `§dLimits:\n §8- §6Lava: §8[§f${idata.limits.oregen}§7/§f${idata.limits.oregen}§8]\n §8- §aCrops: §8[§f${idata.limits.crop}§7/§f${idata.limits.crop}§8]\n §8- §cSpawners: §8[§f${idata.limits.spawner}§7/§f${idata.limits.spawner}§8]\n`,
+  ];
+  let infoStr = "\n";
+  for (let i of info) {
+    infoStr = infoStr + " " + i + `\n`;
+  }
+  gui.body(infoStr);
+  gui.button("Submit");
+  gui.show(player);
 }
 
 // ISLAND BORDER CHECK
 system.runInterval(() => {
   for (let player of world.getPlayers()) {
     // ANTI FARMLAND TRAMPLE
-    //if (player.isFalling == true) player.addEffect("slow_falling", 9, { showParticles: false });
-    if (!player.isOnGround)
-      player.addEffect("slow_falling", 9, { showParticles: false });
+    //if (!player.isOnGround)
     //
     const loc = player.location;
     const idata = getIslandOn(player);
     if (!idata) continue;
-    let islandLoc = getIslandLoc(idata.slot);
-    if (checkBounds(islandLoc, loc, readIsland(idata.island, "size")) != true)
-      continue;
+    if (idata.isInBounds(player) == true) continue;
     player.applyKnockback(
-      -(loc.x - islandLoc.x),
-      -(loc.z - islandLoc.z),
+      -(loc.x - idata.spawn.x),
+      -(loc.z - idata.spawn.z),
       1,
       0.5
     );
@@ -119,8 +117,8 @@ system.runInterval(() => {
 }, 5);
 
 // ISLAND EXPANSION
-const MAX_SIZE = 184; // Max island size.
-const UPGRADE_SIZE = 8; // Size increase per upgrade.
+export const MAX_SIZE = 184; // Max island size.
+export const UPGRADE_SIZE = 8; // Size increase per upgrade.
 const UPGRADE_LEVEL = 10; // Level requirement increase per upgrade.
 
 // LIMIT INCREASES
