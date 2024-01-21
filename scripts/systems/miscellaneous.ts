@@ -8,7 +8,13 @@ world.afterEvents.entityHurt.subscribe((data) => {
 });
 
 // Banned Items
-export const itemsBanned = ["powder_snow_bucket"];
+export const itemsBanned = [
+  "powder_snow_bucket",
+  "anvil",
+  "flint_and_steel",
+  "enchanting_table",
+  "ender_chest",
+];
 export const itemsSuperBanned = ["command_block"];
 
 export const BlockOres = [
@@ -35,34 +41,50 @@ export const DEF_ORES = [
 ];
 
 export const DEF_CROPS_PLACE = [
-  "minecraft:beetroot_seeds",
-  "minecraft:wheat_seeds",
-  "minecraft:carrot",
-  "minecraft:potato",
-  "minecraft:sugar_cane",
-  "minecraft:cactus",
-  "minecraft:pumpkin_seeds",
-  "minecraft:melon_seeds",
+  "palm:beetroot_seeds",
+  "palm:wheat_seeds",
+  "palm:carrot",
+  "palm:potato",
+  "palm:pumpkin_seeds",
+  "palm:melon_seeds",
 ];
 
 export const DEF_CROPS_BREAK = [
-  "minecraft:beetroot",
-  "minecraft:wheat",
-  "minecraft:carrots",
-  "minecraft:potatoes",
-  "minecraft:reeds",
-  "minecraft:cactus",
+  "palm:beetroots",
+  "palm:wheat",
+  "palm:carrots",
+  "palm:potatoes",
   "minecraft:pumpkin",
   "minecraft:melon_block",
 ];
 
+export const CROP_DROPS = [
+  [0, "palm:beetroots"],
+  [1, "palm:wheat"],
+  [2, "palm:carrots"],
+  [3, "palm:potatoes"],
+  [4, "palm:pumpkin_stem"],
+  [5, "palm:melon_stem"],
+  [6, "palm:farmland"],
+];
+
+export const CROP_TABLES = [
+  "blocks/beetroot_",
+  "blocks/wheat_",
+  "blocks/carrot_",
+  "blocks/potato_",
+  "blocks/pumpkin_",
+  "blocks/melon_",
+  "blocks/farmland_",
+];
+
 export const DEF_SEEDS_BREAK = [
-  "minecraft:beetroot",
-  "minecraft:wheat",
-  "minecraft:carrots",
-  "minecraft:potatoes",
-  "minecraft:pumpkin_stem",
-  "minecraft:melon_stem",
+  "palm:beetroots",
+  "palm:wheat",
+  "palm:carrots",
+  "palm:potatoes",
+  "palm:pumpkin_stem",
+  "palm:melon_stem",
 ];
 
 export const DEF_XP_BLOCKS = [

@@ -36,32 +36,33 @@ import {
 import "./economy/itemcloud";
 import "./economy/shop";
 import "./systems/enchantments";
+import "./systems/npc";
 import "./systems/generators";
+import "./systems/spawner";
 import "./custom_enchants/enchantHandler";
 import "./custom_enchants/customEnchants";
 import {
-  OpenShop,
+  CATEGORY,
   OpenShopBeta,
   ShopItems,
-  ShopTabEnchantments,
+  ShopTabBeta,
+  ShopTabEnchantmentsBeta,
 } from "./economy/shop";
-import {
-  EnchantEntries,
-  EnchantInfo,
-  VanillaEnchItem,
-} from "./systems/enchantments";
+import { EnchantEntries, VanillaEnchItem } from "./systems/enchantments";
 import {
   MAX_SIZE,
   UPGRADE_SIZE,
   getIslandOn,
   islandExpand,
   islandInfo,
+  lockIsland,
   visitIsland,
+  warpIsland,
 } from "./island/manage";
 import {
+  ISLAND_ROLES,
   islandEditPerms,
   islandInvite,
-  listIslandPerms,
 } from "./island/permissions";
 import { levelToXp, xpToLevel, xpUntilNextLevel } from "./island/levels";
 import {
@@ -70,6 +71,8 @@ import {
   MessageFormData,
 } from "@minecraft/server-ui";
 import { ChestFormData } from "./chest-ui/forms";
+import { Enchant } from "./custom_enchants/enchantHandler";
+import { CE_RARITY, EnchantSlot } from "./custom_enchants/customEnchants";
 // TEST CONNECTION
 
 world.sendMessage("hello world");
@@ -112,6 +115,15 @@ export function formatNumber(x: number) {
   else if (x < 999999999999) return `${Number(x / 1000000000).toFixed(2)}B`;
   else if (x < 999999999999999)
     return `${Number(x / 1000000000000).toFixed(2)}T`;
+  else return x;
+}
+export function shortFormatNumber(x: number) {
+  if (x < 1000) return x;
+  if (x < 999999) return `${Number(x / 1000).toFixed(1)}K`;
+  else if (x < 999999999) return `${Number(x / 1000000).toFixed(1)}M`;
+  else if (x < 999999999999) return `${Number(x / 1000000000).toFixed(1)}B`;
+  else if (x < 999999999999999)
+    return `${Number(x / 1000000000000).toFixed(1)}T`;
   else return x;
 }
 function formatTime(s: number) {
@@ -236,6 +248,27 @@ export function fromRomanNumeral(roman: string): number {
 export const playerDB = new JsonDatabase("playerDB", world);
 export const islandDB = new JsonDatabase("islandDB", world);
 
+/*
+let player = world.getPlayers()[0];
+let pdata = playerDB.get(player.id);
+pdata.island = "ToddlersUnite";
+playerDB.set(player.id, pdata);
+
+let idata: Island = islandDB.get(pdata.island);
+idata.operator = {
+  name: player.name,
+  id: player.id,
+  permissions: ISLAND_ROLES.guest.permissions,
+};
+idata.owners = new Array();
+idata.owners.push({
+  name: player.name,
+  id: player.id,
+  permissions: ISLAND_ROLES.guest.permissions,
+});
+islandDB.set(pdata.island, idata)
+*/
+
 // ISLAND CLASS DEFINITIONS
 
 interface IslandMember {
@@ -250,7 +283,7 @@ interface IslandOwner extends IslandMember {
   permissions: MemberPermissions;
 }
 
-interface MemberPermissions {
+export interface MemberPermissions {
   break: boolean;
   place: boolean;
   interact: boolean;
@@ -261,20 +294,7 @@ interface MemberPermissions {
   build: boolean;
 }
 
-export const ISLAND_PERMISSIONS = {
-  default: {
-    break: false,
-    place: false,
-    interact: false,
-    attack: false,
-    container: false,
-    mine: false,
-    farm: false,
-    build: false,
-  },
-};
-
-interface IslandLimits {
+export interface IslandLimits {
   oregen: { amount: number; max: number };
   autominer: { amount: number; max: number };
   spawner: { amount: number; max: number };
@@ -286,15 +306,22 @@ interface IslandLimits {
 
 interface IslandHome {
   name: string;
-  location: Vector | Vector3;
+  location: WorldLocation;
+}
+
+interface WorldLocation {
+  x: number;
+  y: number;
+  z: number;
 }
 
 export class Island {
   public name: string;
-  public spawn: Vector | Vector3;
+  public spawn: WorldLocation;
   public owners: Array<IslandOwner>;
   public operator: IslandOwner;
   public members: Array<IslandMember>;
+  public banned: Array<string>;
   public size: number;
   public points: number;
   public funds: number;
@@ -309,10 +336,11 @@ export class Island {
     status: boolean
   ) {
     this.name = name;
-    this.spawn = spawn;
+    this.spawn = { x: spawn.x, y: spawn.y, z: spawn.z };
     this.owners = [owner];
     this.operator = owner;
     this.members = new Array();
+    this.banned = new Array();
     this.size = 16;
     this.points = 0;
     this.funds = 0;
@@ -328,134 +356,280 @@ export class Island {
     this.homes = new Array();
     this.status = status;
   }
+}
 
-  setName(name: string): string {
-    return (this.name = name);
-  }
+export const IslandMethods = {
+  setName: function setName(island: Island, name: string) {
+    island.name = name;
+    IslandMethods.updateData(island);
+  },
 
-  setSpawn(location: Vector | Vector3): Vector | Vector3 {
-    this.spawn = location;
-    return this.spawn;
-  }
+  setSpawn: function setSpawn(
+    island: Island,
+    location: Vector | Vector3
+  ): Vector | Vector3 {
+    island.spawn = location;
+    IslandMethods.updateData(island);
+    return island.spawn;
+  },
 
-  addMember(player: Player, permissions: MemberPermissions) {
-    this.members.push({
+  addMember: function addMember(
+    island: Island,
+    player: Player,
+    permissions: MemberPermissions
+  ) {
+    island.members.push({
       name: player.name,
       id: player.id,
       permissions: permissions,
     });
-  }
+    IslandMethods.updateData(island);
+  },
 
-  removeMember(player: Player): boolean | Error {
-    let member = this.members.find((x) => x.id == player.id);
+  removeMember: function removeMember(
+    island: Island,
+    player: Player
+  ): boolean | Error {
+    let member = island.members.find((x) => x.id == player.id);
     if (!member) return new Error("Player is not an existing member.");
-    return delete this.members[this.members.indexOf(member)];
-  }
+    island.members.splice(island.members.indexOf(member), 1);
+    IslandMethods.updateData(island);
+    return true;
+  },
 
-  addOwner(player: Player, permissions?: MemberPermissions) {
-    this.owners.push({
+  banPlayer: function banPlayer(island: Island, player: Player) {
+    island.banned.push(player.id);
+    IslandMethods.updateData(island);
+  },
+
+  unbanPlayer: function unbanPlayer(
+    island: Island,
+    player: Player
+  ): boolean | Error {
+    let ban = island.banned.splice(island.banned.indexOf(player.id), 1);
+    IslandMethods.updateData(island);
+    return true;
+  },
+
+  addOwner: function addOwner(
+    island: Island,
+    player: Player,
+    permissions?: MemberPermissions
+  ) {
+    island.owners.push({
       name: player.name,
       id: player.id,
-      permissions: permissions ?? ISLAND_PERMISSIONS.default,
+      permissions: permissions ?? ISLAND_ROLES.guest.permissions,
     });
-    playerDB.set(player.id, (playerDB.get(player.id).island = this.name));
-  }
+    let pdata = playerDB.get(player.id);
+    pdata.oldisland = pdata.island;
+    pdata.island = island.name;
+    playerDB.set(player.id, pdata);
+    IslandMethods.updateData(island);
+  },
 
-  removeOwner(player: Player): boolean | Error {
-    let owner = this.owners.find((x) => x.id == player.id);
+  removeOwner: function removeOwner(
+    island: Island,
+    player: Player
+  ): boolean | Error {
+    let owner = island.owners.find((x) => x.id == player.id);
     if (!owner) return new Error("Player is not an existing owner.");
-    return delete this.owners[this.owners.indexOf(owner)];
-  }
+    island.owners.splice(island.owners.indexOf(owner), 1);
+    let pdata = playerDB.get(player.id);
+    pdata.island = pdata.oldisland ?? "";
+    playerDB.set(player.id, pdata);
+    IslandMethods.updateData(island);
+    return true;
+  },
 
-  setOperator(operator: Player, permissions?: MemberPermissions) {
-    this.operator = {
+  setOperator: function setOperator(
+    island: Island,
+    operator: Player,
+    permissions?: MemberPermissions
+  ) {
+    island.operator = {
       name: operator.name,
       id: operator.id,
-      permissions: permissions ?? ISLAND_PERMISSIONS.default,
+      permissions: permissions ?? ISLAND_ROLES.guest.permissions,
     };
-  }
+    IslandMethods.updateData(island);
+  },
 
-  increaseSize(): number | Error {
-    return this.size + UPGRADE_SIZE <= MAX_SIZE
-      ? (this.size += UPGRADE_SIZE)
+  getPermission: function getPermission(
+    island: Island,
+    player: Player,
+    permission: keyof MemberPermissions
+  ): boolean | undefined {
+    if (island.members.length == 0) return undefined;
+    let member = island.members.find((x) => x.id == player.id);
+    return member ? member.permissions[permission] : undefined;
+  },
+
+  increaseSize: function increaseSize(island: Island): number | Error {
+    island.size + UPGRADE_SIZE <= MAX_SIZE
+      ? (island.size += UPGRADE_SIZE)
       : new Error("Island has reached maximum size.");
-  }
+    IslandMethods.updateData(island);
+    return island.size;
+  },
 
-  decreaseSize(): number | Error {
-    return this.size - UPGRADE_SIZE <= 0
-      ? new Error("Island has reached maximum size.")
-      : (this.size -= UPGRADE_SIZE);
-  }
+  decreaseSize: function decreaseSize(island: Island): number | Error {
+    island.size - UPGRADE_SIZE <= 0
+      ? new Error("Island size must be more than zero.")
+      : (island.size -= UPGRADE_SIZE);
+    IslandMethods.updateData(island);
+    return island.size;
+  },
 
-  addPoints(amount: number): number {
-    return (this.points += amount);
-  }
+  addPoints: function addPoints(island: Island, amount: number): number {
+    island.points += amount;
+    IslandMethods.updateData(island);
+    return island.points;
+  },
 
-  removePoints(amount: number): number {
-    return (this.points -= amount);
-  }
+  removePoints: function removePoints(island: Island, amount: number): number {
+    island.points -= amount;
+    IslandMethods.updateData(island);
+    return island.points;
+  },
 
-  addFunds(amount: number): number {
-    return (this.funds += amount);
-  }
+  addFunds: function addFunds(island: Island, amount: number): number {
+    island.funds += amount;
+    IslandMethods.updateData(island);
+    return island.funds;
+  },
 
-  removeFunds(amount: number): number {
-    return (this.funds -= amount);
-  }
+  removeFunds: function removeFunds(island: Island, amount: number) {
+    island.funds -= amount;
+    IslandMethods.updateData(island);
+    return island.funds;
+  },
 
-  addLimit(property: keyof IslandLimits, amount: number): number | Error {
-    return this.limits[property].amount + amount < this.limits[property].max
-      ? (this.limits[property].amount += amount)
-      : new Error("Limit has reached maximum.");
-  }
+  addLimit: function addLimit(
+    island: Island,
+    property: keyof IslandLimits,
+    amount: number
+  ): number {
+    let ret =
+      island.limits[property].amount + amount > island.limits[property].max
+        ? -2
+        : (island.limits[property].amount =
+            island.limits[property].amount + amount);
+    IslandMethods.updateData(island);
+    return ret;
+  },
 
-  removeLimit(property: keyof IslandLimits, amount: number): number | Error {
-    return this.limits[property].amount - amount >= 0
-      ? (this.limits[property].amount -= amount)
+  removeLimit: function removeLimit(
+    island: Island,
+    property: keyof IslandLimits,
+    amount: number
+  ): number {
+    let ret =
+      island.limits[property].amount - amount >= 0
+        ? (island.limits[property].amount =
+            island.limits[property].amount - amount)
+        : -2;
+    IslandMethods.updateData(island);
+    return ret;
+  },
+
+  increaseLimit: function increaseLimit(
+    island: Island,
+    property: keyof IslandLimits,
+    amount: number
+  ): number {
+    island.limits[property].max = island.limits[property].max + amount;
+    IslandMethods.updateData(island);
+    return island.limits[property].max;
+  },
+
+  decreaseLimit: function decreaseLimit(
+    island: Island,
+    property: keyof IslandLimits,
+    amount: number
+  ): number | Error {
+    island.limits[property].max - amount >= 0
+      ? (island.limits[property].max = island.limits[property].max - amount)
       : new Error("Value cannot be less than 0.");
-  }
+    IslandMethods.updateData(island);
+    return island.limits[property].max;
+  },
 
-  increaseLimit(property: keyof IslandLimits, amount: number): number {
-    return (this.limits[property].max += amount);
-  }
+  addHome: function addHome(
+    island: Island,
+    name: string,
+    location: Vector | Vector3
+  ) {
+    island.homes.push({ name: name, location: location });
+    IslandMethods.updateData(island);
+  },
 
-  decreaseLimit(property: keyof IslandLimits, amount: number): number | Error {
-    return this.limits[property].max - amount >= 0
-      ? (this.limits[property].max -= amount)
-      : new Error("Value cannot be less than 0.");
-  }
-
-  addHome(name: string, location: Vector | Vector3) {
-    this.homes.push({ name: name, location: location });
-  }
-
-  removeHome(name: string): boolean | Error {
-    let home = this.homes.find((x) => x.name == name);
+  removeHome: function removeHome(
+    island: Island,
+    name: string
+  ): boolean | Error {
+    let home = island.homes.find((x) => x.name == name);
     if (!home) return new Error("Home does not exist.");
-    return delete this.homes[this.homes.indexOf(home)];
-  }
+    delete island.homes[island.homes.indexOf(home)];
+    IslandMethods.updateData(island);
+    return true;
+  },
 
-  toggleStatus(): boolean {
-    return this.status == true ? (this.status = false) : (this.status = true);
-  }
+  toggleStatus: function toggleStatus(island: Island): boolean {
+    island.status == true ? (island.status = false) : (island.status = true);
+    IslandMethods.updateData(island);
+    return island.status;
+  },
 
-  isInBounds(player: Player): boolean {
+  isInBounds: function isInBounds(
+    island: Island,
+    location: Vector | Vector3
+  ): boolean {
+    let spawn = island.spawn;
     return Math.floor(
       Math.sqrt(
-        Math.pow(this.spawn.x - player.location.x, 2) +
-          Math.pow(this.spawn.z - player.location.z, 2)
+        Math.pow(spawn.x - location.x, 2) + Math.pow(spawn.z - location.z, 2)
       )
-    ) > this.size
-      ? false
-      : true;
-  }
+    ) <= island.size &&
+      Math.abs(location.y - spawn.y) < 32 + Math.min(island.size, 64) &&
+      location.y >= -16
+      ? true
+      : false;
+  },
 
-  showInfo(player: Player) {}
+  updateData: function updateData(island: Island): boolean {
+    return islandDB.set(island.name, island) ? true : false;
+  },
+};
 
-  updateData(): boolean {
-    return islandDB.set(this.name, this) ? true : false;
-  }
-}
+/*
+BIG FRIENDLY BUTTON (RESET)
+*/
+
+/*
+let player = world.getPlayers()[0].id;
+let pdata = playerDB.get(player);
+let idata = islandDB.delete(pdata.island);
+pdata.island = "";
+playerDB.set(player, pdata);
+*/
+
+/*
+let island: Island = islandDB.get("Tester");
+island.members = [];
+IslandMethods.updateData(island);
+
+system.runTimeout(() => {
+  let player = world.getPlayers()[0].id;
+  let pdata = playerDB.get(player);
+  pdata.island = "ToddlersUnite";
+  playerDB.set(player, pdata);
+}, 10);
+*/
+
+/*
+GOOD LUCK!
+*/
 
 // DEFINTIIONS
 
@@ -473,7 +647,7 @@ const overworld = world.getDimension("overworld");
 // SIDEBAR RUNTIME
 
 system.runInterval(() => {
-  for (var i = 0, n = world.getPlayers().length; i < n; ++i) {
+  for (let i = 0, n = world.getPlayers().length; i < n; ++i) {
     let player = world.getPlayers()[i];
     addScore("time", player, 2);
 
@@ -485,8 +659,8 @@ system.runInterval(() => {
       world.getPlayers().length
     }/10 §7| §f ${TicksPerSecond}t §7| §e 0 §7|\n\n§g §aUser §7» §f${
       player.name.length > 15 ? player.name.slice(0, 15) + "..." : player.name
-    }\n §eWallet §7»  §f$${formatNumber(
-      coins
+    }\n §eBank §7»  §f$${formatNumber(coins)}  §a${shortFormatNumber(
+      player.getTotalXp()
     )}\n§g §6Time Played §7» §f${formatTime(getScore("time", player))}`;
     let owner = island?.operator.name;
     if (island && owner) {
@@ -496,9 +670,9 @@ system.runInterval(() => {
       let pointsBefore = levelToXp(level - 2);
       pointsBefore = level > 1 ? pointsBefore : 0;
       sidebarText += `\n\n §e§l[ §r§bIsland §fInfo §l§e]§r\n §l§6│§r §eIsland §7» §f${
-        (pdata.island.length > 11
-          ? pdata.island.slice(0, 11) + "..."
-          : pdata.island) ?? "-is create"
+        (island.name.length > 11
+          ? island.name.slice(0, 11) + "..."
+          : island.name) ?? "-is create"
       }\n §l§6│§r §6Owner §7» §f${
         owner.length > 11 ? owner.slice(0, 11) + "..." : owner
       }\n §l§6│§r §2Level §7» §f${level} §2(§f${points - pointsBefore}§2/§f${
@@ -700,30 +874,7 @@ const commands = [
       {
         alias: ["go", "warp"],
         info: "Warps you to your island.",
-        function: function (player: Player, message: string) {
-          let slot = playerDB.get(player.id).slot;
-          let island = playerDB.get(player.id).island;
-          if (!island) {
-            sendError(
-              player,
-              `§cYou do not currently own a skyblock island.\nUse §e-is create§c to create one.`,
-              PREFIX.server
-            );
-            return;
-          }
-          player.teleport(
-            new Vector(
-              ISLAND_GENERATOR.start + slot * ISLAND_GENERATOR.dist + 0.5,
-              65,
-              ISLAND_GENERATOR.start + slot * ISLAND_GENERATOR.dist + 0.5
-            )
-          );
-          sendAlert(
-            player,
-            `§aYou have been teleported to your §e${island} §aisland.`,
-            PREFIX.server
-          );
-        },
+        function: warpIsland,
       },
       {
         alias: ["tp", "teleport", "visit"],
@@ -739,6 +890,14 @@ const commands = [
             );
             return;
           }
+          if (island.operator.name == player.name) {
+            sendError(
+              player,
+              `You cannot visit your own island.\n§4Use: §e-is go`,
+              PREFIX.server
+            );
+            return;
+          }
           let owners = world.getPlayers({
             excludeNames: island.owners.map((x) => x.name),
           });
@@ -750,29 +909,31 @@ const commands = [
             );
             return;
           }
-          visitIsland(player, owners[0]);
+          visitIsland(
+            player,
+            island,
+            world.getPlayers({ name: island.operator.name })[0]
+          );
         },
       },
       {
-        alias: ["setperms", "setperm", "edit"],
-        info: "placeholder",
+        alias: ["setperms", "setperm", "editperms", "editperm"],
+        info: "Opens the permissions editor.",
         function: function (player: Player, message: string) {
           system.runTimeout(() => islandEditPerms(player), 2);
         },
       },
       {
         alias: ["invite", "inv"],
-        info: "placeholder",
+        info: "Opens the island inviter.",
         function: function (player: Player, message: string) {
           system.runTimeout(() => islandInvite(player), 2);
         },
       },
       {
-        alias: ["perms"],
-        info: "placeholder",
-        function: function (player: Player, message: string) {
-          system.runTimeout(() => listIslandPerms(player), 2);
-        },
+        alias: ["lock"],
+        info: "Toggles the status of your island.",
+        function: lockIsland,
       },
       {
         alias: ["expand"],
@@ -782,7 +943,7 @@ const commands = [
         },
       },
       {
-        alias: ["info", "i"],
+        alias: ["info", "i", "limits"],
         info: "Shows info for your island.",
         function: function (player: Player, message: string) {
           let island = message.split("info ")[1];
@@ -817,8 +978,7 @@ const commands = [
               return;
             }
             pdata.coins -= amount;
-            idata.addFunds(amount);
-            idata.updateData();
+            IslandMethods.addFunds(idata, amount);
             playerDB.set(player.id, pdata);
             sendAlert(
               player,
@@ -864,8 +1024,7 @@ const commands = [
               );
               return;
             }
-            idata.removeFunds(amount);
-            idata.updateData();
+            IslandMethods.removeFunds(idata, amount);
             pdata.coins += amount;
             playerDB.set(player.id, pdata);
             sendAlert(
@@ -897,18 +1056,6 @@ const commands = [
   {
     alias: ["shop"],
     info: "Opens the Shop UI.",
-    function: function (player: Player, message: string) {
-      system.runTimeout(() => {
-        OpenShop(player);
-      }, 2);
-    },
-    arguments: [],
-    allowSigns: true,
-    closeChat: true,
-  },
-  {
-    alias: ["testshop"],
-    info: "Opens the Beta Shop UI.",
     function: function (player: Player, message: string) {
       system.runTimeout(() => {
         OpenShopBeta(player);
@@ -1061,6 +1208,51 @@ const commands = [
     closeChat: true,
   },
   {
+    alias: ["celist"],
+    info: "Displays a list of Custom Enchants.",
+    function: function (player: Player) {
+      system.runTimeout(() => {
+        let gui = new ChestFormData("magenta");
+        gui.title("§l§eCustom §6Enchants");
+        let i = 0;
+        for (const key of Object.keys(Enchant.enchants)) {
+          //@ts-ignore
+          let enchant = Enchant.enchants[key];
+          if (!enchant || !enchant.description) continue;
+          gui.button(
+            i,
+            `${enchant.display}`,
+            [
+              `§8${enchant.description}`,
+              `§dRarity: ${
+                CE_RARITY[enchant.rarity as keyof typeof CE_RARITY]
+              }`,
+              `§9Level: §bI§3-§b${toRomanNumeral(enchant.maxLevel)}`,
+              `§eSlot: §6${formatItemName(enchant.type[0].split("_")[1])}`,
+            ],
+            "enchanted_book",
+            1,
+            true
+          );
+          i++;
+        }
+        gui.show(player).then((result) => {
+          if (result.canceled) return;
+          ShopTabBeta(
+            `Custom Enchantments`,
+            `item.book.page_turn`,
+            CATEGORY.cebooks,
+            player,
+            true
+          );
+        });
+      }, 2);
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
     alias: ["enchant", "ench"],
     info: "Vanilla enchants an item.",
     function: function (player: Player, message: string) {
@@ -1079,7 +1271,7 @@ const commands = [
     info: "Opens the enchantment shop.",
     function: function (player: Player, message: string) {
       system.runTimeout(() => {
-        ShopTabEnchantments(
+        ShopTabEnchantmentsBeta(
           `Enchantments`,
           `item.book.page_turn`,
           101,
@@ -1096,10 +1288,7 @@ const commands = [
   {
     alias: ["spawn", "lobby", "hub"],
     info: "Warps you to the server lobby.",
-    function: function (player: Player, message: string) {
-      player.teleport(new Vector(0.5, 91, 0.5));
-      sendAlert(player, `§aWarped to §eSpawn§a.`, PREFIX.server);
-    },
+    function: warpLobby,
     arguments: [],
     allowSigns: true,
     closeChat: true,
@@ -1125,47 +1314,7 @@ const commands = [
       {
         alias: ["list"],
         info: "Shows a list of available warps.",
-        function: function (player: Player, message: string) {
-          let PAGE_LENGTH = 7;
-          let args = commands.find((x) => {
-            return x.alias.includes("warp");
-          })?.arguments;
-          if (!args) return;
-          let page = Number(message.split(" ")[2]);
-          if (!message.split(" ")[2]) page = 1;
-          if (
-            !(page > 0) ||
-            Math.floor(page - 1) > args?.length / PAGE_LENGTH ||
-            Math.floor(page) < 1
-          ) {
-            sendError(
-              player,
-              `§cInvalid format: Try using §e-warp list [§gpage: 1-${Math.ceil(
-                args.length / PAGE_LENGTH
-              )}§e] §cinstead.`,
-              PREFIX.server
-            );
-            return;
-          }
-          let list = args
-            .filter((x) => {
-              return x.info != "";
-            })
-            .sort((a, b) => a.alias[0].localeCompare(b.alias[0]))
-            .slice(
-              page * PAGE_LENGTH - PAGE_LENGTH,
-              Math.min(page * PAGE_LENGTH, args.length)
-            )
-            .map((x) => {
-              return `§f- §d${x.alias[0]} §8// §7${x.info}`;
-            })
-            .toString()
-            .replace(/,/g, "\n");
-          player.sendMessage(`§u============ §l§5Warps:§r §u============`);
-          player.sendMessage(list);
-          player.sendMessage(`§u============ §d-- ${page} --§r §u============`);
-          player.playSound(`random.pop2`, { pitch: 1.5 });
-        },
+        function: warpList,
       },
       {
         alias: ["spawn", "lobby", "hub"],
@@ -1173,6 +1322,14 @@ const commands = [
         function: function (player: Player, message: string) {
           player.teleport(new Vector(0.5, 91, 0.5));
           sendAlert(player, `§aWarped to §eSpawn§a.`, PREFIX.server);
+        },
+      },
+      {
+        alias: ["blacksmith"],
+        info: "Warps you to the blacksmith.",
+        function: function (player: Player, message: string) {
+          player.teleport(new Vector(-45.5, 91, -19.5));
+          sendAlert(player, `§aWarped to §dBlacksmith§a.`, PREFIX.server);
         },
       },
     ],
@@ -1310,12 +1467,30 @@ const commands = [
     closeChat: true,
   },
   {
+    alias: ["resetdata"],
+    permission: COMMAND_PERMS.ADMIN,
+    info: "Resets player stats.",
+    function: function (player: Player, message: string) {
+      // Allowed modifiers: 'add' | 'set' | 'remove'
+      let setPlayer = world.getPlayers({ name: message.split('"')[1] })[0];
+      if (!message.includes('"')) {
+        sendError(player, "§cInvalid player.");
+        return;
+      }
+      playerDB.set(setPlayer.id, { coins: 100, island: "" });
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
     alias: ["isadmin", "islandadmin"],
     permission: COMMAND_PERMS.ADMIN,
     info: "Executes an island function as admin.",
     function: function (player: Player, message: string) {
       let island = message.split(" ")[1];
       let idata: Island = islandDB.get(island);
+      console.warn(idata.name);
       if (!idata) {
         sendError(
           player,
@@ -1325,13 +1500,63 @@ const commands = [
         return;
       }
       let func = message.split(" ")[2];
-      eval(`islandDB.get(island)[func]`);
+      let arg1 = message.split(" ")[3] ?? "";
+      //@ts-ignore
+      IslandMethods[func as keyof typeof IslandMethods](idata, Number(arg1));
+      IslandMethods.updateData(idata);
     },
     arguments: [],
     allowSigns: true,
     closeChat: true,
   },
 ];
+
+export function warpLobby(player: Player) {
+  player.teleport(new Vector(0.5, 91, 0.5));
+  sendAlert(player, `§aWarped to §eSpawn§a.`, PREFIX.server);
+}
+
+export function warpList(player: Player, message: string) {
+  let PAGE_LENGTH = 7;
+  let args = commands.find((x) => {
+    return x.alias.includes("warp");
+  })?.arguments;
+  if (!args) return;
+  let page = Number(message.split(" ")[2]);
+  if (!message.split(" ")[2]) page = 1;
+  if (
+    !(page > 0) ||
+    Math.floor(page - 1) > args?.length / PAGE_LENGTH ||
+    Math.floor(page) < 1
+  ) {
+    sendError(
+      player,
+      `§cInvalid format: Try using §e-warp list [§gpage: 1-${Math.ceil(
+        args.length / PAGE_LENGTH
+      )}§e] §cinstead.`,
+      PREFIX.server
+    );
+    return;
+  }
+  let list = args
+    .filter((x) => {
+      return x.info != "";
+    })
+    .sort((a, b) => a.alias[0].localeCompare(b.alias[0]))
+    .slice(
+      page * PAGE_LENGTH - PAGE_LENGTH,
+      Math.min(page * PAGE_LENGTH, args.length)
+    )
+    .map((x) => {
+      return `§f- §d${x.alias[0]} §8// §7${x.info}`;
+    })
+    .toString()
+    .replace(/,/g, "\n");
+  player.sendMessage(`§u============ §l§5Warps:§r §u============`);
+  player.sendMessage(list);
+  player.sendMessage(`§u============ §d-- ${page} --§r §u============`);
+  player.playSound(`random.pop2`, { pitch: 1.5 });
+}
 
 // CHAT COMMAND HANDLER
 

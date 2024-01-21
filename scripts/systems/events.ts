@@ -45,4 +45,4 @@ function clearEvents() {
 
 // Example
 //clearEvents();
-//system.run(() => addEvent(1001, " §d2x §cGems"));
+//system.run(() => addEvent(1001, " §cNow in §eAlpha§c!"));

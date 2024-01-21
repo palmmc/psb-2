@@ -25,6 +25,14 @@ import {
 import { formatItemName } from "./itemcloud";
 import { EnchantEntries, VanillaEnchItem } from "../systems/enchantments";
 import { ChestFormData } from "../chest-ui/forms";
+import { Generator, giveGen } from "../systems/generators";
+import { SpawnerEntities } from "../systems/spawner";
+import {
+  CE_RARITY,
+  CHARMS,
+  giveBookCE,
+  giveCharm,
+} from "../custom_enchants/customEnchants";
 
 const overworld = world.getDimension("overworld");
 
@@ -46,7 +54,7 @@ export function checkItemAmount(
   return itemAmount;
 }
 
-const CATEGORY = {
+export const CATEGORY = {
   special: 0,
   blocks: 1,
   equipment: 2,
@@ -70,7 +78,6 @@ const CATEGORY = {
   gold: 43,
   iron: 44,
   diamond: 45,
-  venchants: 101,
 };
 
 const ITEMRARITY = {
@@ -388,6 +395,7 @@ export const ShopItems = [
     price: 450,
     sell: 0,
   },
+  /*
   {
     category: CATEGORY.blocks,
     texture: "textures/blocks/bedrock.png",
@@ -395,6 +403,7 @@ export const ShopItems = [
     price: 2000,
     sell: 0,
   },
+  */
   {
     category: CATEGORY.blocks,
     texture: "textures/blocks/prismarine_bricks.png",
@@ -537,8 +546,8 @@ export const ShopItems = [
   },
   {
     category: CATEGORY.decoration,
-    texture: "textures/ui/how_to_play_button_default.png",
-    item: "sign",
+    texture: "",
+    item: "oak_sign",
     price: 750,
     sell: 0,
   },
@@ -1484,14 +1493,14 @@ export const ShopItems = [
     texture: "textures/blocks/cobblestone.png",
     item: "cobblestone",
     price: 0,
-    sell: 125,
+    sell: 5,
   },
   {
     category: CATEGORY.items,
     texture: "textures/blocks/netherrack.png",
     item: "netherrack",
     price: 0,
-    sell: 125,
+    sell: 60,
   },
   {
     category: CATEGORY.items,
@@ -1597,7 +1606,7 @@ export const ShopItems = [
   {
     category: CATEGORY.farming,
     texture: "textures/items/seeds_beetroot.png",
-    item: "beetroot_seeds",
+    item: "palm:beetroot_seeds",
     price: 75,
     sell: 0,
   },
@@ -1611,7 +1620,7 @@ export const ShopItems = [
   {
     category: CATEGORY.farming,
     texture: "textures/items/seeds_wheat.png",
-    item: "wheat_seeds",
+    item: "palm:wheat_seeds",
     price: 105,
     sell: 0,
   },
@@ -1625,14 +1634,14 @@ export const ShopItems = [
   {
     category: CATEGORY.farming,
     texture: "textures/items/carrot.png",
-    item: "carrot",
+    item: "palm:carrot",
     price: 0,
     sell: 30,
   },
   {
     category: CATEGORY.farming,
     texture: "textures/items/potato.png",
-    item: "potato",
+    item: "palm:potato",
     price: 0,
     sell: 35,
   },
@@ -1653,7 +1662,7 @@ export const ShopItems = [
   {
     category: CATEGORY.farming,
     texture: "textures/items/seeds_pumpkin.png",
-    item: "pumpkin_seeds",
+    item: "palm:pumpkin_seeds",
     price: 300,
     sell: 0,
   },
@@ -1666,15 +1675,8 @@ export const ShopItems = [
   },
   {
     category: CATEGORY.farming,
-    texture: "textures/blocks/pumpkin_face_on.png",
-    item: "lit_pumpkin",
-    price: 3600,
-    sell: 105,
-  },
-  {
-    category: CATEGORY.farming,
     texture: "textures/items/seeds_melon.png",
-    item: "melon_seeds",
+    item: "palm:melon_seeds",
     price: 325,
     sell: 0,
   },
@@ -1760,89 +1762,140 @@ export const ShopItems = [
     price: 3250,
     sell: 0,
   },
-  // SPAWNERS
+  // CUSTOM
   {
-    category: CATEGORY.spawners,
-    texture: "textures/blocks/mob_spawner.png",
-    name: "Pig Spawner",
-    ditem: [new Vector(0, -61, -1), 9],
-    item: "spawner_pig",
-    price: 4000000,
+    category: CATEGORY.special,
+    texture: "textures/blocks/lodestone.png",
+    name: "Ore Generator",
+    rarity: ITEMRARITY.legendary,
+    function: function shopGen(player: Player, amount: number) {
+      giveGen(
+        player,
+        new Generator(
+          "oregen",
+          { speed: 1, fortune: 1 },
+          new Vector(0, 0, 0),
+          "palmsb"
+        ),
+        amount
+      );
+    },
+    item: "lodestone",
+    price: 20000,
     sell: 0,
   },
   {
-    category: CATEGORY.spawners,
-    texture: "textures/blocks/mob_spawner.png",
-    name: "Cow Spawner",
-    ditem: [new Vector(0, -61, -1), 10],
-    item: "spawner_cow",
-    price: 4500000,
+    category: CATEGORY.special,
+    texture: "textures/blocks/slime.png",
+    name: "Autominer",
+    rarity: ITEMRARITY.legendary,
+    function: function shopGen(player: Player, amount: number) {
+      giveGen(
+        player,
+        new Generator(
+          "autominer",
+          { speed: 1, fortune: 1 },
+          new Vector(0, 0, 0),
+          "palmsb"
+        ),
+        amount
+      );
+    },
+    item: "slime",
+    price: 400000,
     sell: 0,
   },
   {
-    category: CATEGORY.spawners,
-    texture: "textures/blocks/mob_spawner.png",
-    name: "Sheep Spawner",
-    ditem: [new Vector(0, -61, -1), 11],
-    item: "spawner_sheep",
-    price: 5000000,
+    category: CATEGORY.cebooks,
+    texture: "textures/items/book.png",
+    name: `§l§6C§eE §dBook §r§8(${CE_RARITY.common}§8)`,
+    rarity: ITEMRARITY.legendary,
+    function: function shopGen(player: Player, amount: number) {
+      giveBookCE(player, "common", amount);
+    },
+    item: "book",
+    currency: "xp",
+    price: 1250,
     sell: 0,
   },
   {
-    category: CATEGORY.spawners,
-    texture: "textures/blocks/mob_spawner.png",
-    name: "Mooshroom Spawner",
-    ditem: [new Vector(0, -61, -1), 12],
-    item: "spawner_mooshroom",
-    price: 6000000,
+    category: CATEGORY.cebooks,
+    texture: "textures/items/book.png",
+    name: `§l§6C§eE §dBook §r§8(${CE_RARITY.rare}§8)`,
+    rarity: ITEMRARITY.legendary,
+    function: function shopGen(player: Player, amount: number) {
+      giveBookCE(player, "rare", amount);
+    },
+    item: "book",
+    currency: "xp",
+    price: 3500,
     sell: 0,
   },
   {
-    category: CATEGORY.spawners,
-    texture: "textures/blocks/mob_spawner.png",
-    name: "Spider Spawner",
-    ditem: [new Vector(0, -61, -1), 13],
-    item: "spawner_spider",
-    price: 7000000,
+    category: CATEGORY.cebooks,
+    texture: "textures/items/book.png",
+    name: `§l§6C§eE §dBook §r§8(${CE_RARITY.epic}§8)`,
+    rarity: ITEMRARITY.legendary,
+    function: function shopGen(player: Player, amount: number) {
+      giveBookCE(player, "epic", amount);
+    },
+    item: "book",
+    currency: "xp",
+    price: 12500,
     sell: 0,
   },
   {
-    category: CATEGORY.spawners,
-    texture: "textures/blocks/mob_spawner.png",
-    name: "Skeleton Spawner",
-    ditem: [new Vector(0, -61, -1), 14],
-    item: "spawner_skeleton",
-    price: 7500000,
+    category: CATEGORY.cebooks,
+    texture: "textures/items/book.png",
+    name: `§l§6C§eE §dBook §r§8(${CE_RARITY.unique}§8)`,
+    rarity: ITEMRARITY.legendary,
+    function: function shopGen(player: Player, amount: number) {
+      giveBookCE(player, "unique", amount);
+    },
+    item: "book",
+    currency: "xp",
+    price: 35000,
     sell: 0,
   },
   {
-    category: CATEGORY.spawners,
-    texture: "textures/blocks/mob_spawner.png",
-    name: "Zombie Spawner",
-    ditem: [new Vector(0, -61, -1), 15],
-    item: "spawner_zombie",
-    price: 8500000,
-    sell: 0,
-  },
-  {
-    category: CATEGORY.spawners,
-    texture: "textures/blocks/mob_spawner.png",
-    name: "Iron Golem Spawner",
-    ditem: [new Vector(0, -61, -1), 16],
-    item: "spawner_iron_golem",
-    price: 10000000,
-    sell: 0,
-  },
-  {
-    category: CATEGORY.spawners,
-    texture: "textures/blocks/mob_spawner.png",
-    name: "Zombie Pigman Spawner",
-    ditem: [new Vector(0, -61, -1), 17],
-    item: "spawner_zombie_pigman",
-    price: 11000000,
+    category: CATEGORY.cebooks,
+    texture: "textures/items/nautilus_shell.png",
+    name: `§@§r§f§5Charm ${CHARMS.binding.display} §r§8(${CHARMS.basic}§8)`,
+    rarity: ITEMRARITY.epic,
+    function: function shopCharm(player: Player, amount: number) {
+      giveCharm(player, "binding", "basic", amount);
+    },
+    item: "nautilus_shell",
+    currency: "xp",
+    price: 1500,
     sell: 0,
   },
 ];
+
+for (let s of SpawnerEntities) {
+  ShopItems.push({
+    category: CATEGORY.spawners,
+    texture: "textures/blocks/mob_spawner.png",
+    name: `${formatItemName(s.id)} Spawner`,
+    rarity: ITEMRARITY.legendary,
+    function: function shopGen(player: Player, amount: number) {
+      giveGen(
+        player,
+        new Generator(
+          "spawner",
+          { speed: 1, fortune: 1 },
+          new Vector(0, 0, 0),
+          "palmsb",
+          s.id
+        ),
+        amount
+      );
+    },
+    item: "mob_spawner",
+    price: s.price,
+    sell: 0,
+  });
+}
 
 export const subCategories = [
   /*{
@@ -1957,6 +2010,621 @@ export const subCategories = [
   },
 ];
 
+export function OpenShopBeta(player: Player) {
+  let coins = playerDB.get(player.id).coins;
+  const gui = new ChestFormData("shop");
+  gui.pattern([0, 0], ["xxxxxxxxx", "x_______x", "xxxxxxxxx"], {
+    x: {
+      data: { itemName: "", itemDesc: [], enchanted: false, stackSize: 1 },
+      iconPath: "textures/blocks/glass_white.png",
+    },
+  });
+  gui.button(
+    22,
+    "§dSel§ul Por§5tal",
+    ["§d§lCLICK TO OPEN"],
+    `minecraft:portal`,
+    0,
+    true
+  );
+  gui.button(
+    21,
+    "§cBack Page",
+    ["§9§lCLICK TO USE"],
+    `minecraft:gray_dye`,
+    0,
+    true
+  );
+  gui.button(
+    23,
+    "§aNext Page",
+    ["§9§lCLICK TO USE"],
+    `minecraft:lime_dye`,
+    0,
+    true
+  );
+  player.playSound(`note.snare`, { pitch: 1.2 });
+  player.playSound(`note.chime`, { pitch: 0.8 });
+  gui.title(` §f$${formatNumber(coins)}`);
+  gui.button(2, "§2Blocks", ["§d§lCLICK TO OPEN"], `minecraft:grass`, 0, true);
+  gui.button(3, "§3Equipment", ["§d§lCLICK TO OPEN"], `minecraft:iron_block`),
+    0,
+    true;
+  gui.button(
+    4,
+    "§5Decoration",
+    ["§d§lCLICK TO OPEN"],
+    `minecraft:crafting_table`,
+    0,
+    true
+  );
+  gui.button(
+    5,
+    "§6Farming",
+    ["§d§lCLICK TO OPEN"],
+    `minecraft:hay_block`,
+    0,
+    true
+  );
+  gui.button(6, "§cItems", ["§d§lCLICK TO OPEN"], `minecraft:chest`, 0, true);
+  gui.button(
+    12,
+    "§4Special §cItems",
+    ["§d§lCLICK TO OPEN"],
+    `minecraft:slime`,
+    0,
+    true
+  );
+  gui.button(
+    13,
+    "§9Custom Enchantments",
+    ["§d§lCLICK TO OPEN"],
+    `minecraft:enchanted_book`,
+    0,
+    true
+  );
+  gui.button(
+    14,
+    "§uSpawners",
+    ["§d§lCLICK TO OPEN"],
+    `minecraft:mob_spawner`,
+    0,
+    true
+  );
+  gui.show(player).then((result) => {
+    if (result.selection == 0) {
+      //ShopSearch(player);
+    } else if (result.selection == 2) {
+      ShopTabBeta(`Blocks`, `dig.stone`, CATEGORY.blocks, player, true);
+    } else if (result.selection == 3) {
+      ShopTabBeta(
+        `Equipment`,
+        `armor.equip_diamond`,
+        CATEGORY.equipment,
+        player,
+        true
+      );
+    } else if (result.selection == 4) {
+      ShopTabBeta(`Decoration`, `dig.wood`, CATEGORY.decoration, player, true);
+    } else if (result.selection == 5) {
+      ShopTabBeta(`Farming`, `dig.grass`, CATEGORY.farming, player, false);
+    } else if (result.selection == 6) {
+      ShopTabBeta(
+        `Items`,
+        `block.itemframe.add_item`,
+        CATEGORY.items,
+        player,
+        false
+      );
+    } else if (result.selection == 12) {
+      ShopTabBeta(
+        `Specials`,
+        `random.enderchestopen`,
+        CATEGORY.special,
+        player,
+        true
+      );
+    } else if (result.selection == 13) {
+      ShopTabBeta(
+        `Custom Enchantments`,
+        `item.book.page_turn`,
+        CATEGORY.cebooks,
+        player,
+        false
+      );
+    } else if (result.selection == 14) {
+      ShopTabBeta(
+        `Spawners`,
+        `mob.chicken.say`,
+        CATEGORY.spawners,
+        player,
+        true
+      );
+    } else if (result.selection == 22) {
+      openSellPortal(player);
+      return;
+    } else if (result.selection == 21 || result.selection == 23) {
+      sendError(player, `§cPage does not exist.`, PREFIX.shop);
+      OpenShopBeta(player);
+      return;
+    }
+  });
+}
+
+export function ShopTabBeta(
+  title: string,
+  sound: string,
+  category: typeof CATEGORY.special,
+  player: Player,
+  sort: boolean,
+  lastCat?: Array<any>
+) {
+  system.runTimeout(() => {
+    player.playSound(sound, { volume: 1.25 });
+  }, 2);
+  const tabUI = new ChestFormData("shop");
+  let coins = playerDB.get(player.id).coins;
+  tabUI.title(` §f$${formatNumber(coins)}`);
+  let subCats = subCategories.filter((x) => x.category == category);
+  for (let i = 0; i < subCats.length; i++) {
+    let x = subCats[i];
+    tabUI.button(
+      i,
+      `§8${x.name}`,
+      ["§d§lCLICK TO OPEN"],
+      x.item,
+      0,
+      true,
+      x.texture
+    );
+  }
+  let items = ShopItems.filter((x) => x.category == category);
+  if (sort == true) items = items.sort((x, y) => x.price - y.price);
+  if (items.length == 0) {
+    sendError(player, `This category is empty.`, PREFIX.shop);
+    OpenShopBeta(player);
+    return;
+  }
+  for (let i = 0; i < items.length; i++) {
+    let x = items[i];
+    let p = new Array();
+    if (x.price == 0) p.push([`§9Price: §c§lNFS`]);
+    else {
+      if (x.price <= coins) p.push([`§9Price: §2$${formatNumber(x.price)}§8`]);
+      else p.push([`§9Price: §c$${formatNumber(x.price)}§8`]);
+      if (x.currency == "xp") p = [`§9Price: §2${formatNumber(x.price)} §aXP`];
+    }
+    let item = x.item;
+    if (item.startsWith("white_")) item = item.slice(6);
+    else if (x.category == CATEGORY.flowers) item = x.texture;
+    tabUI.button(
+      i + subCats.length,
+      `${x.rarity ?? ITEMRARITY.common}${x.name ?? formatItemName(x.item)}`,
+      p,
+      item,
+      0,
+      false,
+      x.texture
+    );
+  }
+  tabUI.show(player).then((result) => {
+    if (result.canceled) {
+      if (lastCat)
+        ShopTabBeta(
+          `§8${lastCat[1]}`,
+          `note.hat`,
+          lastCat[0],
+          player,
+          lastCat[2]
+        );
+      else OpenShopBeta(player);
+      return;
+    }
+    let subCategory = subCategories.find((x) => {
+      return x == subCats[result.selection ?? -1];
+    });
+    let optionData = ShopItems.find((x) => {
+      return x == items[(result.selection ?? -1) - (subCats.length ?? 0)];
+    });
+    if (!optionData && !subCategory) {
+      sendError(player, `This item is unavailable.`, PREFIX.shop);
+      return;
+    } else if (subCategory)
+      ShopTabBeta(
+        `§8${subCategory.name}`,
+        `note.hat`,
+        subCategory.group,
+        player,
+        subCategory.sort ?? sort,
+        [category, title]
+      );
+    else if (optionData) purchaseItemBeta(player, title, optionData, 0);
+  });
+}
+
+function purchaseItemBeta(
+  player: Player,
+  title: string,
+  optionData: {
+    category: number;
+    texture: string;
+    name?: string;
+    item: string;
+    price: number;
+    sell: number;
+    data?: number;
+    ditem?: Array<any>;
+    function?: Function;
+    currency?: string;
+  },
+  amount: number
+) {
+  if (optionData.price == 0) {
+    sendError(player, `This item is not for sale.`, PREFIX.shop);
+    return;
+  }
+  let coins = playerDB.get(player.id).coins;
+  if (optionData.currency == "xp") coins = player.getTotalXp();
+  let name = optionData.name ?? formatItemName(optionData.item);
+  let price = optionData.price;
+  let color = "lime";
+  const itemInfoUI = new ChestFormData("shop");
+  itemInfoUI.pattern([0, 0], ["xxxxxxxxx", "x_______x", "xxxxxxxxx"], {
+    x: {
+      data: { itemName: "", itemDesc: [], enchanted: false, stackSize: 1 },
+      iconPath: "textures/blocks/glass_white.png",
+    },
+  });
+  itemInfoUI.title(` §f$${formatNumber(coins)}`);
+  itemInfoUI.button(10, "§9Amount", ["§a+1"], `${color}_wool`, 1);
+  itemInfoUI.button(11, "§9Amount", ["§a+16"], `${color}_wool`, 16);
+  itemInfoUI.button(12, "§9Amount", ["§a+64"], `${color}_wool`, 64);
+  let famount = Math.max(amount, 1);
+  itemInfoUI.button(
+    13,
+    "§a§lConfirm Transaction",
+    [
+      `§3Amount: §9${famount}\n§6Cost: §f$${famount * price}§f${
+        optionData.currency == "xp" ? " §aXP" : ""
+      }`,
+    ],
+    optionData.item,
+    amount,
+    true
+  );
+  itemInfoUI.button(14, "§9Amount", ["§c-64"], "red_wool", 64);
+  itemInfoUI.button(15, "§9Amount", ["§c-16"], "red_wool", 16);
+  itemInfoUI.button(16, "§9Amount", ["§c-1"], "red_wool", 1);
+  let maxItem = Math.floor(coins / price);
+  itemInfoUI.button(22, "§9Amount", [`§6=${maxItem}`], "gold_block", maxItem);
+  itemInfoUI.show(player).then((result) => {
+    if (result.canceled || !result.selection) return;
+    const amounts = [1, 16, 64, 0, -64, -16, -1];
+    if (
+      result.selection >= 10 &&
+      result.selection <= 16 &&
+      result.selection != 13
+    ) {
+      let am = Math.max(amount + amounts[result.selection % 10], 0);
+      if (result.selection == 10 && amount == 0) am++;
+      purchaseItemBeta(player, title, optionData, am);
+      return;
+    } else if (result.selection == 22) {
+      purchaseItemBeta(player, title, optionData, Math.max(maxItem, 0));
+      return;
+    } else if (result.selection == 13) {
+      if (amount == 0) amount = 1;
+    } else {
+      return;
+    }
+    let inv = (<EntityInventoryComponent>player.getComponent("inventory"))
+      .container;
+    if (!inv) return;
+    if (
+      inv.emptySlotsCount == 0 ||
+      inv.emptySlotsCount - Math.ceil(amount / 64) <= 0
+    ) {
+      sendError(player, `Not enough inventory space.`, PREFIX.shop);
+      return;
+    }
+    if (coins < price * amount) {
+      sendError(player, `You cannot afford this transaction.`, PREFIX.shop);
+      return;
+    } else {
+      if (optionData.currency == "xp") {
+        player.runCommandAsync(`xp -9999L @s`);
+        player.runCommandAsync(`xp ${coins - price * amount} @s`);
+      } else {
+        let pdata = playerDB.get(player.id);
+        pdata.coins = pdata.coins - price * amount;
+        playerDB.set(player.id, pdata);
+      }
+      if (optionData.ditem) {
+        const binv = (<BlockInventoryComponent>(
+          overworld.getBlock(optionData.ditem[0])?.getComponent("inventory")
+        )).container;
+        const pinv = (<EntityInventoryComponent>(
+          player.getComponent("inventory")
+        )).container;
+        let it = binv?.getItem(optionData.ditem[1])?.clone();
+        if (it && pinv) {
+          it.amount = amount;
+          pinv.addItem(it);
+        }
+      } else if (optionData.function) optionData.function(player, amount);
+      else
+        player.runCommandAsync(
+          `give @s ${optionData.item} ${amount} ${optionData.data ?? 0}`
+        );
+      sendAlert(
+        player,
+        `§eBought §7${name} §8x${amount} §f§l-> §c§l-$${formatNumber(
+          price * amount
+        )}${optionData.currency == "xp" ? " §aXP" : ""}`,
+        PREFIX.shop
+      );
+      system.run(() => {
+        player.playSound(`note.iron_xylophone`, {
+          volume: 1,
+          pitch: 2,
+        });
+        player.playSound(`note.iron_xylophone`, {
+          volume: 1,
+          pitch: 3,
+        });
+      });
+      return;
+    }
+  });
+}
+
+export function openSellPortal(player: Player) {
+  let coins = playerDB.get(player.id).coins;
+  const gui = new ChestFormData("shop");
+  gui.pattern([0, 0], ["xxxxxxxxx", "xxxxxxxxx", "xxxxxxxxx"], {
+    x: {
+      data: { itemName: "", itemDesc: [], enchanted: false, stackSize: 1 },
+      iconPath: "textures/blocks/glass_lime.png",
+    },
+  });
+  let inventory = player.getComponent("inventory");
+  let n = 0;
+  let ta = 0;
+  let tn = 0;
+  let items = new Array();
+  for (let i = 0; i < 36; i++) {
+    if (n >= 26) return;
+    let item = inventory?.container?.getItem(i);
+    let x = ShopItems.find(
+      (x) =>
+        x.item ==
+        (item?.typeId.startsWith("palm:")
+          ? item.typeId
+          : item?.typeId.slice(10))
+    );
+    if (!item || !x || (x?.sell ?? 0) <= 0) continue;
+    items.push([x, item.amount]);
+    gui.button(
+      n,
+      `${x.rarity ?? ITEMRARITY.common}${x.name ?? formatItemName(x.item)}`,
+      [`§dValue: §7$${formatNumber(x.sell * item.amount)}`],
+      x.item,
+      item.amount,
+      false,
+      x.texture
+    );
+    n++;
+    ta += item.amount;
+    tn += x.sell * item.amount;
+  }
+  gui.button(
+    26,
+    `§l§6Sellall`,
+    [`§9Amount: §3${ta}\n§dValue: §e$${formatNumber(tn)}§8`],
+    "gold_block",
+    0,
+    true,
+    ""
+  );
+  player.playSound(`note.snare`, { pitch: 1.2 });
+  player.playSound(`block.end_portal.spawn`, { pitch: 0.8 });
+  gui.title(` §f$${formatNumber(coins)}`);
+  gui.show(player).then((result) => {
+    if (result.canceled) {
+      system.run(() => OpenShopBeta(player));
+      return;
+    }
+    if (result.selection == 26 && tn > 0) {
+      let pdata = playerDB.get(player.id);
+      for (let ite of items) {
+        let x = ite[0];
+        let amount = ite[1];
+        player.runCommandAsync(`clear @s ${x.item} 0 ${amount}`);
+      }
+      pdata.coins = pdata.coins + tn;
+      playerDB.set(player.id, pdata);
+      sendAlert(
+        player,
+        `§aSold §7Assorted Items §8x${ta} §f§l-> §a§l+$${formatNumber(tn)}`,
+        PREFIX.shop
+      );
+      system.runTimeout(() => {
+        player.playSound(`note.iron_xylophone`, { volume: 1, pitch: 1 });
+        player.playSound(`note.iron_xylophone`, { volume: 1, pitch: 2 });
+      }, 2);
+      return;
+    }
+    if ((result.selection ?? 99) > n - 1) return;
+    let x = items[result.selection ?? -1][0];
+    let amount = items[result.selection ?? -1][1];
+    player.runCommandAsync(`clear @s ${x.item} 0 ${amount}`);
+    let pdata = playerDB.get(player.id);
+    let total = amount * x.sell;
+    pdata.coins = pdata.coins + total;
+    playerDB.set(player.id, pdata);
+    sendAlert(
+      player,
+      `§aSold §7${
+        x.name ?? formatItemName(x.item)
+      } §8x${amount} §f§l-> §a§l+$${formatNumber(total)}`,
+      PREFIX.shop
+    );
+    system.runTimeout(() => {
+      player.playSound(`note.iron_xylophone`, { volume: 1, pitch: 1 });
+      player.playSound(`note.iron_xylophone`, { volume: 1, pitch: 2 });
+    }, 2);
+  });
+}
+
+export function ShopTabEnchantmentsBeta(
+  title: string,
+  sound: string,
+  category: typeof CATEGORY.special,
+  store: typeof ShopItems,
+  player: Player,
+  sort: boolean,
+  lastCat?: Array<any>
+) {
+  system.runTimeout(() => {
+    player.playSound(sound, { volume: 1.25 });
+  }, 2);
+  const tabUI = new ActionFormData();
+  tabUI.title(`§e§lShop§r / ${title}`);
+  let coins = playerDB.get(player.id).coins;
+  tabUI.body(`§eYour Balance: §f$${formatNumber(coins)}`);
+  let subCats = subCategories.filter((x) => x.category == category);
+  subCats.map((x) => {
+    tabUI.button(`§8${x.name}`, x.texture);
+  });
+  let items = store.filter((x) => x.category == category);
+  if (sort == true) items = items.sort((x, y) => x.price - y.price);
+  if (items.length == 0) {
+    sendError(player, `This category is empty.`, PREFIX.shop);
+    OpenShopBeta(player);
+    return;
+  }
+  items.map((x) => {
+    tabUI.button(`§8${x.name ?? formatItemName(x.item)}`, x.texture);
+  });
+  tabUI.show(player).then((result) => {
+    if (result.canceled) {
+      if (lastCat)
+        ShopTabBeta(
+          `§8${lastCat[1]}`,
+          `note.hat`,
+          lastCat[0],
+          player,
+          lastCat[2]
+        );
+      else OpenShopBeta(player);
+      return;
+    }
+    let subCategory = subCategories.find((x) => {
+      return x == subCats[result.selection ?? -1];
+    });
+    let optionData = store.find((x) => {
+      return x == items[(result.selection ?? -1) - (subCats.length ?? 0)];
+    });
+    if (!optionData && !subCategory) {
+      sendError(player, `This item is unavailable.`, PREFIX.shop);
+      return;
+    } else if (subCategory)
+      ShopTabBeta(
+        `§8${subCategory.name}`,
+        `note.hat`,
+        subCategory.group,
+        player,
+        sort,
+        [category, title]
+      );
+    else if (optionData) purchaseEnchantmentBeta(player, title, optionData);
+  });
+}
+
+function purchaseEnchantmentBeta(
+  player: Player,
+  title: string,
+  optionData: {
+    category: number;
+    texture: string;
+    name?: string;
+    item: string;
+    price: number;
+    sell: number;
+    data?: number;
+    ditem?: Array<any>;
+    max?: number;
+  }
+) {
+  let coins = playerDB.get(player.id).coins;
+  let name = optionData.name ?? formatItemName(optionData.item);
+  const itemInfoUI = new ModalFormData();
+  itemInfoUI.title(`${title} §r/ ${name}`);
+  itemInfoUI.slider(
+    `\n§eYour Balance: §f$${formatNumber(coins)}\nLevel`,
+    1,
+    optionData.max ?? 1,
+    1
+  );
+  itemInfoUI.show(player).then((result) => {
+    if (result.canceled || !result.formValues) return;
+    system.runTimeout(() => {
+      player.playSound(`note.xylophone`, { volume: 1, pitch: 0.75 });
+    }, 2);
+    let amount = 0;
+    let price = optionData.price;
+    if (result.formValues[1]) amount = Number(result.formValues[1]);
+    else amount = Number(result.formValues[0]);
+    const confirmUI = new ActionFormData();
+    confirmUI.title(`${name} §r/ Transaction`);
+    confirmUI.body(
+      `\n§7Are you sure you want to continue?§f\n----- --------- -----\n§eType: §r§6enchant\n§bEnchantment:§r §f${name} §7${toRomanNumeral(
+        amount
+      )}\n§dValue:§r §r§4-§c$${formatNumber(
+        price * amount
+      )}\n§f----- --------- -----\n\n`
+    );
+    confirmUI.button(`Confirm`);
+    confirmUI.button(`Cancel`);
+    confirmUI.show(player).then((result) => {
+      if (!result.canceled && result.selection == 0) {
+        if (coins < price * amount) {
+          sendError(player, `You cannot afford this transaction.`, PREFIX.shop);
+          return;
+        } else {
+          if (optionData.ditem) {
+            const binv = (<BlockInventoryComponent>(
+              overworld.getBlock(optionData.ditem[0])?.getComponent("inventory")
+            )).container;
+            const pinv = (<EntityInventoryComponent>(
+              player.getComponent("inventory")
+            )).container;
+            let it = binv?.getItem(optionData.ditem[1])?.clone();
+            if (it && pinv) {
+              it.amount = amount;
+              pinv.addItem(it);
+            }
+          } else {
+            let tryEnch = VanillaEnchItem(player, optionData.item, amount);
+            if (tryEnch != true) return;
+          }
+          let pdata = playerDB.get(player.id);
+          pdata.coins = pdata.coins - price * amount;
+          playerDB.set(player.id, pdata);
+          sendAlert(
+            player,
+            `§dEnchant §b${name} §7${toRomanNumeral(
+              amount
+            )} §f§l-> §r§4-§c$${formatNumber(price * amount)}`,
+            PREFIX.shop
+          );
+        }
+      }
+    });
+  });
+}
+
+/*
 export function OpenShop(player: Player) {
   let coins = playerDB.get(player.id).coins;
   const gui = new ActionFormData();
@@ -2406,545 +3074,4 @@ function purchaseEnchantment(
     });
   });
 }
-
-export function OpenShopBeta(player: Player) {
-  let coins = playerDB.get(player.id).coins;
-  const gui = new ChestFormData("shop");
-  gui.pattern([0, 0], ["xxxxxxxxx", "x_______x", "xxxxxxxxx"], {
-    x: {
-      data: { itemName: "", itemDesc: [], enchanted: false, stackSize: 1 },
-      iconPath: "textures/blocks/glass_white.png",
-    },
-  });
-  gui.button(
-    22,
-    "§8Search Items",
-    ["§d§lCLICK TO OPEN"],
-    `minecraft:compass`,
-    0,
-    true
-  );
-  gui.button(
-    21,
-    "§cBack Page",
-    ["§9§lCLICK TO USE"],
-    `minecraft:gray_dye`,
-    0,
-    true
-  );
-  gui.button(
-    23,
-    "§aNext Page",
-    ["§9§lCLICK TO USE"],
-    `minecraft:lime_dye`,
-    0,
-    true
-  );
-  player.playSound(`note.snare`, { pitch: 1.2 });
-  player.playSound(`note.chime`, { pitch: 0.8 });
-  gui.title(` §f$${formatNumber(coins)}`);
-  gui.button(2, "§2Blocks", ["§d§lCLICK TO OPEN"], `minecraft:grass`, 0, true);
-  gui.button(3, "§3Equipment", ["§d§lCLICK TO OPEN"], `minecraft:iron_block`),
-    0,
-    true;
-  gui.button(
-    4,
-    "§5Decoration",
-    ["§d§lCLICK TO OPEN"],
-    `minecraft:crafting_table`,
-    0,
-    true
-  );
-  gui.button(
-    5,
-    "§6Farming",
-    ["§d§lCLICK TO OPEN"],
-    `minecraft:hay_block`,
-    0,
-    true
-  );
-  gui.button(6, "§cItems", ["§d§lCLICK TO OPEN"], `minecraft:chest`, 0, true);
-  gui.button(
-    12,
-    "§4Special §cItems",
-    ["§d§lCLICK TO OPEN"],
-    `minecraft:slime`,
-    0,
-    true
-  );
-  gui.button(
-    13,
-    "§9Enchantments",
-    ["§d§lCLICK TO OPEN"],
-    `minecraft:enchanted_book`,
-    0,
-    true
-  );
-  gui.button(
-    14,
-    "§uSpawners",
-    ["§d§lCLICK TO OPEN"],
-    `minecraft:mob_spawner`,
-    0,
-    true
-  );
-  gui.show(player).then((result) => {
-    if (result.selection == 0) {
-      //ShopSearch(player);
-    } else if (result.selection == 1) {
-      ShopTabBeta(
-        `Specials`,
-        `random.enderchestopen`,
-        CATEGORY.special,
-        player,
-        true
-      );
-    } else if (result.selection == 2) {
-      ShopTabBeta(`Blocks`, `dig.stone`, CATEGORY.blocks, player, true);
-    } else if (result.selection == 3) {
-      ShopTabBeta(
-        `Equipment`,
-        `armor.equip_diamond`,
-        CATEGORY.equipment,
-        player,
-        true
-      );
-    } else if (result.selection == 4) {
-      ShopTabBeta(`Decoration`, `dig.wood`, CATEGORY.decoration, player, true);
-    } else if (result.selection == 5) {
-      ShopTabBeta(`Farming`, `dig.grass`, CATEGORY.farming, player, false);
-    } else if (result.selection == 6) {
-      ShopTabBeta(
-        `Items`,
-        `block.itemframe.add_item`,
-        CATEGORY.items,
-        player,
-        false
-      );
-    } else if (result.selection == 7) {
-      ShopTabEnchantments(
-        `Enchantments`,
-        `item.book.page_turn`,
-        101,
-        EnchantEntries,
-        player,
-        false
-      );
-    } else if (result.selection == 8) {
-      ShopTabBeta(
-        `CE Books`,
-        `item.book.page_turn`,
-        CATEGORY.cebooks,
-        player,
-        true
-      );
-    } else if (result.selection == 9) {
-      ShopTabBeta(
-        `Spawners`,
-        `mob.chicken.say`,
-        CATEGORY.spawners,
-        player,
-        true
-      );
-    } else if (result.selection == 22) {
-      sendError(player, `§cThis feature is currently disabled.`, PREFIX.shop);
-      OpenShopBeta(player);
-      return;
-    } else if (result.selection == 21 || result.selection == 23) {
-      sendError(player, `§cPage does not exist.`, PREFIX.shop);
-      OpenShopBeta(player);
-      return;
-    }
-  });
-}
-
-function ShopTabBeta(
-  title: string,
-  sound: string,
-  category: typeof CATEGORY.special,
-  player: Player,
-  sort: boolean,
-  lastCat?: Array<any>
-) {
-  system.runTimeout(() => {
-    player.playSound(sound, { volume: 1.25 });
-  }, 2);
-  const tabUI = new ChestFormData("shop");
-  let coins = playerDB.get(player.id).coins;
-  tabUI.title(` §f$${formatNumber(coins)}`);
-  let subCats = subCategories.filter((x) => x.category == category);
-  for (let i = 0; i < subCats.length; i++) {
-    let x = subCats[i];
-    tabUI.button(
-      i,
-      `§8${x.name}`,
-      ["§d§lCLICK TO OPEN"],
-      x.item,
-      0,
-      true,
-      x.texture
-    );
-  }
-  let items = ShopItems.filter((x) => x.category == category);
-  if (sort == true) items = items.sort((x, y) => x.price - y.price);
-  if (items.length == 0) {
-    sendError(player, `This category is empty.`, PREFIX.shop);
-    OpenShop(player);
-    return;
-  }
-  for (let i = 0; i < items.length; i++) {
-    let x = items[i];
-    let p = new Array();
-    if (x.price != 0)
-      if (x.price <= coins) p.push([`§9Price: §2$${formatNumber(x.price)}§8`]);
-      else p.push([`§9Price: §c$${formatNumber(x.price)}§8`]);
-    if (x.sell > 0) p.push([`§dValue: §3$${formatNumber(x.sell)}§8`]);
-    let item = x.item;
-    if (item.startsWith("white_")) item = item.slice(6);
-    else if (x.category == CATEGORY.flowers) item = x.texture;
-    tabUI.button(
-      i + subCats.length,
-      `${x.rarity ?? ITEMRARITY.common}${x.name ?? formatItemName(x.item)}`,
-      p,
-      item,
-      0,
-      false,
-      x.texture
-    );
-  }
-  tabUI.show(player).then((result) => {
-    if (result.canceled) {
-      if (lastCat)
-        ShopTabBeta(
-          `§8${lastCat[1]}`,
-          `note.hat`,
-          lastCat[0],
-          player,
-          lastCat[2]
-        );
-      else OpenShopBeta(player);
-      return;
-    }
-    let subCategory = subCategories.find((x) => {
-      return x == subCats[result.selection ?? -1];
-    });
-    let optionData = ShopItems.find((x) => {
-      return x == items[(result.selection ?? -1) - (subCats.length ?? 0)];
-    });
-    if (!optionData && !subCategory) {
-      sendError(player, `This item is unavailable.`, PREFIX.shop);
-      return;
-    } else if (subCategory)
-      ShopTabBeta(
-        `§8${subCategory.name}`,
-        `note.hat`,
-        subCategory.group,
-        player,
-        subCategory.sort ?? sort,
-        [category, title]
-      );
-    else if (optionData) purchaseItemBeta(player, title, optionData, 0);
-  });
-}
-
-function purchaseItemBeta(
-  player: Player,
-  title: string,
-  optionData: {
-    category: number;
-    texture: string;
-    name?: string;
-    item: string;
-    price: number;
-    sell: number;
-    data?: number;
-    ditem?: Array<any>;
-  },
-  amount: number
-) {
-  let coins = playerDB.get(player.id).coins;
-  let name = optionData.name ?? formatItemName(optionData.item);
-  let price = optionData.price;
-  let priceT = "§6Cost";
-  let color = "lime";
-  if (optionData.sell > 0) {
-    price = optionData.sell;
-    priceT = "§3Value";
-    color = "light_blue";
-  }
-  const itemInfoUI = new ChestFormData("shop");
-  itemInfoUI.pattern([0, 0], ["xxxxxxxxx", "x_______x", "xxxxxxxxx"], {
-    x: {
-      data: { itemName: "", itemDesc: [], enchanted: false, stackSize: 1 },
-      iconPath: "textures/blocks/glass_white.png",
-    },
-  });
-  itemInfoUI.title(` §f$${formatNumber(coins)}`);
-  itemInfoUI.button(10, "§9Amount", ["§a+1"], `${color}_wool`, 1);
-  itemInfoUI.button(11, "§9Amount", ["§a+16"], `${color}_wool`, 16);
-  itemInfoUI.button(12, "§9Amount", ["§a+64"], `${color}_wool`, 64);
-  let famount = Math.max(amount, 1);
-  itemInfoUI.button(
-    13,
-    "§a§lConfirm Transaction",
-    [`§3Amount: §9${famount}\n${priceT}: §f$${famount * price}`],
-    optionData.item,
-    amount,
-    true
-  );
-  itemInfoUI.button(14, "§9Amount", ["§c-64"], "red_wool", 64);
-  itemInfoUI.button(15, "§9Amount", ["§c-16"], "red_wool", 16);
-  itemInfoUI.button(16, "§9Amount", ["§c-1"], "red_wool", 1);
-  let maxItem = 0;
-  if (price == optionData.sell)
-    maxItem = getItemAmount(player, optionData.item, false);
-  else maxItem = Math.floor(coins / price);
-  itemInfoUI.button(22, "§9Amount", [`§6=${maxItem}`], "gold_block", maxItem);
-  itemInfoUI.show(player).then((result) => {
-    if (result.canceled || !result.selection) return;
-    const amounts = [1, 16, 64, 0, -64, -16, -1];
-    if (
-      result.selection >= 10 &&
-      result.selection <= 16 &&
-      result.selection != 13
-    ) {
-      let am = Math.max(amount + amounts[result.selection % 10], 0);
-      if (result.selection == 10 && amount == 0) am++;
-      purchaseItemBeta(player, title, optionData, am);
-      return;
-    } else if (result.selection == 22) {
-      purchaseItemBeta(player, title, optionData, Math.max(maxItem, 0));
-      return;
-    } else if (result.selection == 13) {
-      if (amount == 0) amount = 1;
-    } else {
-      return;
-    }
-    let inv = (<EntityInventoryComponent>player.getComponent("inventory"))
-      .container;
-    if (!inv) return;
-    if (price == optionData.price) {
-      if (
-        inv.emptySlotsCount == 0 ||
-        inv.emptySlotsCount - Math.ceil(amount / 64) <= 0
-      ) {
-        sendError(player, `Not enough inventory space.`, PREFIX.shop);
-        return;
-      }
-      if (coins < price * amount) {
-        sendError(player, `You cannot afford this transaction.`, PREFIX.shop);
-        return;
-      } else {
-        let pdata = playerDB.get(player.id);
-        pdata.coins = pdata.coins - price * amount;
-        playerDB.set(player.id, pdata);
-        if (optionData.ditem) {
-          const binv = (<BlockInventoryComponent>(
-            overworld.getBlock(optionData.ditem[0])?.getComponent("inventory")
-          )).container;
-          const pinv = (<EntityInventoryComponent>(
-            player.getComponent("inventory")
-          )).container;
-          let it = binv?.getItem(optionData.ditem[1])?.clone();
-          if (it && pinv) {
-            it.amount = amount;
-            pinv.addItem(it);
-          }
-        } else
-          player.runCommandAsync(
-            `give @s ${optionData.item} ${amount} ${optionData.data ?? 0}`
-          );
-        sendAlert(
-          player,
-          `§eBought §7${name} §8x${amount} §f§l-> §c§l-$${formatNumber(
-            price * amount
-          )}`,
-          PREFIX.shop
-        );
-        system.run(() => {
-          player.playSound(`note.iron_xylophone`, {
-            volume: 1,
-            pitch: 2,
-          });
-          player.playSound(`note.iron_xylophone`, {
-            volume: 1,
-            pitch: 3,
-          });
-        });
-        return;
-      }
-    } else if (price == optionData.sell) {
-      let getItem = getItemAmount(player, optionData.item, false);
-      if (getItem <= amount) amount = getItem;
-      if (amount == 0) {
-        sendAlert(player, `§cInsufficient item to sell.`, PREFIX.shop);
-        return;
-      }
-      player.runCommandAsync(
-        `clear @s ${optionData.item} ${optionData.data ?? 0} ${amount}`
-      );
-      let total = Math.floor(price * amount);
-      let pdata = playerDB.get(player.id);
-      pdata.coins = pdata.coins + total;
-      playerDB.set(player.id, pdata);
-      sendAlert(
-        player,
-        `§aSold §7${name} §8x${amount} §f§l-> §a§l+$${formatNumber(total)}`,
-        PREFIX.shop
-      );
-      system.runTimeout(() => {
-        player.playSound(`note.iron_xylophone`, { volume: 1, pitch: 1 });
-        player.playSound(`note.iron_xylophone`, { volume: 1, pitch: 2 });
-      }, 2);
-      return;
-    }
-  });
-}
-
-export function ShopTabEnchantmentsBeta(
-  title: string,
-  sound: string,
-  category: typeof CATEGORY.special,
-  store: typeof ShopItems,
-  player: Player,
-  sort: boolean,
-  lastCat?: Array<any>
-) {
-  system.runTimeout(() => {
-    player.playSound(sound, { volume: 1.25 });
-  }, 2);
-  const tabUI = new ActionFormData();
-  tabUI.title(`§e§lShop§r / ${title}`);
-  let coins = playerDB.get(player.id).coins;
-  tabUI.body(`§eYour Balance: §f$${formatNumber(coins)}`);
-  let subCats = subCategories.filter((x) => x.category == category);
-  subCats.map((x) => {
-    tabUI.button(`§8${x.name}`, x.texture);
-  });
-  let items = store.filter((x) => x.category == category);
-  if (sort == true) items = items.sort((x, y) => x.price - y.price);
-  if (items.length == 0) {
-    sendError(player, `This category is empty.`, PREFIX.shop);
-    OpenShop(player);
-    return;
-  }
-  items.map((x) => {
-    tabUI.button(`§8${x.name ?? formatItemName(x.item)}`, x.texture);
-  });
-  tabUI.show(player).then((result) => {
-    if (result.canceled) {
-      if (lastCat)
-        ShopTabBeta(
-          `§8${lastCat[1]}`,
-          `note.hat`,
-          lastCat[0],
-          player,
-          lastCat[2]
-        );
-      else OpenShop(player);
-      return;
-    }
-    let subCategory = subCategories.find((x) => {
-      return x == subCats[result.selection ?? -1];
-    });
-    let optionData = store.find((x) => {
-      return x == items[(result.selection ?? -1) - (subCats.length ?? 0)];
-    });
-    if (!optionData && !subCategory) {
-      sendError(player, `This item is unavailable.`, PREFIX.shop);
-      return;
-    } else if (subCategory)
-      ShopTabBeta(
-        `§8${subCategory.name}`,
-        `note.hat`,
-        subCategory.group,
-        player,
-        sort,
-        [category, title]
-      );
-    else if (optionData) purchaseEnchantment(player, title, optionData);
-  });
-}
-
-function purchaseEnchantmentBeta(
-  player: Player,
-  title: string,
-  optionData: {
-    category: number;
-    texture: string;
-    name?: string;
-    item: string;
-    price: number;
-    sell: number;
-    data?: number;
-    ditem?: Array<any>;
-    max?: number;
-  }
-) {
-  let coins = playerDB.get(player.id).coins;
-  let name = optionData.name ?? formatItemName(optionData.item);
-  const itemInfoUI = new ModalFormData();
-  itemInfoUI.title(`${title} §r/ ${name}`);
-  itemInfoUI.slider(
-    `\n§eYour Balance: §f$${formatNumber(coins)}\nLevel`,
-    1,
-    optionData.max ?? 1,
-    1
-  );
-  itemInfoUI.show(player).then((result) => {
-    if (result.canceled || !result.formValues) return;
-    system.runTimeout(() => {
-      player.playSound(`note.xylophone`, { volume: 1, pitch: 0.75 });
-    }, 2);
-    let amount = 0;
-    let price = optionData.price;
-    if (result.formValues[1]) amount = Number(result.formValues[1]);
-    else amount = Number(result.formValues[0]);
-    const confirmUI = new ActionFormData();
-    confirmUI.title(`${name} §r/ Transaction`);
-    confirmUI.body(
-      `\n§7Are you sure you want to continue?§f\n----- --------- -----\n§eType: §r§6enchant\n§bEnchantment:§r §f${name} §7${toRomanNumeral(
-        amount
-      )}\n§dValue:§r §r§4-§c$${formatNumber(
-        price * amount
-      )}\n§f----- --------- -----\n\n`
-    );
-    confirmUI.button(`Confirm`);
-    confirmUI.button(`Cancel`);
-    confirmUI.show(player).then((result) => {
-      if (!result.canceled && result.selection == 0) {
-        if (coins < price * amount) {
-          sendError(player, `You cannot afford this transaction.`, PREFIX.shop);
-          return;
-        } else {
-          if (optionData.ditem) {
-            const binv = (<BlockInventoryComponent>(
-              overworld.getBlock(optionData.ditem[0])?.getComponent("inventory")
-            )).container;
-            const pinv = (<EntityInventoryComponent>(
-              player.getComponent("inventory")
-            )).container;
-            let it = binv?.getItem(optionData.ditem[1])?.clone();
-            if (it && pinv) {
-              it.amount = amount;
-              pinv.addItem(it);
-            }
-          } else {
-            let tryEnch = VanillaEnchItem(player, optionData.item, amount);
-            if (tryEnch != true) return;
-          }
-          let pdata = playerDB.get(player.id);
-          pdata.coins = pdata.coins - price * amount;
-          playerDB.set(player.id, pdata);
-          sendAlert(
-            player,
-            `§dEnchant §b${name} §7${toRomanNumeral(
-              amount
-            )} §f§l-> §r§4-§c$${formatNumber(price * amount)}`,
-            PREFIX.shop
-          );
-        }
-      }
-    });
-  });
-}
+*/

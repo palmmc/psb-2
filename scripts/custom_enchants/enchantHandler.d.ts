@@ -10,21 +10,35 @@ import type {
   EquipmentSlot,
 } from "@minecraft/server";
 
-type EnchantCallback<Params = {}> = (data: { player: Player; level: number; item: ItemStack } & Params) => void;
+type EnchantCallback<Params = {}> = (
+  data: { player: Player; level: number; item: ItemStack } & Params
+) => void;
 
 interface EnchantInfo {
   maxLevel: number;
   display: string;
   info?: string;
   type?: Array<string>;
+  description?: string;
+  incompatible?: Array<string>;
   rarity: "common" | "rare" | "epic" | "unique" | "forged";
-  userHurt?: EnchantCallback<{ damageSource: EntityDamageSource; damage: number }>;
+  userHurt?: EnchantCallback<{
+    damageSource: EntityDamageSource;
+    damage: number;
+  }>;
   entityHurt?: EnchantCallback<{ entity: Entity; damage: number }>;
   entityHit?: EnchantCallback<{ entity: Entity }>;
   blockHit?: EnchantCallback<{ block: Block; blockFace: Direction }>;
-  blockBreak?: EnchantCallback<{ block: Block; brokenBlockPermutation: BlockPermutation }>;
+  blockBreak?: EnchantCallback<{
+    block: Block;
+    brokenBlockPermutation: BlockPermutation;
+  }>;
   itemUse?: EnchantCallback;
-  itemUseOn?: EnchantCallback<{ block: Block; blockFace: Direction; faceLocation: Vector3 }>;
+  itemUseOn?: EnchantCallback<{
+    block: Block;
+    blockFace: Direction;
+    faceLocation: Vector3;
+  }>;
   hold?: EnchantCallback;
 }
 
@@ -44,7 +58,11 @@ export declare class Enchant {
   onItemUse(callback: EnchantInfo["itemUse"]): Enchant;
   onItemUseOn(callback: EnchantInfo["itemUseOn"]): Enchant;
   onHold(callback: EnchantInfo["hold"]): Enchant;
-  static addEnchant(item: ItemStack, enchantId: string, level?: number): ItemStack;
+  static addEnchant(
+    item: ItemStack,
+    enchantId: string,
+    level?: number
+  ): ItemStack;
   static removeEnchant(item: ItemStack, enchantId: string): ItemStack;
   static getEnchant(item: ItemStack, enchantId: string): EnchantData;
   static getEnchants(item: ItemStack): EnchantData[];

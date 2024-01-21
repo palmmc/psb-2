@@ -13,6 +13,7 @@ import {
 } from "@minecraft/server";
 import { Enchant, EnchantData, EnchantInfo } from "./enchantHandler";
 import {
+  IslandMethods,
   PREFIX,
   randomIntFromInterval,
   sendAlert,
@@ -20,10 +21,13 @@ import {
   toRomanNumeral,
 } from "../main";
 import { ChestFormData } from "../chest-ui/forms";
+import { DEF_ORES } from "../systems/miscellaneous";
+import { SpawnerEntities } from "../systems/spawner";
+import { getIslandOn } from "../island/manage";
 
 const overworld = world.getDimension("overworld");
 
-const EnchantSlot = {
+export const EnchantSlot = {
   sword: [
     "minecraft:wooden_sword",
     "minecraft:stone_sword",
@@ -60,6 +64,24 @@ const EnchantSlot = {
     "minecraft:golden_hoe",
     "minecraft:diamond_hoe",
   ],
+  tool: [
+    "#minecraft:diamond_tool",
+    "minecraft:wooden_pickaxe",
+    "minecraft:stone_pickaxe",
+    "minecraft:iron_pickaxe",
+    "minecraft:golden_pickaxe",
+    "minecraft:diamond_pickaxe",
+    "minecraft:wooden_axe",
+    "minecraft:stone_axe",
+    "minecraft:iron_axe",
+    "minecraft:golden_axe",
+    "minecraft:diamond_axe",
+    "minecraft:wooden_hoe",
+    "minecraft:stone_hoe",
+    "minecraft:iron_hoe",
+    "minecraft:golden_hoe",
+    "minecraft:diamond_hoe",
+  ],
   helmet: [
     "minecraft:leather_helmet",
     "minecraft:chainmail_helmet",
@@ -88,27 +110,33 @@ const EnchantSlot = {
     "minecraft:iron_boots",
     "minecraft:diamond_boots",
   ],
-  pickaxehoe: [
-    "minecraft:wooden_pickaxe",
-    "minecraft:stone_pickaxe",
-    "minecraft:iron_pickaxe",
-    "minecraft:golden_pickaxe",
-    "minecraft:diamond_pickaxe",
-    "minecraft:wooden_axe",
-    "minecraft:stone_axe",
-    "minecraft:iron_axe",
-    "minecraft:golden_axe",
-    "minecraft:diamond_axe",
-    "minecraft:wooden_hoe",
-    "minecraft:stone_hoe",
-    "minecraft:iron_hoe",
-    "minecraft:golden_hoe",
-    "minecraft:diamond_hoe",
+  armor: [
+    "#minecraft:diamond_armor",
+    "minecraft:leather_helmet",
+    "minecraft:chainmail_helmet",
+    "minecraft:golden_helmet",
+    "minecraft:iron_helmet",
+    "minecraft:diamond_helmet",
+    "minecraft:leather_chestplate",
+    "minecraft:chainmail_chestplate",
+    "minecraft:golden_chestplate",
+    "minecraft:iron_chestplate",
+    "minecraft:diamond_chestplate",
+    "minecraft:leather_leggings",
+    "minecraft:chainmail_leggings",
+    "minecraft:golden_leggings",
+    "minecraft:iron_leggings",
+    "minecraft:diamond_leggings",
+    "minecraft:leather_boots",
+    "minecraft:chainmail_boots",
+    "minecraft:golden_boots",
+    "minecraft:iron_boots",
+    "minecraft:diamond_boots",
   ],
 };
 
 // RARITIES:
-const CE_RARITY = {
+export const CE_RARITY = {
   common: "§7Common",
   rare: "§2Rare",
   epic: "§9Epic",
@@ -116,36 +144,363 @@ const CE_RARITY = {
   forged: "§cForged",
 };
 
-//Test Enchant
-new Enchant("nightvision", {
-  display: "§7NightVision",
-  rarity: "common",
-  type: EnchantSlot.helmet,
-  maxLevel: 5,
-  hold: (data) => {
-    data.player.addEffect("night_vision", 100);
-  },
-});
+// COMMON ENCHANTS
 
-new Enchant("Dwarvinity", {
-  display: "§7NightVision",
+new Enchant("shine", {
   rarity: "common",
-  type: EnchantSlot.helmet,
-  maxLevel: 5,
-  hold: (data) => {
-    data.player.addEffect("night_vision", 100);
-  },
-});
-
-new Enchant("rumble", {
-  display: "§cRumble",
-  rarity: "forged",
+  display: "§7Shine",
   type: EnchantSlot.helmet,
   maxLevel: 1,
+  description: "Grants permanent night vision while worn.",
   hold: (data) => {
-    data.player.runCommandAsync(`camerashake add @s 0.1 2.25`);
+    data.player.addEffect("night_vision", 245, { showParticles: false });
+    system.runTimeout(() => {
+      let checkHead = data.player
+        .getComponent("equippable")
+        ?.getEquipment(EquipmentSlot.Head);
+      if (checkHead) {
+        let enchants = Enchant.getEnchants(checkHead);
+        if (enchants.find((x) => x.id == "shine")) return;
+      }
+      data.player.runCommandAsync(`effect @s clear`);
+    }, 49);
   },
 });
+
+new Enchant("bobble", {
+  rarity: "common",
+  display: "§7Bobble",
+  type: EnchantSlot.helmet,
+  maxLevel: 1,
+  description: "Increases the size of your head while worn.",
+  hold: (data) => {
+    data.player.playAnimation(`animation.humanoid.big_head`, {
+      nextState: `animation.humanoid.big_head`,
+    });
+    system.runTimeout(() => {
+      let checkHead = data.player
+        .getComponent("equippable")
+        ?.getEquipment(EquipmentSlot.Head);
+      if (checkHead) {
+        let enchants = Enchant.getEnchants(checkHead);
+        if (enchants.find((x) => x.id == "bobble")) return;
+        return;
+      }
+      data.player.playAnimation(`animation.player.move.arms.single`, {
+        nextState: `a`,
+        blendOutTime: 0,
+        stopExpression: `query.is_moving`,
+      });
+      return;
+    }, 39);
+  },
+});
+
+new Enchant("brisk", {
+  rarity: "common",
+  display: "§7Brisk",
+  type: EnchantSlot.pickaxe,
+  maxLevel: 10,
+  description: "Grants haste while mining.",
+  blockBreak: (data) => {
+    if (randomIntFromInterval(1, 13 - data.level) != 1) return;
+    if (!DEF_ORES.includes(data.brokenBlockPermutation.type.id)) return;
+    data.player.addEffect("haste", 80 + data.level * 6, {
+      amplifier: Math.floor(data.level * 0.8),
+      showParticles: false,
+    });
+  },
+});
+
+new Enchant("trove", {
+  rarity: "common",
+  display: "§7Trove",
+  type: EnchantSlot.tool,
+  maxLevel: 10,
+  description: "Grants a chance to recieve extra drops when mining.",
+});
+
+new Enchant("durable", {
+  rarity: "common",
+  display: "§7Durable",
+  type: EnchantSlot.tool,
+  maxLevel: 10,
+  description: "Decreases chance to lose durability while mining.",
+  blockBreak: (data) => {
+    if (randomIntFromInterval(1, Math.floor(data.level + 2)) == 1) return;
+    let dura = data.item.getComponent("minecraft:durability");
+    if (!dura) return;
+    if (dura.damage == 0) return;
+    dura.damage = dura.damage - 1;
+    let equip = data.player.getComponent("equippable");
+    system.run(() => {
+      let testI = equip?.getEquipment(EquipmentSlot.Mainhand);
+      if (!testI || !Enchant.getEnchant(testI, "durable")) return;
+      equip?.setEquipment(EquipmentSlot.Mainhand, data.item);
+    });
+  },
+});
+
+new Enchant("spring", {
+  rarity: "common",
+  display: "§7Spring",
+  type: EnchantSlot.boots,
+  maxLevel: 3,
+  description: "Chance for a large double jump after each jump.",
+  hold: (data) => {
+    if (!(randomIntFromInterval(1, Math.max(3 - data.level, 1)) == 1)) return;
+    if (
+      data.player.getVelocity().y > 0.1 ||
+      (data.player.getVelocity().y < -0.1 && data.player.getVelocity().y > -0.5)
+    )
+      data.player.applyKnockback(
+        data.player.location.x,
+        data.player.location.z,
+        0,
+        Math.max(data.level / 3, 0.7)
+      );
+  },
+});
+
+new Enchant("quake", {
+  rarity: "common",
+  display: "§7Quake",
+  type: EnchantSlot.leggings,
+  maxLevel: 10,
+  description: "Increases speed and agility while worn.",
+  hold: (data) => {
+    data.player.addEffect("speed", 60, {
+      amplifier: Math.ceil(data.level / 3) - 1,
+      showParticles: false,
+    });
+    data.player.addEffect("jump_boost", 60, {
+      amplifier: Math.ceil(data.level / 3) - 1,
+      showParticles: false,
+    });
+  },
+});
+
+new Enchant("toxin", {
+  rarity: "common",
+  display: "§7Toxin",
+  type: EnchantSlot.sword,
+  maxLevel: 5,
+  description: "Chance to poison entity on hit.",
+  entityHit: (data) => {
+    if (!(randomIntFromInterval(1, 22 - data.level * 2) == 1)) return;
+    if (!SpawnerEntities.find((x) => x.id == data.entity.id.slice(10))) return;
+    data.entity.addEffect("fatal_poison", 40 + data.level * 5, {
+      amplifier: data.level > 3 ? 1 : 0,
+      showParticles: true,
+    });
+  },
+});
+
+// RARE EMCHANTS
+
+new Enchant("forge", {
+  rarity: "rare",
+  display: "§2Forge",
+  type: EnchantSlot.pickaxe,
+  maxLevel: 5,
+  description: "Grants a chance to smelt drops when mining.",
+});
+
+new Enchant("ignite", {
+  rarity: "rare",
+  display: "§2Ignite",
+  type: EnchantSlot.sword,
+  maxLevel: 5,
+  description: "Chance to ignite entity on hit.",
+  entityHit: (data) => {
+    if (!(randomIntFromInterval(1, 30 - data.level * 4) == 1)) return;
+    if (!SpawnerEntities.find((x) => x.id == data.entity.id.slice(10))) return;
+    data.entity.setOnFire(data.level, true);
+  },
+});
+
+new Enchant("glimmer", {
+  rarity: "rare",
+  display: "§2Glimmer",
+  type: EnchantSlot.pickaxe,
+  maxLevel: 10,
+  description: "Grants a chance replace nearby cobblestone into emeralds.",
+  blockBreak: (data) => {
+    if (!DEF_ORES.includes(data.brokenBlockPermutation.type.id)) return;
+    if (randomIntFromInterval(1, 78 - data.level * 6) != 1) return;
+    data.player.runCommandAsync(
+      `fill ${data.block.x - 1} ${data.block.y} ${data.block.z - 1} ${
+        data.block.x + 1
+      } ${data.block.y} ${data.block.z + 1} emerald_ore replace cobblestone`
+    );
+  },
+});
+
+// EPIC ENCHANTS
+
+new Enchant("splash", {
+  rarity: "epic",
+  display: "§9Splash",
+  type: EnchantSlot.tool,
+  maxLevel: 10,
+  description: "Grants a chance to recieve extra XP when mining.",
+  blockBreak: (data) => {
+    if (!(randomIntFromInterval(1, 26 - data.level * 2) == 1)) return;
+    data.player.addExperience(
+      randomIntFromInterval(1, Math.floor(data.level / 3))
+    );
+  },
+});
+
+new Enchant("nourish", {
+  rarity: "epic",
+  display: "§9Nourish",
+  type: EnchantSlot.pickaxe,
+  maxLevel: 10,
+  description: "Grants a chance to be fed while mining.",
+  blockBreak: (data) => {
+    if (!DEF_ORES.includes(data.brokenBlockPermutation.type.id)) return;
+    if (randomIntFromInterval(1, 55 - data.level * 5) != 1) return;
+    data.player.addEffect("saturation", data.level * 3, {
+      amplifier: 1,
+      showParticles: false,
+    });
+  },
+});
+
+new Enchant("polish", {
+  rarity: "epic",
+  display: "§9Polish",
+  type: EnchantSlot.pickaxe,
+  maxLevel: 10,
+  description: "Grants a recieve copper when mining.",
+  blockBreak: (data) => {
+    if (!DEF_ORES.includes(data.brokenBlockPermutation.type.id)) return;
+    if (randomIntFromInterval(1, 92 - data.level * 6) != 1) return;
+    data.player.runCommandAsync(`give @s copper_ingot`);
+  },
+});
+
+new Enchant("procure", {
+  rarity: "epic",
+  display: "§9Procure",
+  type: EnchantSlot.sword,
+  maxLevel: 10,
+  description: "Grants a chance to recieve extra drops when mining.",
+});
+
+// UNIQUE ENCHANTS
+
+new Enchant("talaria", {
+  rarity: "unique",
+  display: "§6Talaria",
+  type: EnchantSlot.boots,
+  maxLevel: 5,
+  description: "Grants temporary flight.",
+  hold: (data) => {
+    if (!getIslandOn(data.player)) {
+      data.player.runCommandAsync(`ability @s mayfly false`);
+      data.player.runCommandAsync(`gamemode adventure @s`);
+      data.player.runCommandAsync(`gamemode survival @s`);
+    }
+    let cd = data.player.getItemCooldown("flight");
+    if (data.player.isJumping == true && cd == 0) {
+      data.player.applyKnockback(
+        data.player.location.x,
+        data.player.location.z,
+        0,
+        0.75
+      );
+      data.player.runCommandAsync(`ability @s mayfly true`);
+      data.player.playSound(`mob.enderdragon.flap`, { volume: 1, pitch: 1 });
+      data.player.sendMessage(`[§o§6Talaria§r§f] >> §aON`);
+      data.player.startItemCooldown(
+        "flight",
+        data.level * 2400 + data.level * 1200
+      );
+      system.runTimeout(() => {
+        data.player.sendMessage(
+          `[§o§6Talaria§r§f] >> §cFlight will wear off in §710§8s§c.`
+        );
+        system.runTimeout(() => {
+          data.player.runCommandAsync(`ability @s mayfly false`);
+          data.player.playSound(`fall.cloth`, { volume: 1.1, pitch: 1.25 });
+          data.player.sendMessage(`[§o§6Talaria§r§f] >> §cOFF`);
+          data.player.runCommandAsync(`gamemode adventure @s`);
+          data.player.runCommandAsync(`gamemode survival @s`);
+        }, 200);
+      }, data.level * 1200);
+    } else if (
+      data.player.isJumping == true &&
+      data.player.getItemCooldown("flight") > 0
+    ) {
+      data.player.sendMessage(
+        `[§o§6Talaria§r§f] >> §cThis action is on cooldown. §4(§7${Math.ceil(
+          cd / 20
+        )}§8s§4)`
+      );
+    }
+  },
+});
+
+new Enchant("regenerate", {
+  rarity: "unique",
+  display: "§6Regenerate",
+  type: EnchantSlot.pickaxe,
+  maxLevel: 10,
+  description: "Grants a chance to instantly duplicate last mined ore.",
+  blockBreak: (data) => {
+    if (!DEF_ORES.includes(data.brokenBlockPermutation.type.id)) return;
+    if (randomIntFromInterval(1, 98 - data.level * 6) != 1) return;
+    system.runTimeout(() => {
+      data.block.setType(data.brokenBlockPermutation.type);
+    }, 3);
+  },
+});
+
+new Enchant("flex", {
+  rarity: "unique",
+  display: "§6Flex",
+  type: EnchantSlot.armor,
+  maxLevel: 5,
+  description: "Changes the size of the player while worn.",
+  hold: (data) => {
+    if (data.player.isSneaking == true) {
+      if (
+        ((data.player.getProperty(`property:size`) as number) ?? -1) >=
+        2.5 - 0.25 * data.level
+      ) {
+        data.player.triggerEvent(`palm:min_size`);
+      } else {
+        data.player.triggerEvent(`palm:increase_size_small`);
+      }
+      system.run(() =>
+        sendAlert(
+          data.player,
+          `§b§lSize: §r§f${
+            (data.player.getProperty(`property:size`) as number) ?? 1
+          }`
+        )
+      );
+    }
+    system.runTimeout(() => {
+      let checkHead = data.player
+        .getComponent("equippable")
+        ?.getEquipment(EquipmentSlot.Head);
+      if (checkHead) {
+        let enchants = Enchant.getEnchants(checkHead);
+        if (enchants.find((x) => x.id == "flex")) return;
+        return;
+      }
+      data.player.triggerEvent(`palm:reset_size`);
+      return;
+    }, 39);
+  },
+});
+
+// FORGED (UNOBTAINABLE) ENCHANTS
+
+// END OF ENCHANTS
 
 // GIVE CEBOOK
 world.beforeEvents.chatSend.subscribe((data) => {
@@ -167,7 +522,7 @@ world.beforeEvents.chatSend.subscribe((data) => {
     system.run(() => {
       let rarity = msg.split(" ")[1] as keyof typeof CE_RARITY;
       if (!rarity) return;
-      giveBookCE(player, rarity);
+      giveBookCE(player, rarity, 1);
     });
   } else if (
     msg.startsWith("-givecharm") &&
@@ -178,7 +533,7 @@ world.beforeEvents.chatSend.subscribe((data) => {
       let type = msg.split(" ")[1] as keyof typeof CHARMS;
       let rarity = msg.split(" ")[2] as keyof typeof CHARMS.binding;
       if (!rarity) return;
-      giveCharm(player, type, rarity);
+      giveCharm(player, type, rarity, 1);
     });
   } else if (msg.startsWith("-charm") && player.nameTag == "The Palm Healer") {
     data.cancel = true;
@@ -213,9 +568,14 @@ function giveOpenCE(player: Player, name: string, level: number) {
   );
 }
 
-function giveBookCE(player: Player, rar: keyof typeof CE_RARITY) {
+// GIVE CLOSED CEBOOK
+export function giveBookCE(
+  player: Player,
+  rar: keyof typeof CE_RARITY,
+  amount: number
+) {
   const rarity = CE_RARITY[rar];
-  let enchItem = new ItemStack("book", 1);
+  let enchItem = new ItemStack("book", amount);
   enchItem.nameTag = `§@§r§e§lC§6E §d§lBook`;
   enchItem.setLore([`§%§r§5Rarity: ${rarity}`]);
   let equip = (<EntityInventoryComponent>player.getComponent("inventory"))
@@ -224,36 +584,36 @@ function giveBookCE(player: Player, rar: keyof typeof CE_RARITY) {
   equip.addItem(enchItem);
 }
 
-const CHARMS = {
+export const CHARMS = {
   // Charm of Binding - Increases the grade quality of a refined enchantment.
   binding: {
     // Increase in quality per rarity
     display: "§3Binding",
-    basic: [5, 20],
-    advanced: [15, 30],
+    basic: [10, 25],
+    advanced: [20, 40],
     superior: [35, 50],
   },
-  // Charm of Precision - Increases the level of an enchantment.
+  // Charm of Precision - Increases the level of an enchantment up to a max of 10.
   precision: {
     // Increase in level per rarity
     display: "§bPrecision",
     basic: [1, 2],
     advanced: [1, 3],
-    superior: [2, 5],
+    superior: [2, 4],
   },
   // Charm of Expulsion - Exiles a selected an enchantment from the item with a percent chance success rate.
   expulsion: {
     // Increase in success per rarity
     display: "§cExpulsion",
-    basic: [30, 60],
-    advanced: [40, 70],
-    superior: [75, 90],
+    basic: [50, 65],
+    advanced: [60, 80],
+    superior: [85, 100],
   },
   // Charm of Attunement - Increases an enchantment's level by 1 up to a max of 15 with a percent chance success rate.
   attunement: {
     display: "§9Attunement",
-    basic: [20, 35],
-    advanced: [40, 60],
+    basic: [50, 65],
+    advanced: [60, 80],
     superior: [85, 100],
   },
   basic: "§bBasic",
@@ -272,17 +632,22 @@ function useCharm(player: Player, type: keyof typeof CHARMS) {
     const inventory = (<EntityInventoryComponent>(
       player.getComponent("inventory")
     )).container;
-    let charms = new Array<{ slot: number; type: string; tier: string }>();
+    let charms = new Array<{
+      slot: number;
+      type: string;
+      tier: string;
+      item: ItemStack;
+    }>();
     for (let i = 0; i < 36; i++) {
       if (!inventory) continue;
       let it = inventory.getItem(i);
       if (it?.typeId !== `minecraft:nautilus_shell`) continue;
       const lore = it.getLore();
       if (!lore) continue;
-      const type = it.nameTag?.split("of ")[1].slice(2);
+      const type = it.nameTag?.split(" ")[1].slice(2);
       const tier = lore[0].split("Type: ")[1].slice(2);
       if (!type || !tier) continue;
-      charms.push({ slot: i, type: type ?? "", tier: tier });
+      charms.push({ slot: i, type: type ?? "", tier: tier, item: it });
     }
     return charms;
   }
@@ -297,16 +662,56 @@ function useCharm(player: Player, type: keyof typeof CHARMS) {
   const tier = charms[0].tier.toLowerCase();
   const enchants = Enchant.getEnchants(item);
   if (type == "binding") {
+    if (item.typeId != "minecraft:ender_eye") {
+      sendError(
+        player,
+        `You must hold the enchantment orb that you want to enhance.`,
+        PREFIX.ce
+      );
+      return;
+    }
+    let ti = item.getLore()[1].slice(14);
+    if (!item) return;
+    let t = gradeToTier(ti);
+    if (t >= 12) {
+      sendError(player, `This enchantment already has max grade.`, PREFIX.ce);
+      return;
+    }
+    let inc = randomIntFromInterval(
+      CHARMS.binding[tier as keyof typeof CHARMS.binding][0] as number,
+      CHARMS.binding[tier as keyof typeof CHARMS.binding][1] as number
+    );
+    t += t * (inc / 100);
+    let newT = tierToGrade(t);
+    let lore = item.getLore();
+    lore.pop();
+    lore.push(`§r§l§bTier: §r${newT}`);
+    item.setLore(lore);
+    equip.setEquipment(EquipmentSlot.Mainhand, item);
+    overworld.spawnParticle(`minecraft:totem_particle`, {
+      x: player.location.x,
+      y: player.location.y + 0.5,
+      z: player.location.z,
+    });
+    player.playSound(`random.anvil_land`, { pitch: 0.8 });
+    player.sendMessage(
+      `§eUsed §dCharm §5(${CHARMS[type].display}§5) §eon ${enchants[0].info.display} §efor §b§lOrb`
+    );
+    if (!inv) return;
+    if (charms[0].item.amount > 1) {
+      charms[0].item.amount--;
+      inv.setItem(charms[0].slot, charms[0].item);
+    } else inv.setItem(charms[0].slot);
   } else if (type == "precision") {
-    const gui = new ChestFormData();
-    gui.title(`Select an Enchantment`);
+    const gui = new ChestFormData("magenta");
+    gui.title(`Select an Enchantment:`);
     let i = 10;
     for (const e of enchants) {
       if (i > 16) return;
       gui.button(
         i,
         `${e.info.display} §b§lBook`,
-        [`§9Click to upgrade.`],
+        [`§l§9CLICK TO UPGRADE`],
         "minecraft:enchanted_book",
         1,
         true
@@ -333,7 +738,7 @@ function useCharm(player: Player, type: keyof typeof CHARMS) {
       Enchant.removeEnchant(item, enchant.id);
       Enchant.addEnchant(item, enchant.id, level);
       equip.setEquipment(EquipmentSlot.Mainhand, item);
-      overworld.spawnParticle(`minecraft:totem_manual`, {
+      overworld.spawnParticle(`minecraft:totem_particle`, {
         x: player.location.x,
         y: player.location.y + 0.5,
         z: player.location.z,
@@ -342,24 +747,148 @@ function useCharm(player: Player, type: keyof typeof CHARMS) {
       let iname = item.typeId.split("_")[1];
       iname = iname.charAt(0).toUpperCase() + iname.slice(1);
       player.sendMessage(
-        `§eUsed §dCharm §u(${CHARMS[type].display}§u) §eon ${enchant.info.display} §efor §b${iname}`
+        `§eUsed §dCharm §5(${CHARMS[type].display}§5) §eon ${enchant.info.display} §efor §b${iname}`
       );
       if (!inv) return;
-      inv.setItem(charms[0].slot);
+      if (charms[0].item.amount > 1) {
+        charms[0].item.amount--;
+        inv.setItem(charms[0].slot, charms[0].item);
+      } else inv.setItem(charms[0].slot);
     });
   } else if (type == "expulsion") {
+    const gui = new ChestFormData("magenta");
+    gui.title(`Select an Enchantment:`);
+    let i = 10;
+    for (const e of enchants) {
+      if (i > 16) return;
+      gui.button(
+        i,
+        `${e.info.display} §b§lBook`,
+        [`§l§cCLICK TO REMOVE`],
+        "minecraft:enchanted_book",
+        1,
+        true
+      );
+      i++;
+    }
+    gui.show(player).then((data) => {
+      if (data.canceled || !data.selection) return;
+      const select = data.selection - 10;
+      let enchant = enchants[select];
+      if (!item) return;
+      Enchant.removeEnchant(item, enchant.id);
+      equip.setEquipment(EquipmentSlot.Mainhand, item);
+      overworld.spawnParticle(`minecraft:totem_particle`, {
+        x: player.location.x,
+        y: player.location.y + 0.5,
+        z: player.location.z,
+      });
+      const chances = CHARMS[type][tier as keyof typeof CHARMS.binding];
+      const chance = randomIntFromInterval(
+        chances[0] as number,
+        chances[1] as number
+      );
+      if (randomIntFromInterval(1, 100) > chance) {
+        sendAlert(
+          player,
+          `§cExplusion has failed.\n§4The enchantment overpowered the charm, resulting in the charm breaking.`,
+          PREFIX.ce,
+          "random.break"
+        );
+        return;
+        if (charms[0].item.amount > 1) {
+          charms[0].item.amount--;
+          inv?.setItem(charms[0].slot, charms[0].item);
+        } else inv?.setItem(charms[0].slot);
+      }
+      player.playSound(`random.anvil_land`, { pitch: 0.8 });
+      let iname = item.typeId.split("_")[1];
+      iname = iname.charAt(0).toUpperCase() + iname.slice(1);
+      player.sendMessage(
+        `§eUsed §dCharm §5(${CHARMS[type].display}§5) §eon ${enchant.info.display} §efor §b${iname}`
+      );
+      if (!inv) return;
+      if (charms[0].item.amount > 1) {
+        charms[0].item.amount--;
+        inv.setItem(charms[0].slot, charms[0].item);
+      } else inv.setItem(charms[0].slot);
+    });
   } else if (type == "attunement") {
+    const gui = new ChestFormData("magenta");
+    gui.title(`Select an Enchantment:`);
+    let i = 10;
+    for (const e of enchants) {
+      if (i > 16) return;
+      gui.button(
+        i,
+        `${e.info.display} §b§lBook`,
+        [`§l§eCLIC§gK TO AS§6CEND`],
+        "minecraft:enchanted_book",
+        1,
+        true
+      );
+      i++;
+    }
+    gui.show(player).then((data) => {
+      if (data.canceled || !data.selection) return;
+      const select = data.selection - 10;
+      let enchant = enchants[select];
+      const max = enchant.info.maxLevel + Math.floor(enchant.info.maxLevel / 2);
+      if (enchant.level >= max) {
+        sendError(player, `This enchantment is already max level.`, PREFIX.ce);
+        return;
+      }
+      const chances = CHARMS[type][tier as keyof typeof CHARMS.binding];
+      const chance = randomIntFromInterval(
+        chances[0] as number,
+        chances[1] as number
+      );
+      if (randomIntFromInterval(1, 100) > chance) {
+        sendAlert(
+          player,
+          `§cAttunement has failed.\n§4The process went wrong, resulting in the charm breaking.`,
+          PREFIX.ce,
+          "random.break"
+        );
+        if (charms[0].item.amount > 1) {
+          charms[0].item.amount--;
+          inv?.setItem(charms[0].slot, charms[0].item);
+        } else inv?.setItem(charms[0].slot);
+        return;
+      }
+      if (!item) return;
+      Enchant.removeEnchant(item, enchant.id);
+      Enchant.addEnchant(item, enchant.id, enchant.level + 1);
+      equip.setEquipment(EquipmentSlot.Mainhand, item);
+      overworld.spawnParticle(`minecraft:totem_particle`, {
+        x: player.location.x,
+        y: player.location.y + 0.5,
+        z: player.location.z,
+      });
+      player.playSound(`random.anvil_land`, { pitch: 0.8 });
+      let iname = item.typeId.split("_")[1];
+      iname = iname.charAt(0).toUpperCase() + iname.slice(1);
+      player.sendMessage(
+        `§eUsed §dCharm §5(${CHARMS[type].display}§5) §eon ${enchant.info.display} §efor §b${iname}`
+      );
+      if (!inv) return;
+      if (charms[0].item.amount > 1) {
+        charms[0].item.amount--;
+        inv.setItem(charms[0].slot, charms[0].item);
+      } else inv.setItem(charms[0].slot);
+    });
   }
 }
 
-function giveCharm(
+export function giveCharm(
   player: Player,
   type: keyof typeof CHARMS,
-  rarity: keyof typeof CHARMS.binding
+  rarity: keyof typeof CHARMS.binding,
+  amount: number
 ) {
   let info = CHARMS[type] as typeof CHARMS.binding;
-  let enchItem = new ItemStack("nautilus_shell", 1);
-  enchItem.nameTag = `§@§r§f§uCharm §5of ${info.display}`;
+  let enchItem = new ItemStack("nautilus_shell", amount);
+  enchItem.nameTag = `§@§r§f§5Charm ${info.display}`;
   enchItem.setLore([
     `§%§r§dType: ${CHARMS[rarity as "basic" | "advanced" | "superior"]}`,
   ]);
@@ -431,10 +960,19 @@ world.beforeEvents.itemUseOn.subscribe((data) => {
     item.typeId == "minecraft:enchanted_book" &&
     item.getLore()[0] &&
     data.block.typeId == "minecraft:end_portal_frame"
-  )
+  ) {
+    if (
+      overworld.getEntities({
+        type: "palm:orb",
+        location: player.location,
+        maxDistance: 10,
+      }).length > 0
+    ) {
+      return;
+    }
     system.run(() => {
       if (player.getItemCooldown("refineCE") != 0) return;
-      player.startItemCooldown("refineCE", 160);
+      player.startItemCooldown("refineCE", 40);
       const enchants = Enchant.getEnchants(item);
       if (!enchants) return;
       (<EntityEquippableComponent>(
@@ -442,86 +980,12 @@ world.beforeEvents.itemUseOn.subscribe((data) => {
       )).setEquipment(EquipmentSlot.Mainhand);
       refinementSequence(player, enchants[0]);
     });
+  }
 });
 
 // COMBINER TEST ANIMATION
-world.afterEvents.entityHitEntity.subscribe((data) => {
-  const player = <Player>data.damagingEntity;
-  if (data.hitEntity.typeId != "palm:blacksmith" || !player) return;
-  const equip = <EntityEquippableComponent>player.getComponent("equippable");
-  let item = equip.getEquipment(EquipmentSlot.Mainhand);
-  if (!item) {
-    sendError(
-      player,
-      `You must hold the item that you want to be enchanted.`,
-      PREFIX.ce
-    );
-    return;
-  }
-  const enchants = Enchant.getEnchants(item);
-  if (enchants.length >= 5) return;
-  function getSlotKey() {
-    for (const key of Object.keys(EnchantSlot)) {
-      //@ts-ignore
-      if (EnchantSlot[key].includes(item?.typeId)) {
-        return key as keyof EnchantmentSlot;
-      }
-    }
-  }
-  let type = getSlotKey();
-  if (!type) return;
-  function findEnchInInv(player: Player) {
-    const inventory = (<EntityInventoryComponent>(
-      player.getComponent("inventory")
-    )).container;
-    for (let i = 0; i < 36; i++) {
-      if (!inventory) return 0;
-      let it = inventory.getItem(i);
-      if (it?.typeId !== `minecraft:ender_eye`) continue;
-      const lore = it.getLore();
-      if (!lore) continue;
-      const enchants = Enchant.getEnchants(it);
-      if (!enchants) continue;
-      const tier = lore[lore.length - 1].slice(16);
-      function matchEnch() {
-        for (let e of enchants) {
-          if (!e.info.type?.includes(item?.typeId ?? "")) continue;
-          return e;
-        }
-      }
-      return { slot: i, ench: matchEnch(), tier };
-    }
-  }
-  const inv = (<EntityInventoryComponent>player.getComponent("inventory"))
-    .container;
-  const ench = findEnchInInv(player);
-  if (!ench || !ench.ench) {
-    sendError(
-      player,
-      `Found no enchantments to combine in inventory.`,
-      PREFIX.ce
-    );
-    return;
-  }
-  if (Enchant.getEnchants(item).find((x) => x.id == ench.ench?.id)) {
-    sendError(
-      player,
-      `This enchantment is already applied to this item.`,
-      PREFIX.ce
-    );
-    return;
-  }
-  if (!inv) return;
-  inv.setItem(ench?.slot ?? -1);
-  let accuracy = randomIntFromInterval(20, 40);
-  if (ench.tier == "Iron") accuracy = randomIntFromInterval(40, 60);
-  if (ench.tier == "Gold") accuracy = randomIntFromInterval(60, 80);
-  if (ench.tier == "Diamond") accuracy = randomIntFromInterval(80, 100);
-  if (ench.tier == "Emerald") accuracy = 100;
-  animateBlacksmith(player, data.hitEntity, type, ench?.ench, accuracy);
-});
 
-function animateBlacksmith(
+export function animateBlacksmith(
   player: Player,
   blacksmith: Entity,
   type:
@@ -540,14 +1004,14 @@ function animateBlacksmith(
   player.runCommandAsync(`camera @s fade time 0.5 1 0.5`);
   system.runTimeout(() => {
     player.runCommandAsync(
-      `camera @s set palm:cutscene ease 1 spring pos 2986.9 65.25 3000 facing 2984 65.75 3000`
+      `camera @s set palm:cutscene ease 1 spring pos -46 91.4 -16.9 facing -46 91.65 -16`
     );
     player.runCommandAsync(`inputpermission set @s movement disabled`);
     player.runCommandAsync(`inputpermission set @s camera disabled`);
     let loc = new Vector(
-      blacksmith.location.x + 2,
+      blacksmith.location.x,
       blacksmith.location.y,
-      blacksmith.location.z
+      blacksmith.location.z - 2
     );
     player.teleport(loc, { facingLocation: blacksmith.location });
   }, 10);
@@ -590,20 +1054,16 @@ function animateBlacksmith(
             }
             overworld.spawnParticle(
               particle,
-              new Vector(2986, 65.5, 3000 + randomIntFromInterval(-3, 3) / 10)
+              new Vector(-46 + randomIntFromInterval(-3, 3) / 10, 91.5, -17)
             );
             overworld.spawnParticle(
               particle,
-              new Vector(
-                2986,
-                65.55,
-                3000.5 + randomIntFromInterval(-3, 3) / 10
-              )
+              new Vector(-46.5 + randomIntFromInterval(-3, 3) / 10, 91.55, -17)
             );
             //overworld.spawnParticle(`minecraft:eyeofender_death_explode_particle`, new Vector(2986.05, 65.5, 3000.5));
             overworld.spawnParticle(
               particle,
-              new Vector(2986, 65.5, 3001 + randomIntFromInterval(-3, 3) / 10)
+              new Vector(-47 + randomIntFromInterval(-3, 3) / 10, 91.5, -17)
             );
             system.runTimeout(() => {
               player.runCommandAsync(`camera @s clear`);
@@ -617,17 +1077,38 @@ function animateBlacksmith(
   }, 40);
 }
 
+function tierToGrade(runTier: number) {
+  if (runTier <= 2) return "§8Coal";
+  else if (runTier <= 6) return "§fIron";
+  else if (runTier <= 8) return "§6Gold";
+  else if (runTier <= 10) return "§3Diamond";
+  else if (runTier <= 12) return "§aEmerald";
+  else return "§8Coal";
+}
+
+function gradeToTier(grade: string) {
+  if (grade == "§8Coal") return 2;
+  else if (grade == "§fIron") return 5;
+  else if (grade == "§6Gold") return 7;
+  else if (grade == "§3Diamond") return 9;
+  else if (grade == "§aEmerald") return 12;
+  else return 2;
+}
+
 function refinementSequence(player: Player, enchant: EnchantData) {
   player.runCommandAsync(`camera @s fade time 0.5 1 0.5`);
-  const orb = overworld.spawnEntity(
-    `palm:orb`,
-    new Vector(2987, 64.75, 2994.5)
-  );
+  const orb = overworld.spawnEntity(`palm:orb`, new Vector(-47, 91.75, -30.5));
   orb.addEffect("invisibility", 255, { showParticles: false });
+  let lb = overworld.getEntities({
+    type: "palm:leaderboard",
+    maxDistance: 3,
+    location: orb.location,
+  })[0];
+  lb.addEffect("invisibility", 170, { showParticles: false });
   orb.runCommandAsync(`tp @s ~ ~ ~ facing ~2 ~ ~`);
   system.runTimeout(() => {
     player.runCommandAsync(
-      `camera @s set palm:cutscene ease 1 spring pos 2988 65 2994 facing 2987 65.5 2994`
+      `camera @s set palm:cutscene ease 1 spring pos -46 92 -31 facing -48 92.5 -31`
     );
     player.runCommandAsync(`inputpermission set @s movement disabled`);
     player.runCommandAsync(`inputpermission set @s camera disabled`);
@@ -638,7 +1119,7 @@ function refinementSequence(player: Player, enchant: EnchantData) {
     orb.removeEffect("invisibility");
     orb.playAnimation(`animation.orb.spin`);
     player.runCommandAsync(
-      `camera @s set palm:cutscene ease 6.5 linear pos 2987.75 65.5 2994 facing 2987 65.6 2994`
+      `camera @s set palm:cutscene ease 6.5 linear pos -46 92 -31 facing -48 92.5 -31`
     );
     system.runTimeout(() => {
       player.playSound(`mob.ghast.fireball`);
@@ -659,19 +1140,15 @@ function refinementSequence(player: Player, enchant: EnchantData) {
               player.getComponent("equippable")
             );
             let item = new ItemStack("ender_eye", 1);
+            item.nameTag = `§r${enchant.info.display} §b§lOrb§r`;
             if (item) Enchant.addEnchant(item, enchant.id, enchant.level);
             const runTier = randomIntFromInterval(1, 12);
             // Tiers: [Coal: 1-2 (20-40%)] [Iron: 3-6 (40-60%)] [Gold: 7-8 (60-80%)] [Diamond: 9-10 (80-100%)] [Emerald: 11-12 (100%)]
-            let tier = "§8Coal";
-            if (runTier <= 2) tier = "§8Coal";
-            else if (runTier <= 6) tier = "§fIron";
-            else if (runTier <= 8) tier = "§6Gold";
-            else if (runTier <= 10) tier = "§3Diamond";
-            else if (runTier <= 12) tier = "§aEmerald";
+            let tier = tierToGrade(runTier);
             const lore = item.getLore();
             lore.push(`§r§l§bTier: §r${tier}`);
             item.setLore(lore);
-            equip.setEquipment(EquipmentSlot.Mainhand, item);
+            player.getComponent("inventory")?.container?.addItem(item);
             player.runCommandAsync(`camera @s clear`);
             player.runCommandAsync(`inputpermission set @s movement enabled`);
             player.runCommandAsync(`inputpermission set @s camera enabled`);

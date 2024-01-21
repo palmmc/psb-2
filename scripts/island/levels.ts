@@ -15,6 +15,8 @@ import {
   world,
 } from "@minecraft/server";
 import {
+  Island,
+  IslandMethods,
   PREFIX,
   islandDB,
   playerDB,
@@ -34,15 +36,15 @@ const overworld = world.getDimension("overworld");
 
 // LEVEL FUNCTIONS
 export function levelToXp(level: number) {
-  let sum = 160;
+  let sum = 125;
   for (let i = 1; i <= level; i++) {
-    sum += 160 * (i + 1);
+    sum += 125 * (i + 1);
   }
   return sum;
 }
 
 export function xpToLevel(xp: number) {
-  let n = Math.log(xp / 160) / Math.log(2);
+  let n = Math.log(xp / 125) / Math.log(2);
   n = Math.ceil(n);
   while (levelToXp(n) < xp) {
     n++;
@@ -105,8 +107,8 @@ function emptyReward(player: Player) {}
 system.runInterval(() => {
   for (let player of world.getPlayers()) {
     let pdata = playerDB.get(player.id);
-    let idata = islandDB.get(pdata.island);
-    if (!idata) continue;
+    if (!pdata.island) continue;
+    let idata: Island = islandDB.get(pdata.island);
     let level = xpToLevel(idata.points);
     let lastLevel =
       world.scoreboard.getObjective("lastLevel")?.getScore(player) ?? -1;
@@ -164,29 +166,29 @@ export const BREAK_XP = [
   ["minecraft:gold_ore", 1, 1],
   ["minecraft:diamond_ore", 1, 1],
   ["minecraft:emerald_ore", 1, 2],
-  ["minecraft:beetroot", 0, 1, true],
-  ["minecraft:wheat", 1, 1, true],
-  ["minecraft:carrots", 1, 2, true],
-  ["minecraft:potatoes", 1, 2, true],
+  ["palm:beetroot", 0, 1, true],
+  ["palm:wheat", 1, 1, true],
+  ["palm:carrots", 1, 2, true],
+  ["palm:potatoes", 1, 2, true],
   //["minecraft:reeds", 0, 0],
   //["minecraft:cactus", 0, 0],
   ["minecraft:pumpkin", 1, 3],
   ["minecraft:melon_block", 1, 3],
-  ["minecraft:coal_block", -16],
-  ["minecraft:iron_block", -18],
-  ["minecraft:lapis_block", -20],
-  ["minecraft:gold_block", -22],
-  ["minecraft:diamond_block", -24],
-  ["minecraft:emerald_block", -25],
+  ["minecraft:coal_block", -14],
+  ["minecraft:iron_block", -16],
+  ["minecraft:lapis_block", -18],
+  ["minecraft:gold_block", -20],
+  ["minecraft:diamond_block", -22],
+  ["minecraft:emerald_block", -24],
 ];
 const PLACE_XP = [
   // Format: ["minecraft:tile": String, xpMin: number, xpMax: number, isCrop: boolean]
-  ["minecraft:coal_block", 16],
-  ["minecraft:iron_block", 18],
-  ["minecraft:lapis_block", 20],
-  ["minecraft:gold_block", 22],
-  ["minecraft:diamond_block", 24],
-  ["minecraft:emerald_block", 25],
+  ["minecraft:coal_block", 14],
+  ["minecraft:iron_block", 16],
+  ["minecraft:lapis_block", 18],
+  ["minecraft:gold_block", 20],
+  ["minecraft:diamond_block", 22],
+  ["minecraft:emerald_block", 24],
 ];
 
 // LEVEL EVENTS
@@ -196,14 +198,16 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
   let ldata = BREAK_XP.find((x) => x[0] == id);
   // Copper additions
   if (id.includes("copper") && !id.includes("slab") && !id.includes("stairs")) {
-    if (id.includes("cut")) ldata = ["minecraft:cut", -8];
-    else ldata = ["minecraft:copper", -32];
+    if (id.includes("cut")) ldata = ["minecraft:cut", -7];
+    else ldata = ["minecraft:copper", -28];
   }
   if (!ldata) return;
   if (id.includes("ore") && randomIntFromInterval(1, 5) != 1) return;
   const player = data.player;
   if (ldata[3] && (ldata[3] as boolean) == true) {
-    if (block.getState("growth") != 7) return;
+    let island = islandDB.get(playerDB.get(player.id).island);
+    IslandMethods.removeLimit(island, "crop", 1);
+    if (block.getState("palm:growth_stage") != 7) return;
   }
   let xp = ldata[1] as number;
   if (ldata[2])
@@ -211,8 +215,7 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
   if (!xp) return;
   let idata = getIslandOn(player);
   if (!idata) return;
-  idata.addPoints(xp);
-  idata.updateData();
+  IslandMethods.addPoints(idata, xp);
 });
 
 world.afterEvents.playerPlaceBlock.subscribe((data) => {
@@ -221,18 +224,39 @@ world.afterEvents.playerPlaceBlock.subscribe((data) => {
   let ldata = PLACE_XP.find((x) => x[0] == id);
   // Copper additions
   if (id.includes("copper") && !id.includes("slab") && !id.includes("stairs")) {
-    if (id.includes("cut")) ldata = ["minecraft:cut", 8];
-    else ldata = ["minecraft:copper", 32];
+    if (id.includes("cut")) ldata = ["minecraft:cut", 7];
+    else ldata = ["minecraft:copper", 28];
   }
   if (!ldata) return;
   const player = data.player;
   let idata = getIslandOn(player);
   if (!idata) return;
-  idata.addPoints(ldata[1] as number);
-  idata.updateData();
+  IslandMethods.addPoints(idata, ldata[1] as number);
 });
 
 // LIMIT EVENTS
+
+world.afterEvents.playerPlaceBlock.subscribe((data) => {
+  if (
+    !data.block.typeId.startsWith("palm:") ||
+    data.block.typeId.includes("farmland")
+  )
+    return;
+  let player = data.player;
+  let idata: Island = islandDB.get(playerDB.get(player.id).island);
+  if (idata.limits.crop.amount >= idata.limits.crop.max) {
+    data.block.setType("air");
+    player.startItemCooldown("crop", 15);
+    sendError(
+      player,
+      `Island has reached the crop limit.\n§dUse §e-is expand §dto increase it.`,
+      PREFIX.island
+    );
+    return;
+  } else {
+    IslandMethods.addLimit(idata, "crop", 1);
+  }
+});
 
 function getBlockAtFace(
   data: PlayerInteractWithBlockBeforeEvent,

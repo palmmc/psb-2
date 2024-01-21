@@ -26,6 +26,7 @@ export const itemCloud = new JsonDatabase("itemCloud", world);
 
 export function formatItemName(item: string) {
   let itemName = "";
+  if (item.startsWith("palm:")) item = item.slice(5);
   item.split("_").forEach((i) => {
     itemName = itemName + `${i.charAt(0).toUpperCase() + i.slice(1)} `;
   });

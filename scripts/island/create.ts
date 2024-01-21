@@ -20,8 +20,8 @@ import {
   sendError,
   sendAlert,
   Island,
-  ISLAND_PERMISSIONS,
 } from "../main";
+import { ISLAND_ROLES } from "./permissions";
 
 // SETTINGS //
 const defaultData = { slot: -1, coins: 0 }; // { coins: 0, island: '', }
@@ -29,7 +29,7 @@ const defaultData = { slot: -1, coins: 0 }; // { coins: 0, island: '', }
 world.afterEvents.playerSpawn.subscribe((data) => {
   if (!data.initialSpawn) return;
   if (data.player.hasTag("setData")) return;
-  playerDB.set(data.player.id, { coins: 0, island: "" });
+  playerDB.set(data.player.id, { coins: 100, island: "" });
   data.player.addTag("setData");
 });
 
@@ -51,11 +51,23 @@ export function islandCreator(player: Player) {
       "\n§eIsland Name:\n§f[§6§l?§r§f] §7This name will be used by other players to find your island.",
       "E.g. donutland, SPLEEF, Me4Pig ..."
     );
+    gui.dropdown(
+      "§6Generator:\n§f[§6§l?§r§f] §7This changes how your island will be generated.",
+      [
+        "§7Default§f - Recommended choice.",
+        "§aClassic§f - Classic Skyblock.",
+        "§cShattered§f - Minimal resources.",
+        "§bMemorial§f - In memoriam regis.",
+      ]
+    );
     gui.toggle("Allow Visitors", true);
     gui.show(player).then((result) => {
       if (result.canceled) return;
       if (!result.formValues) return;
       let nameInput = (result.formValues[0] as string).replace(/\s/g, "");
+      let generator = ["default", "classic", "shattered", "memorial"][
+        (result.formValues[1] ?? 0) as number
+      ];
       if (testValidName(player, nameInput) === true) {
         sendAlert(player, `§aYour island name is available!`, PREFIX.island);
         player.playSound(`note.xylophone`);
@@ -108,10 +120,11 @@ export function islandCreator(player: Player) {
           {
             name: player.name,
             id: player.id,
-            permissions: ISLAND_PERMISSIONS.default,
+            permissions: ISLAND_ROLES.guest.permissions,
           },
-          result.formValues[1] as boolean
+          result.formValues[2] as boolean
         );
+        world.scoreboard.getObjective("genKey")?.addScore("server", 1);
         islandDB.set(nameInput, island);
         pdata.island = nameInput;
         playerDB.set(player.id, pdata);
@@ -121,7 +134,7 @@ export function islandCreator(player: Player) {
           );
           system.runTimeout(() => {
             player.runCommandAsync(
-              `structure load island:island_default ~-6 ~-14 ~-6`
+              `structure load island:island_${generator} ~-6 ~-14 ~-6`
             );
           }, 2);
           player.runCommandAsync("gamemode survival @s");
@@ -143,30 +156,22 @@ export function islandCreator(player: Player) {
 // Check island names
 export function testValidName(player: Player, name: string) {
   if (testDuplicate(name) == true) {
-    player.sendMessage(
-      `${PREFIX.island} §4Error: §cIsland name is already taken.`
-    );
+    sendError(player, `Island name is already taken.`);
     return false;
   } else if (bannedWords.find((x) => x.includes(name))) {
-    player.sendMessage(
-      `${PREFIX.island} §4Error: §cIsland name contains a banned word.`
-    );
+    sendError(player, `Island name contains a banned word.`);
     return false;
-  } else if (name.length < 3) {
-    player.sendMessage(
-      `${PREFIX.island} §4Error: §cIsland name must be at least 3 characters long.`
-    );
+  } else if (name.length < 4) {
+    sendError(player, `Island name must be at least 4 characters long.`);
     return false;
   } else if (name.length > 19) {
-    player.sendMessage(
-      `${PREFIX.island} §4Error: §cIsland name must be at most 18 characters long.`
-    );
+    sendError(player, `Island name must be at most 18 characters long.`);
     return false;
   } else if (/^[a-zA-Z]+$/.test(name) === false) {
-    player.sendMessage(
-      `${PREFIX.island} §4Error: §cIsland name must not contain symbols, numbers, or spaces.`
+    sendError(
+      player,
+      `Island name must not contain symbols, numbers, or spaces.`
     );
-    return false;
   }
   return true;
 }

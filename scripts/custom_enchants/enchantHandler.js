@@ -91,28 +91,27 @@ export class Enchant {
     const lore = item.getLore();
     const enchantData = this.enchants[enchantId];
     if (!enchantData) return item;
-    const enchantsId = lore.findIndex((v) => v.startsWith("§e§n§c§h§a§n§t§s"));
-    if (enchantsId === -1 && callback) {
+    const enchantsId = lore.filter((v) => v.startsWith("§e§n§c§h"));
+    if (!enchantsId && callback) {
       const newLore = callback({ info: enchantData, id: enchantId, level: 1 });
       if (!newLore) return item;
-      lore.push(`§e§n§c§h§a§n§t§s§r${newLore}`);
+      lore.push(`§e§n§c§h§r${newLore}`);
       item.setLore(lore);
       return item;
     }
-    const enchants = (lore[enchantsId] ?? "§e§n§c§h§a§n§t§s").slice(16).split("\n");
-    const id = enchants.findIndex((v) => v.startsWith(`§r${enchantData.display}`));
+    const id = lore.findIndex((v) => v.startsWith(`§r${enchantData.display}`));
     const newLore = callback({
       info: enchantData,
       id: enchantId,
-      level: id === -1 ? 1 : Number(enchants[id].split(" ")[1]),
+      level: id === -1 ? 1 : Number(lore[id].split(" ")[1]),
     });
-    if (id === -1 && newLore) enchants.push("§r" + newLore);
-    else if (newLore) enchants[id] = "§r" + newLore;
+    if (id === -1 && newLore) lore.push("§e§n§c§h§r" + newLore);
+    else if (newLore) lore[id] = "§r" + newLore;
     else {
-      enchants.splice(id, 1);
+      lore.splice(id, 1);
     }
-    if (enchants.length === 0) lore.splice(enchantId, 1);
-    else lore[enchantsId] = "§e§n§c§h§a§n§t§s" + enchants.join("\n");
+    if (lore.length === 0) lore.splice(enchantId, 1);
+    else lore[enchantsId] = "§e§n§c§h" + lore.join("\n");
     item.setLore(lore);
     return item;
   }
@@ -120,34 +119,38 @@ export class Enchant {
     return this.alterEnch(
       item,
       enchantId,
-      (data) => `${data.info.display} ${Math.min(level ?? 1, data.info.maxLevel)}`
+      (data) => `${data.info.display} ${level ?? 1}`
     );
   }
   static removeEnchant(item, enchantId) {
     return this.alterEnch(item, enchantId, (data) => undefined);
   }
   static getEnchant(item, enchantId) {
-    let enchData;
-    this.alterEnch(item, enchantId, (data) => {
-      enchData = data;
-      return `${data.info.display} ${data.level}`;
-    });
-    return enchData;
+    const lore = item.getLore().find((v) => v.startsWith("§e§n§c§h"));
+    if (!lore) return undefined;
+    const split = lore.split(" ");
+    const id = this.displayToId[split[0].slice(2)];
+    if (!id) return undefined;
+    const info = this.enchants[id];
+    return { info, level: Number(split[1]), id };
   }
+
   static getEnchants(item) {
-    const lore = item.getLore();
-    const enchants = lore.find((v) => v.startsWith("§e§n§c§h§a§n§t§s"));
-    if (!enchants) return [];
-    return enchants
-      .slice(16)
-      .split("\n")
-      .map((v) => {
-        const split = v.split(" ");
-        const id = this.displayToId[split[0].slice(2)];
-        if (!id) return;
-        const info = this.enchants[id];
-        return { info, level: Number(split[1]), id };
-      });
+    const lore = item.getLore().filter((v) => v.startsWith("§e§n§c§h"));
+    if (lore.length == 0) return [];
+    let enchants = [];
+    for (let l of lore) {
+      l.slice(8)
+        .split("\n")
+        .map((v) => {
+          const split = v.split(" ");
+          const id = this.displayToId[split[0].slice(2)];
+          if (!id) return;
+          const info = this.enchants[id];
+          enchants.push({ info, level: Number(split[1]), id });
+        });
+    }
+    return enchants;
   }
   static enchants = {};
   static displayToId = {};
@@ -167,36 +170,50 @@ function runEnchants(player, type, args) {
   });
 }
 
-world.afterEvents.entityHitEntity.subscribe(({ damagingEntity: player, hitEntity: entity }) => {
-  if (player.typeId !== "minecraft:player") return;
-  runEnchants(player, "entityHit", { entity });
-});
+world.afterEvents.entityHitEntity.subscribe(
+  ({ damagingEntity: player, hitEntity: entity }) => {
+    if (player.typeId !== "minecraft:player") return;
+    runEnchants(player, "entityHit", { entity });
+  }
+);
 
-world.afterEvents.entityHitBlock.subscribe(({ damagingEntity: player, hitBlock: block, blockFace }) => {
-  if (player.typeId !== "minecraft:player") return;
-  runEnchants(player, "blockHit", { block, blockFace });
-});
+world.afterEvents.entityHitBlock.subscribe(
+  ({ damagingEntity: player, hitBlock: block, blockFace }) => {
+    if (player.typeId !== "minecraft:player") return;
+    runEnchants(player, "blockHit", { block, blockFace });
+  }
+);
 
-world.afterEvents.entityHurt.subscribe(({ hurtEntity, damageSource, damage }) => {
-  if (hurtEntity.typeId === "minecraft:player") runEnchants(hurtEntity, "userHurt", { damageSource, damage });
-  if (damageSource.damagingEntity?.typeId === "minecraft:player")
-    runEnchants(damageSource.damagingEntity, "entityHurt", { entity: hurtEntity, damage });
-});
+world.afterEvents.entityHurt.subscribe(
+  ({ hurtEntity, damageSource, damage }) => {
+    if (hurtEntity.typeId === "minecraft:player")
+      runEnchants(hurtEntity, "userHurt", { damageSource, damage });
+    if (damageSource.damagingEntity?.typeId === "minecraft:player")
+      runEnchants(damageSource.damagingEntity, "entityHurt", {
+        entity: hurtEntity,
+        damage,
+      });
+  }
+);
 
-world.afterEvents.playerBreakBlock.subscribe(({ player, block, brokenBlockPermutation }) => {
-  if (player.typeId !== "minecraft:player") return;
-  runEnchants(player, "blockBreak", { block, brokenBlockPermutation });
-});
+world.afterEvents.playerBreakBlock.subscribe(
+  ({ player, block, brokenBlockPermutation }) => {
+    if (player.typeId !== "minecraft:player") return;
+    runEnchants(player, "blockBreak", { block, brokenBlockPermutation });
+  }
+);
 
 world.afterEvents.itemUse.subscribe(({ source: player }) => {
   if (player.typeId !== "minecraft:player") return;
   runEnchants(player, "itemUse", {});
 });
 
-world.afterEvents.itemUseOn.subscribe(({ source: player, block, blockFace, faceLocation }) => {
-  if (player.typeId !== "minecraft:player") return;
-  runEnchants(player, "itemUse", { block, blockFace, faceLocation });
-});
+world.afterEvents.itemUseOn.subscribe(
+  ({ source: player, block, blockFace, faceLocation }) => {
+    if (player.typeId !== "minecraft:player") return;
+    runEnchants(player, "itemUse", { block, blockFace, faceLocation });
+  }
+);
 
 system.runInterval(() => {
   for (const player of world.getPlayers()) {

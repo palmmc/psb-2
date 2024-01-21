@@ -10,6 +10,8 @@ import {
 } from "@minecraft/server";
 import { JsonDatabase } from "../database";
 import {
+  Island,
+  IslandMethods,
   PREFIX,
   formatNumber,
   fromRomanNumeral,
@@ -20,8 +22,10 @@ import {
   toRomanNumeral,
 } from "../main";
 import { getIslandOn } from "../island/manage";
-import { BlockOres, DEF_ORES } from "../systems/miscellaneous";
+import { BlockOres, DEF_ORES } from "./miscellaneous";
 import { ChestFormData } from "../chest-ui/forms";
+import { SpawnerEntities } from "./spawner";
+import { formatItemName } from "../economy/itemcloud";
 
 const generatorDB = new JsonDatabase("generatorDB", world);
 const overworld = world.getDimension("overworld");
@@ -286,12 +290,12 @@ const upgradeLists = {
   },
 };
 
-interface genUpgrades {
+export interface genUpgrades {
   speed: number;
   fortune: number;
 }
 
-class Generator {
+export class Generator {
   public type: genType;
   public ownerID: string;
   public identifier?: string;
@@ -492,31 +496,49 @@ function upgradeMenu(player: Player, gen: Generator) {
   });
 }
 
-world.afterEvents.playerInteractWithBlock.subscribe((data) => {
-  // Check block.
-  if (!Object.values(genItems).includes(data.block.typeId.slice(10))) return;
-  // Cooldown
-  if (data.player.getItemCooldown("upgrade") > 0) return;
-  // Get gen data
-  let key = JSON.stringify({
-    x: data.block.location.x,
-    y: data.block.location.y,
-    z: data.block.location.z,
-  });
-  let gen: Generator = generatorDB.get(key);
-  if (!gen) return;
-  let player = data.player;
-  // Check for ownership.
-  if (gen.ownerID == player.id) upgradeMenu(player, gen);
-  player.startItemCooldown("upgrade", 20);
-});
-
-function getSpawnerName(identifier: string) {
-  if (identifier == "cow") return "§l§6Cow";
+export function clearIslandGenerators(island: Island) {
+  let g: Generator;
+  for (g of generatorDB.values()) {
+    if (IslandMethods.isInBounds(island, g.location) == false) return;
+    generatorDB.delete(
+      JSON.stringify({
+        x: g.location.x,
+        y: g.location.y,
+        z: g.location.z,
+      })
+    );
+  }
 }
 
+world.beforeEvents.playerInteractWithBlock.subscribe((data) => {
+  // Check block.
+  if (!Object.values(genItems).includes(data.block.typeId.slice(10))) return;
+  if (
+    Object.values(genItems).includes(data.itemStack?.typeId.slice(10) ?? "")
+  ) {
+    data.cancel = true;
+    return;
+  }
+  system.run(() => {
+    // Cooldown
+    if (data.player.getItemCooldown("upgrade") > 0) return;
+    // Get gen data
+    let key = JSON.stringify({
+      x: data.block.location.x,
+      y: data.block.location.y,
+      z: data.block.location.z,
+    });
+    let gen: Generator = generatorDB.get(key);
+    if (!gen) return;
+    let player = data.player;
+    // Check for ownership.
+    if (gen.ownerID == player.id) upgradeMenu(player, gen);
+    player.startItemCooldown("upgrade", 20);
+  });
+});
+
 export const genItems = {
-  oregen: "brown_glazed_terracotta",
+  oregen: "lodestone",
   autominer: "slime",
   spawner: "mob_spawner",
 };
@@ -527,7 +549,7 @@ const genDisplays = {
   spawner: "§9Spawner§r",
 };
 
-function giveGen(player: Player, gen: Generator, amount: number) {
+export function giveGen(player: Player, gen: Generator, amount: number) {
   let type = gen.type;
   let item = new ItemStack(genItems[type], 1);
   item.amount = amount;
@@ -538,9 +560,9 @@ function giveGen(player: Player, gen: Generator, amount: number) {
   ]);
   item.nameTag = genDisplays[type];
   if (type == "spawner")
-    item.nameTag = `§r${getSpawnerName(gen.identifier ?? "cow")} ${
-      item.nameTag
-    }`;
+    item.nameTag = `§r${
+      SpawnerEntities.find((x) => x.id == gen.identifier)?.name
+    } ${item.nameTag}`;
   player.getComponent("inventory")?.container?.addItem(item);
 }
 
@@ -561,7 +583,8 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
   // Check if placement is allowed.
   if (
     data.face != Direction.Up ||
-    player.getItemCooldown("genPlacement") != 0
+    player.getItemCooldown("genPlacement") != 0 ||
+    Object.values(genItems).includes(data.block?.typeId.slice(10) ?? "")
   ) {
     data.cancel = true;
     return;
@@ -574,15 +597,31 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
     );
     return;
   }
+  let type = Object.keys(genItems).find(
+    (x) => genItems[x as keyof typeof genItems] == item.typeId.slice(10)
+  ) as genType;
+  if (IslandMethods.addLimit(island, type, 1) == -2) {
+    data.cancel = true;
+    system.run(() => {
+      sendError(
+        player,
+        `Island has reached the ${type} limit.\n§dUse §e-is expand §dto increase it.`,
+        PREFIX.island
+      );
+    });
+    return;
+  }
   system.run(() => {
+    if (!island) return;
     // Retrieve data.
     let lore = item.getLore();
-    let type = Object.keys(genItems).find(
-      (x) => genItems[x as keyof typeof genItems] == item.typeId.slice(10)
-    ) as genType;
     let identifier = undefined;
     if (type == "spawner")
-      identifier = item.nameTag?.slice(6).split(" ")[0].toLowerCase();
+      identifier = item.nameTag
+        ?.slice(6, item.nameTag.length - 12)
+        .split(" ")
+        .join("_")
+        .toLowerCase();
     // Create generator object.
     let gen = new Generator(
       type as genType,
@@ -607,8 +646,6 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
       z: gen.location.z,
     });
     generatorDB.set(key, gen);
-    island?.addLimit(type, 1);
-    island?.updateData();
     // Send alert.
     sendAlert(
       player,
@@ -633,11 +670,12 @@ world.beforeEvents.playerBreakBlock.subscribe((data) => {
   if (!Object.values(genItems).includes(data.block.typeId.slice(10))) return;
   let player = data.player;
   // Check if removal is allowed.
-  if (player.getItemCooldown("genPlacement") != 0) {
+  let island = getIslandOn(player);
+  if (!island || player.getItemCooldown("genPlacement") != 0) {
     data.cancel = true;
     return;
   }
-  if (!getIslandOn(player)?.owners.find((x) => x.id == player.id)) {
+  if (!island?.owners.find((x) => x.id == player.id)) {
     data.cancel = true;
     system.run(() =>
       sendError(player, `§cYou must be §eIsland Owner §cto break that here.`)
@@ -645,6 +683,7 @@ world.beforeEvents.playerBreakBlock.subscribe((data) => {
     return;
   }
   system.run(() => {
+    if (!island) return;
     // Remove generator data.
     let key = JSON.stringify({
       x: data.block.location.x,
@@ -655,6 +694,7 @@ world.beforeEvents.playerBreakBlock.subscribe((data) => {
     gen.upgrades.speed++;
     gen.upgrades.fortune++;
     generatorDB.delete(key);
+    IslandMethods.removeLimit(island, gen.type, 1);
     // Recreate and add item.
     giveGen(player, gen, 1);
     // Send alert.
@@ -772,10 +812,14 @@ const genBehavior = {
       );
       obj?.setScore(c, 1);
     } else count = obj?.addScore(c, 1) ?? 0;
+    world.scoreboard
+      .getObjective("mobHealth")
+      ?.setScore(
+        c,
+        SpawnerEntities.find((x) => x.id == gen.identifier)?.health ?? -1
+      );
     if (count > 129) return;
-    c.nameTag = `§l§c${
-      c.typeId.charAt(10).toUpperCase() + c.typeId.slice(11)
-    } §r§ex${count}`;
+    c.nameTag = `§l§c${formatItemName(gen.identifier ?? "")} §r§ex${count}`;
     //console.warn(`Generated MOB`);
   },
 };

@@ -46,7 +46,7 @@ class ChestFormData {
     const ID = typeIdToID.get(
       iconPath.includes(":") ? iconPath : "minecraft:" + iconPath
     );
-    if (!ID) iconPath = backupTexture;
+    if (!ID && !iconPath.startsWith("textures/")) iconPath = backupTexture;
     this.#buttonArray.splice(slot, 1, [
       `stack#${Math.min(Math.max(stackSize, 1) || 1, 99)
         .toString()
