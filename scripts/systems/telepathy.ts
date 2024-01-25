@@ -12,6 +12,7 @@ import { itemsBanned } from "./miscellaneous";
 import { BREAK_XP } from "../island/levels";
 import { genItems } from "./generators";
 import { Enchant } from "../custom_enchants/enchantHandler";
+import { giveRelic, rollRelic } from "./relic";
 
 // EVENT HANDLER
 world.afterEvents.playerBreakBlock.subscribe((data) => {
@@ -32,6 +33,7 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
   });
   if (item && inv) {
     let itemStack = new ItemStack(item[1] as string, 1);
+    giveRelic(data.player, rollRelic("ORE"));
     let mh = data.player
       .getComponent("equippable")
       ?.getEquipment(EquipmentSlot.Mainhand);
@@ -57,11 +59,17 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
       }
     }
     inv.addItem(itemStack);
+    /*
+    data.player.runCommandAsync(
+      `give @s ${itemStack.typeId} ${itemStack.amount}`
+    );
+    */
     if ((item[3] as number) > 0) {
       data.player.runCommandAsync(
         `xp ${randomIntFromInterval(item[2] as number, item[3] as number)} @s`
       );
-      data.player.playSound(`random.orb`, { volume: 0.5 });
+      if (!data.player.hasTag("pref:quieter_mining"))
+        data.player.playSound(`random.orb`, { volume: 0.5 });
     }
   } else if (inv) {
     item = CROP_DROPS.find((x) => x[1] == data.brokenBlockPermutation.type.id);
@@ -84,7 +92,6 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
 
 // PREVENT PLACE/BREAK XP
 world.beforeEvents.playerPlaceBlock.subscribe((data) => {
-  return;
   let item = BREAK_XP.find((x) => {
     return x[0] == data.itemStack.typeId && (x[1] as number) >= 0 && !x[3];
   });

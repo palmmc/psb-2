@@ -11,10 +11,8 @@ import {
 } from "@minecraft/server";
 import {
   PREFIX,
-  playerDB,
   sendAlert,
   sendError,
-  islandDB,
   Island,
   MemberPermissions,
   IslandMethods,
@@ -28,6 +26,17 @@ import {
   DEF_XP_BLOCKS,
   itemsBanned,
 } from "../systems/miscellaneous";
+import { JsonDatabase } from "../database";
+
+// Initialize Databases
+var playerDB: any = undefined;
+var islandDB: any = undefined;
+world.afterEvents.worldInitialize.subscribe((data) => {
+  system.runTimeout(() => {
+    playerDB = new JsonDatabase("playerDB", world);
+    islandDB = new JsonDatabase("islandDB", world);
+  }, 180);
+});
 
 // DEFINITIONS
 const overworld = world.getDimension("overworld");

@@ -15,7 +15,6 @@ import {
   PREFIX,
   formatNumber,
   fromRomanNumeral,
-  playerDB,
   randomIntFromInterval,
   sendAlert,
   sendError,
@@ -27,10 +26,19 @@ import { ChestFormData } from "../chest-ui/forms";
 import { SpawnerEntities } from "./spawner";
 import { formatItemName } from "../economy/itemcloud";
 
-const generatorDB = new JsonDatabase("generatorDB", world);
 const overworld = world.getDimension("overworld");
 
 // genData: { location: Vector, upgrades: {...} }
+
+// Initialize Databases
+var playerDB: any = undefined;
+var generatorDB: any = undefined;
+world.afterEvents.worldInitialize.subscribe((data) => {
+  system.runTimeout(() => {
+    playerDB = new JsonDatabase("playerDB", world);
+    generatorDB = new JsonDatabase("generatorDB", world);
+  }, 180);
+});
 
 const SPEED_DISPLAY = "§aSpeed";
 const FORTUNE_DISPLAY = "§bFortune";
@@ -48,7 +56,7 @@ const upgradeLists = {
         {
           // Base Upgrade
           amount: 120,
-          cost: 0.5,
+          cost: 0.3,
         },
         {
           amount: 100,
@@ -811,14 +819,14 @@ const genBehavior = {
         )
       );
       obj?.setScore(c, 1);
-    } else count = obj?.addScore(c, 1) ?? 0;
+    } else if ((obj?.getScore(c) ?? -1) < 129) count = obj?.addScore(c, 1) ?? 0;
+    else count = obj?.getScore(c) ?? 1;
     world.scoreboard
       .getObjective("mobHealth")
       ?.setScore(
         c,
         SpawnerEntities.find((x) => x.id == gen.identifier)?.health ?? -1
       );
-    if (count > 129) return;
     c.nameTag = `§l§c${formatItemName(gen.identifier ?? "")} §r§ex${count}`;
     //console.warn(`Generated MOB`);
   },

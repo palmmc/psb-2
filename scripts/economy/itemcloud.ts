@@ -13,20 +13,22 @@ import {
   system,
   world,
 } from "@minecraft/server";
-import {
-  PREFIX,
-  playerDB,
-  randomIntFromInterval,
-  sendAlert,
-  sendError,
-} from "../main";
+import { PREFIX, randomIntFromInterval, sendAlert, sendError } from "../main";
 import { JsonDatabase } from "../database";
 
-export const itemCloud = new JsonDatabase("itemCloud", world);
+// Initialize Databases
+var playerDB: any = undefined;
+var itemCloud: any = undefined;
+world.afterEvents.worldInitialize.subscribe((data) => {
+  system.runTimeout(() => {
+    playerDB = new JsonDatabase("playerDB", world);
+    itemCloud = new JsonDatabase("itemCloud", world);
+  }, 180);
+});
 
 export function formatItemName(item: string) {
   let itemName = "";
-  if (item.startsWith("palm:")) item = item.slice(5);
+  if (item.includes(":")) item = item.substring(item.indexOf(":") + 1);
   item.split("_").forEach((i) => {
     itemName = itemName + `${i.charAt(0).toUpperCase() + i.slice(1)} `;
   });

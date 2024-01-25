@@ -13,23 +13,31 @@ import {
   ModalFormResponse,
 } from "@minecraft/server-ui";
 import { bannedWords } from "../resources/bannedwords";
-import {
-  PREFIX,
-  playerDB,
-  islandDB,
-  sendError,
-  sendAlert,
-  Island,
-} from "../main";
+import { PREFIX, sendError, sendAlert, Island } from "../main";
 import { ISLAND_ROLES } from "./permissions";
+import { JsonDatabase } from "../database";
 
 // SETTINGS //
-const defaultData = { slot: -1, coins: 0 }; // { coins: 0, island: '', }
+// { name: '', coins: 0, island: '', }
+
+// Initialize Databases
+var playerDB: any = undefined;
+var islandDB: any = undefined;
+world.afterEvents.worldInitialize.subscribe((data) => {
+  system.runTimeout(() => {
+    playerDB = new JsonDatabase("playerDB", world);
+    islandDB = new JsonDatabase("islandDB", world);
+  }, 180);
+});
 
 world.afterEvents.playerSpawn.subscribe((data) => {
   if (!data.initialSpawn) return;
   if (data.player.hasTag("setData")) return;
-  playerDB.set(data.player.id, { coins: 100, island: "" });
+  playerDB.set(data.player.id, {
+    name: data.player.nameTag,
+    coins: 100,
+    island: "",
+  });
   data.player.addTag("setData");
 });
 
@@ -54,10 +62,10 @@ export function islandCreator(player: Player) {
     gui.dropdown(
       "§6Generator:\n§f[§6§l?§r§f] §7This changes how your island will be generated.",
       [
-        "§7Default§f - Recommended choice.",
-        "§aClassic§f - Classic Skyblock.",
-        "§cShattered§f - Minimal resources.",
-        "§bMemorial§f - In memoriam regis.",
+        "Default - Recommended choice.",
+        "§2Classic§r - Classic Skyblock.",
+        "§4Shattered§r - Minimal resources.",
+        "§3Memorial§r - In memoriam regis.",
       ]
     );
     gui.toggle("Allow Visitors", true);

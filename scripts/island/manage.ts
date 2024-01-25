@@ -8,9 +8,7 @@ import {
 } from "@minecraft/server";
 import {
   PREFIX,
-  playerDB,
   sendAlert,
-  islandDB,
   sendError,
   formatNumber,
   Island,
@@ -34,6 +32,17 @@ import {
 } from "./permissions";
 import { clearIslandGenerators } from "../systems/generators";
 import { formatItemName } from "../economy/itemcloud";
+import { JsonDatabase } from "../database";
+
+// Initialize Databases
+var playerDB: any = undefined;
+var islandDB: any = undefined;
+world.afterEvents.worldInitialize.subscribe((data) => {
+  system.runTimeout(() => {
+    playerDB = new JsonDatabase("playerDB", world);
+    islandDB = new JsonDatabase("islandDB", world);
+  }, 180);
+});
 
 // DEFINTIONS
 
@@ -342,29 +351,41 @@ system.runInterval(() => {
     //
     const loc = player.location;
     const idata = getIslandOn(player);
-    if (!idata) continue;
-    if (IslandMethods.isInBounds(idata, player.location) == true) continue;
-    player.applyKnockback(
-      -(loc.x - idata.spawn.x),
-      -(loc.z - idata.spawn.z),
-      1,
-      0.5
-    );
-    player.playSound(`item.trident.return`, { volume: 0.6 });
-    player.sendMessage(
-      `${PREFIX.island} §cYou have reached the bounds of this island.\n§dUse §e-is expand §dto increase them.`
-    );
-    overworld.spawnParticle(
-      `minecraft:explosion_manual`,
-      player.getHeadLocation()
-    );
+    if (loc.y <= -32) {
+      if (idata) warpIsland(player);
+      else warpLobby(player);
+      sendAlert(player, `§bYou have been saved from the void.\n§7Be careful!`);
+    }
+    if (!idata) {
+      if (loc.x < 500 || player.hasTag("perm:allowOffline")) continue;
+      sendAlert(player, `§cKicked from Island: Island Owner is §4offline§c.`);
+      warpLobby(player);
+      return;
+    }
+    if (IslandMethods.isInBounds(idata, loc) == true) continue;
+    if (loc.y > 16) {
+      player.applyKnockback(
+        -(loc.x - idata.spawn.x),
+        -(loc.z - idata.spawn.z),
+        1,
+        0.5
+      );
+      player.playSound(`item.trident.return`, { volume: 0.6 });
+      player.sendMessage(
+        `${PREFIX.island} §cYou have reached the bounds of this island.\n§dUse §e-is expand §dto increase them.`
+      );
+      overworld.spawnParticle(
+        `minecraft:explosion_manual`,
+        player.getHeadLocation()
+      );
+    }
   }
 }, 5);
 
 // ISLAND EXPANSION
 export const MAX_SIZE = 184; // Max island size.
 export const UPGRADE_SIZE = 8; // Size increase per upgrade.
-const UPGRADE_LEVEL = 16; // Level requirement increase per upgrade.
+const UPGRADE_LEVEL = 10; // Level requirement increase per upgrade.
 
 // LIMIT INCREASES
 // [amount, interval, max]
@@ -612,7 +633,7 @@ export function visitIslandUI(player: Player) {
   });
   let e = 10;
   let i = e;
-  if (world.getPlayers().length <= 2) {
+  if (world.getPlayers().filter((x) => x.name != "PalmSkyblock").length == 1) {
     sendError(player, `There are no other players online.`);
     return;
   }

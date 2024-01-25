@@ -1,0 +1,26 @@
+{
+    "format_version": "1.20.30",
+    "minecraft:item": {
+        "description": {
+            "identifier": "palm:potato",
+            "menu_category": {
+                "category": "nature",
+                "group": "itemGroup.name.crop"
+            }
+        },
+        "components": {
+            "minecraft:icon": {
+                "texture": "potato"
+            },
+            "minecraft:food": {
+                "nutrition": 1,
+                "saturation_modifier": 0.6
+            },
+            "minecraft:use_animation": "eat",
+            "minecraft:use_duration": 1.6,
+            "minecraft:block_placer": {
+                "block": "palm:potatoes"
+            }
+        }
+    }
+}

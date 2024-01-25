@@ -17,7 +17,6 @@ import {
   PREFIX,
   formatNumber,
   getItemAmount,
-  playerDB,
   sendAlert,
   sendError,
   toRomanNumeral,
@@ -30,9 +29,19 @@ import { SpawnerEntities } from "../systems/spawner";
 import {
   CE_RARITY,
   CHARMS,
+  CHARM_DISPLAYS,
   giveBookCE,
   giveCharm,
 } from "../custom_enchants/customEnchants";
+import { JsonDatabase } from "../database";
+
+// Initialize Databases
+var playerDB: any = undefined;
+world.afterEvents.worldInitialize.subscribe((data) => {
+  system.runTimeout(() => {
+    playerDB = new JsonDatabase("playerDB", world);
+  }, 180);
+});
 
 const overworld = world.getDimension("overworld");
 
@@ -1511,8 +1520,8 @@ export const ShopItems = [
   },
   {
     category: CATEGORY.items,
-    texture: "textures/items/gold_ingot.png",
-    item: "gold_ingot",
+    texture: "textures/items/dye_powder_blue.png",
+    item: "lapis_lazuli",
     price: 1100,
     sell: 60,
   },
@@ -1525,8 +1534,8 @@ export const ShopItems = [
   },
   {
     category: CATEGORY.items,
-    texture: "textures/items/dye_powder_blue.png",
-    item: "lapis_lazuli",
+    texture: "textures/items/gold_ingot.png",
+    item: "gold_ingot",
     price: 1500,
     sell: 80,
   },
@@ -1546,10 +1555,129 @@ export const ShopItems = [
   },
   {
     category: CATEGORY.items,
-    texture: "textures/items/arrow.png",
-    item: "arrow",
-    price: 233,
-    sell: 0,
+    texture: "",
+    item: "chicken",
+    price: 0,
+    sell: 80,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "cooked_chicken",
+    price: 0,
+    sell: 90,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "feather",
+    price: 0,
+    sell: 110,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "porkchop",
+    price: 0,
+    sell: 100,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "cooked_porkchop",
+    price: 0,
+    sell: 135,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "mutton",
+    price: 0,
+    sell: 115,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "cooked_mutton",
+    price: 0,
+    sell: 145,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "white_wool",
+    price: 0,
+    sell: 130,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "beef",
+    price: 0,
+    sell: 140,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "cooked_beef",
+    price: 0,
+    sell: 175,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "leather",
+    price: 0,
+    sell: 160,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "rotten_flesh",
+    price: 0,
+    sell: 200,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "string",
+    price: 0,
+    sell: 180,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "spider_eye",
+    price: 0,
+    sell: 240,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "gunpowder",
+    price: 0,
+    sell: 230,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "bone",
+    price: 0,
+    sell: 220,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "blaze_rod",
+    price: 0,
+    sell: 280,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "",
+    item: "red_flower",
+    price: 0,
+    sell: 150,
   },
   // FARMING
   // FOOD
@@ -1645,6 +1773,7 @@ export const ShopItems = [
     price: 0,
     sell: 35,
   },
+  /*
   {
     category: CATEGORY.farming,
     texture: "textures/items/reeds.png",
@@ -1652,6 +1781,7 @@ export const ShopItems = [
     price: 375,
     sell: 25,
   },
+  */
   {
     category: CATEGORY.farming,
     texture: "textures/blocks/cactus_side.tga",
@@ -1781,7 +1911,7 @@ export const ShopItems = [
       );
     },
     item: "lodestone",
-    price: 20000,
+    price: 18000,
     sell: 0,
   },
   {
@@ -1802,7 +1932,7 @@ export const ShopItems = [
       );
     },
     item: "slime",
-    price: 400000,
+    price: 360000,
     sell: 0,
   },
   {
@@ -1815,7 +1945,7 @@ export const ShopItems = [
     },
     item: "book",
     currency: "xp",
-    price: 1250,
+    price: 600,
     sell: 0,
   },
   {
@@ -1828,7 +1958,7 @@ export const ShopItems = [
     },
     item: "book",
     currency: "xp",
-    price: 3500,
+    price: 2000,
     sell: 0,
   },
   {
@@ -1841,7 +1971,7 @@ export const ShopItems = [
     },
     item: "book",
     currency: "xp",
-    price: 12500,
+    price: 8500,
     sell: 0,
   },
   {
@@ -1854,13 +1984,13 @@ export const ShopItems = [
     },
     item: "book",
     currency: "xp",
-    price: 35000,
+    price: 32000,
     sell: 0,
   },
   {
     category: CATEGORY.cebooks,
     texture: "textures/items/nautilus_shell.png",
-    name: `§@§r§f§5Charm ${CHARMS.binding.display} §r§8(${CHARMS.basic}§8)`,
+    name: `§@§r§f§5Charm ${CHARMS.binding.display} §r§8(${CHARM_DISPLAYS.basic}§8)`,
     rarity: ITEMRARITY.epic,
     function: function shopCharm(player: Player, amount: number) {
       giveCharm(player, "binding", "basic", amount);
@@ -1868,6 +1998,32 @@ export const ShopItems = [
     item: "nautilus_shell",
     currency: "xp",
     price: 1500,
+    sell: 0,
+  },
+  {
+    category: CATEGORY.cebooks,
+    texture: "textures/items/nautilus_shell.png",
+    name: `§@§r§f§5Charm ${CHARMS.precision.display} §r§8(${CHARM_DISPLAYS.basic}§8)`,
+    rarity: ITEMRARITY.epic,
+    function: function shopCharm(player: Player, amount: number) {
+      giveCharm(player, "precision", "basic", amount);
+    },
+    item: "nautilus_shell",
+    currency: "xp",
+    price: 1500,
+    sell: 0,
+  },
+  {
+    category: CATEGORY.cebooks,
+    texture: "textures/items/nautilus_shell.png",
+    name: `§@§r§f§5Charm ${CHARMS.expulsion.display} §r§8(${CHARM_DISPLAYS.basic}§8)`,
+    rarity: ITEMRARITY.epic,
+    function: function shopCharm(player: Player, amount: number) {
+      giveCharm(player, "expulsion", "basic", amount);
+    },
+    item: "nautilus_shell",
+    currency: "xp",
+    price: 2000,
     sell: 0,
   },
 ];
@@ -2189,11 +2345,11 @@ export function ShopTabBeta(
     let x = items[i];
     let p = new Array();
     if (x.price == 0) p.push([`§9Price: §c§lNFS`]);
-    else {
-      if (x.price <= coins) p.push([`§9Price: §2$${formatNumber(x.price)}§8`]);
-      else p.push([`§9Price: §c$${formatNumber(x.price)}§8`]);
-      if (x.currency == "xp") p = [`§9Price: §2${formatNumber(x.price)} §aXP`];
-    }
+    else if (x.price <= coins)
+      p.push([`§9Price: §2$${formatNumber(x.price)}§8`]);
+    else p.push([`§9Price: §c$${formatNumber(x.price)}§8`]);
+    if (x.currency == "xp") p = [`§9Price: §2${formatNumber(x.price)} §aXP`];
+    if (x.sell > 0) p.push(`§3Value: §b$${formatNumber(x.sell)}`);
     let item = x.item;
     if (item.startsWith("white_")) item = item.slice(6);
     else if (x.category == CATEGORY.flowers) item = x.texture;

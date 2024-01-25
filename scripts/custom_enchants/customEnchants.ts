@@ -468,7 +468,7 @@ new Enchant("flex", {
     if (data.player.isSneaking == true) {
       if (
         ((data.player.getProperty(`property:size`) as number) ?? -1) >=
-        2.5 - 0.25 * data.level
+        1.25 + 0.25 * data.level
       ) {
         data.player.triggerEvent(`palm:min_size`);
       } else {
@@ -502,51 +502,8 @@ new Enchant("flex", {
 
 // END OF ENCHANTS
 
-// GIVE CEBOOK
-world.beforeEvents.chatSend.subscribe((data) => {
-  let player = data.sender;
-  let msg = data.message;
-  if (msg.startsWith("-giveceopen") && player.nameTag == "The Palm Healer") {
-    data.cancel = true;
-    system.run(() => {
-      let ench = msg.split(" ")[1];
-      let level = Number(msg.split(" ")[2]);
-      if (!ench || !level) return;
-      giveOpenCE(player, ench, level);
-    });
-  } else if (
-    msg.startsWith("-givecebook") &&
-    player.nameTag == "The Palm Healer"
-  ) {
-    data.cancel = true;
-    system.run(() => {
-      let rarity = msg.split(" ")[1] as keyof typeof CE_RARITY;
-      if (!rarity) return;
-      giveBookCE(player, rarity, 1);
-    });
-  } else if (
-    msg.startsWith("-givecharm") &&
-    player.nameTag == "The Palm Healer"
-  ) {
-    data.cancel = true;
-    system.run(() => {
-      let type = msg.split(" ")[1] as keyof typeof CHARMS;
-      let rarity = msg.split(" ")[2] as keyof typeof CHARMS.binding;
-      if (!rarity) return;
-      giveCharm(player, type, rarity, 1);
-    });
-  } else if (msg.startsWith("-charm") && player.nameTag == "The Palm Healer") {
-    data.cancel = true;
-    system.run(() => {
-      let type = msg.split(" ")[1] as keyof typeof CHARMS;
-      if (!type) return;
-      system.runTimeout(() => useCharm(player, type), 2);
-    });
-  }
-});
-
 // GIVE OPEN CEBOOK
-function giveOpenCE(player: Player, name: string, level: number) {
+export function giveOpenCE(player: Player, name: string, level: number) {
   //console.warn(Object.keys(Enchant.enchants));
   //@ts-ignore
   let enchant = Enchant.enchants[name];
@@ -584,11 +541,18 @@ export function giveBookCE(
   equip.addItem(enchItem);
 }
 
+export const CHARM_DISPLAYS = {
+  basic: "§bBasic",
+  advanced: "§6Advanced",
+  superior: "§cSuperior",
+};
+
 export const CHARMS = {
   // Charm of Binding - Increases the grade quality of a refined enchantment.
   binding: {
     // Increase in quality per rarity
     display: "§3Binding",
+    description: ["Increases the grade quality of", "a refined enchantment."],
     basic: [10, 25],
     advanced: [20, 40],
     superior: [35, 50],
@@ -597,14 +561,22 @@ export const CHARMS = {
   precision: {
     // Increase in level per rarity
     display: "§bPrecision",
-    basic: [1, 2],
-    advanced: [1, 3],
-    superior: [2, 4],
+    description: [
+      "Increases the level of an enchantment",
+      "up to a max of 10.",
+    ],
+    basic: [1, 3],
+    advanced: [1, 4],
+    superior: [2, 5],
   },
   // Charm of Expulsion - Exiles a selected an enchantment from the item with a percent chance success rate.
   expulsion: {
     // Increase in success per rarity
     display: "§cExpulsion",
+    description: [
+      "Exiles a selected an enchantment from the item",
+      "with a percent chance success rate.",
+    ],
     basic: [50, 65],
     advanced: [60, 80],
     superior: [85, 100],
@@ -612,16 +584,17 @@ export const CHARMS = {
   // Charm of Attunement - Increases an enchantment's level by 1 up to a max of 15 with a percent chance success rate.
   attunement: {
     display: "§9Attunement",
+    description: [
+      "Increases the level of an enchantment higher than",
+      "its maximum with a chance success rate.",
+    ],
     basic: [50, 65],
     advanced: [60, 80],
     superior: [85, 100],
   },
-  basic: "§bBasic",
-  advanced: "§6Advanced",
-  superior: "§cSuperior",
 };
 
-function useCharm(player: Player, type: keyof typeof CHARMS) {
+export function useCharm(player: Player, type: keyof typeof CHARMS) {
   const equip = <EntityEquippableComponent>player.getComponent("equippable");
   let item = equip.getEquipment(EquipmentSlot.Mainhand);
   if (!item) {
@@ -890,7 +863,9 @@ export function giveCharm(
   let enchItem = new ItemStack("nautilus_shell", amount);
   enchItem.nameTag = `§@§r§f§5Charm ${info.display}`;
   enchItem.setLore([
-    `§%§r§dType: ${CHARMS[rarity as "basic" | "advanced" | "superior"]}`,
+    `§%§r§dType: ${
+      CHARM_DISPLAYS[rarity as "basic" | "advanced" | "superior"]
+    }`,
   ]);
   let equip = (<EntityInventoryComponent>player.getComponent("inventory"))
     .container;

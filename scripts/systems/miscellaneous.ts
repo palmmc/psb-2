@@ -20,11 +20,11 @@ export const itemsSuperBanned = ["command_block"];
 export const BlockOres = [
   // ["ore", "item", XPmin, XPmax]
   ["minecraft:cobblestone", "minecraft:cobblestone", 0, 0],
-  ["minecraft:netherrack", "minecraft:netherrack", 0, 0],
+  ["minecraft:netherrack", "minecraft:netherrack", 0, 1],
   ["minecraft:coal_ore", "minecraft:coal", 0, 2],
-  ["minecraft:iron_ore", "minecraft:iron_ore", 0, 0],
+  ["minecraft:iron_ore", "minecraft:iron_ore", 0, 2],
   ["minecraft:lapis_ore", "minecraft:lapis_lazuli", 0, 4],
-  ["minecraft:gold_ore", "minecraft:gold_ore", 0, 0],
+  ["minecraft:gold_ore", "minecraft:gold_ore", 0, 2],
   ["minecraft:diamond_ore", "minecraft:diamond", 1, 5],
   ["minecraft:emerald_ore", "minecraft:emerald", 1, 7],
 ];

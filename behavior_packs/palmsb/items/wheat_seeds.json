@@ -1,0 +1,20 @@
+{
+  "format_version": "1.20.30",
+  "minecraft:item": {
+    "description": {
+      "identifier": "palm:wheat_seeds",
+      "menu_category": {
+        "category": "nature",
+        "group": "itemGroup.name.seed"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "texture": "seeds_wheat"
+      },
+      "minecraft:block_placer": {
+        "block": "palm:wheat"
+      }
+    }
+  }
+}
