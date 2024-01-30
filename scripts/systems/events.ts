@@ -52,41 +52,31 @@ function clearEvents() {
 // Clear Lag
 const CLEAR_INTERVAL = 25; // Interval in minutes.
 system.runInterval(() => {
-  world.sendMessage(
-    `§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e1§c minute...`
+  overworld.runCommandAsync(
+    `tellraw @a[name=!"PalmSkyblock"] {"rawtext": [{"text": "${"§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e10§c seconds...\n§6Warning: Dropped items will be lost."}"}]}`
   );
   system.runTimeout(() => {
-    world.sendMessage(
-      `§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e30§c seconds...`
+    overworld.runCommandAsync(
+      `tellraw @a[name=!"PalmSkyblock"] {"rawtext": [{"text": "${`§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e3§c seconds...`}"}]}`
     );
     system.runTimeout(() => {
-      world.sendMessage(
-        `§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e10§c seconds...\n§6Warning: Dropped items will be lost.`
+      overworld.runCommandAsync(
+        `tellraw @a[name=!"PalmSkyblock"] {"rawtext": [{"text": "${`§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e2§c seconds...`}"}]}`
       );
       system.runTimeout(() => {
-        world.sendMessage(
-          `§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e3§c seconds...`
+        overworld.runCommandAsync(
+          `tellraw @a[name=!"PalmSkyblock"] {"rawtext": [{"text": "${`§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e1§c seconds...`}"}]}`
         );
         system.runTimeout(() => {
-          world.sendMessage(
-            `§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e2§c seconds...`
+          for (let s of SpawnerEntities) {
+            overworld.runCommand(`kill @e[type=${s.id}]`);
+          }
+          overworld.runCommand(`kill @e[type=item]`);
+          overworld.runCommandAsync(
+            `tellraw @a[name=!"PalmSkyblock"] {"rawtext": [{"text": "${`§l§8[§cC§4T§8]§r §bGround entities have been cleared.\n§eIt is now safe to drop items.`}"}]}`
           );
-          system.runTimeout(() => {
-            world.sendMessage(
-              `§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e1§c seconds...`
-            );
-            system.runTimeout(() => {
-              for (let s of SpawnerEntities) {
-                overworld.runCommand(`kill @e[type=${s.id}]`);
-              }
-              overworld.runCommand(`kill @e[type=item]`);
-              world.sendMessage(
-                `§l§8[§cC§4T§8]§r §bGround entities have been cleared.\n§eIt is now safe to drop items.`
-              );
-            }, 20);
-          }, 20);
         }, 20);
-      }, 140);
-    }, 400);
-  }, 600);
+      }, 20);
+    }, 20);
+  }, 140);
 }, 1200 * CLEAR_INTERVAL + 1200);

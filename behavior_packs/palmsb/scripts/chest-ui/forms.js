@@ -18,6 +18,8 @@ const sizes = new Map([
   ["vault", [`§v§a§u§l§t§c§h§e§s§t`, 27]],
   ["shop", [`§s§h§o§p§c§h§e§s§t`, 27]],
   ["yellow", [`§y§e§l§l§o§w§c§h§e§s§t`, 27]],
+  ["blockjack", [`§b§l§o§c§k§j§a§c§k§c§h§e§s§t`, 27]],
+  ["stacks", [`§s§t§a§c§k§s§c§h§e§s§t`, 27]],
 ]);
 class ChestFormData {
   #titleText;

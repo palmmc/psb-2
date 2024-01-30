@@ -14,19 +14,20 @@ export const itemsBanned = [
   "flint_and_steel",
   "enchanting_table",
   "ender_chest",
+  "tnt",
 ];
 export const itemsSuperBanned = ["command_block"];
 
 export const BlockOres = [
   // ["ore", "item", XPmin, XPmax]
   ["minecraft:cobblestone", "minecraft:cobblestone", 0, 0],
-  ["minecraft:netherrack", "minecraft:netherrack", 0, 1],
+  ["minecraft:netherrack", "minecraft:netherrack", 0, 0],
   ["minecraft:coal_ore", "minecraft:coal", 0, 2],
   ["minecraft:iron_ore", "minecraft:iron_ore", 0, 2],
-  ["minecraft:lapis_ore", "minecraft:lapis_lazuli", 0, 4],
+  ["minecraft:lapis_ore", "minecraft:lapis_lazuli", 0, 3],
   ["minecraft:gold_ore", "minecraft:gold_ore", 0, 2],
-  ["minecraft:diamond_ore", "minecraft:diamond", 1, 5],
-  ["minecraft:emerald_ore", "minecraft:emerald", 1, 7],
+  ["minecraft:diamond_ore", "minecraft:diamond", 1, 3],
+  ["minecraft:emerald_ore", "minecraft:emerald", 1, 3],
 ];
 
 export const DEF_ORES = [
@@ -45,6 +46,7 @@ export const DEF_CROPS_PLACE = [
   "palm:wheat_seeds",
   "palm:carrot",
   "palm:potato",
+  "palm:berry_seeds",
   "palm:pumpkin_seeds",
   "palm:melon_seeds",
 ];
@@ -54,6 +56,7 @@ export const DEF_CROPS_BREAK = [
   "palm:wheat",
   "palm:carrots",
   "palm:potatoes",
+  "palm:sweet_berry_bush",
   "minecraft:pumpkin",
   "minecraft:melon_block",
 ];
@@ -63,9 +66,10 @@ export const CROP_DROPS = [
   [1, "palm:wheat"],
   [2, "palm:carrots"],
   [3, "palm:potatoes"],
-  [4, "palm:pumpkin_stem"],
-  [5, "palm:melon_stem"],
-  [6, "palm:farmland"],
+  [4, "palm:sweet_berry_bush"],
+  [5, "palm:pumpkin_stem"],
+  [6, "palm:melon_stem"],
+  [7, "palm:farmland"],
 ];
 
 export const CROP_TABLES = [
@@ -73,6 +77,7 @@ export const CROP_TABLES = [
   "blocks/wheat_",
   "blocks/carrot_",
   "blocks/potato_",
+  "blocks/sweet_berry_bush_",
   "blocks/pumpkin_",
   "blocks/melon_",
   "blocks/farmland_",

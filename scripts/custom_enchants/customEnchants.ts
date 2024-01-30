@@ -204,11 +204,30 @@ new Enchant("brisk", {
   description: "Grants haste while mining.",
   blockBreak: (data) => {
     if (randomIntFromInterval(1, 13 - data.level) != 1) return;
-    if (!DEF_ORES.includes(data.brokenBlockPermutation.type.id)) return;
+    let id = data.brokenBlockPermutation.type.id;
+    if (
+      !id.includes("ore") &&
+      !(id == "minecraft:pumpkin") &&
+      !(id == "minecraft:melon_block")
+    )
+      return;
     data.player.addEffect("haste", 80 + data.level * 6, {
       amplifier: Math.floor(data.level * 0.8),
       showParticles: false,
     });
+  },
+});
+
+new Enchant("wedge", {
+  rarity: "common",
+  display: "§7Wedge",
+  type: EnchantSlot.pickaxe,
+  maxLevel: 5,
+  description: "Grants a chance to compact cobblestone into deepslate.",
+  blockBreak: (data) => {
+    if (data.block.typeId != "minecraft:cobblestone") return;
+    if (randomIntFromInterval(1, 74 - data.level * 6) != 1) return;
+    data.block.setType("cobbled_deepslate");
   },
 });
 
@@ -227,7 +246,7 @@ new Enchant("durable", {
   maxLevel: 10,
   description: "Decreases chance to lose durability while mining.",
   blockBreak: (data) => {
-    if (randomIntFromInterval(1, Math.floor(data.level + 2)) == 1) return;
+    if (randomIntFromInterval(1, Math.floor(data.level + 1)) == 1) return;
     let dura = data.item.getComponent("minecraft:durability");
     if (!dura) return;
     if (dura.damage == 0) return;
@@ -288,7 +307,8 @@ new Enchant("toxin", {
   description: "Chance to poison entity on hit.",
   entityHit: (data) => {
     if (!(randomIntFromInterval(1, 22 - data.level * 2) == 1)) return;
-    if (!SpawnerEntities.find((x) => x.id == data.entity.id.slice(10))) return;
+    if (!SpawnerEntities.find((x) => x.id == data.entity.typeId.slice(10)))
+      return;
     data.entity.addEffect("fatal_poison", 40 + data.level * 5, {
       amplifier: data.level > 3 ? 1 : 0,
       showParticles: true,
@@ -313,9 +333,10 @@ new Enchant("ignite", {
   maxLevel: 5,
   description: "Chance to ignite entity on hit.",
   entityHit: (data) => {
-    if (!(randomIntFromInterval(1, 30 - data.level * 4) == 1)) return;
-    if (!SpawnerEntities.find((x) => x.id == data.entity.id.slice(10))) return;
-    data.entity.setOnFire(data.level, true);
+    if (!(randomIntFromInterval(1, 24 - data.level * 4) == 1)) return;
+    if (!SpawnerEntities.find((x) => x.id == data.entity.typeId.slice(10)))
+      return;
+    data.entity.setOnFire(Math.floor(data.level / 1.5), true);
   },
 });
 
@@ -324,14 +345,14 @@ new Enchant("glimmer", {
   display: "§2Glimmer",
   type: EnchantSlot.pickaxe,
   maxLevel: 10,
-  description: "Grants a chance replace nearby cobblestone into emeralds.",
+  description: "Grants a chance replace nearby coal ore into emeralds.",
   blockBreak: (data) => {
     if (!DEF_ORES.includes(data.brokenBlockPermutation.type.id)) return;
-    if (randomIntFromInterval(1, 78 - data.level * 6) != 1) return;
+    if (randomIntFromInterval(1, 70 - data.level * 6) != 1) return;
     data.player.runCommandAsync(
       `fill ${data.block.x - 1} ${data.block.y} ${data.block.z - 1} ${
         data.block.x + 1
-      } ${data.block.y} ${data.block.z + 1} emerald_ore replace cobblestone`
+      } ${data.block.y} ${data.block.z + 1} emerald_ore replace coal_ore`
     );
   },
 });
@@ -345,9 +366,11 @@ new Enchant("splash", {
   maxLevel: 10,
   description: "Grants a chance to recieve extra XP when mining.",
   blockBreak: (data) => {
+    let id = data.brokenBlockPermutation.type.id;
+    if (!DEF_ORES.includes(id) || !id.includes("ore")) return;
     if (!(randomIntFromInterval(1, 26 - data.level * 2) == 1)) return;
     data.player.addExperience(
-      randomIntFromInterval(1, Math.floor(data.level / 3))
+      randomIntFromInterval(1, Math.ceil(data.level / 4))
     );
   },
 });
@@ -376,8 +399,25 @@ new Enchant("polish", {
   description: "Grants a recieve copper when mining.",
   blockBreak: (data) => {
     if (!DEF_ORES.includes(data.brokenBlockPermutation.type.id)) return;
-    if (randomIntFromInterval(1, 92 - data.level * 6) != 1) return;
+    if (randomIntFromInterval(1, 82 - data.level * 6) != 1) return;
     data.player.runCommandAsync(`give @s copper_ingot`);
+  },
+});
+
+new Enchant("fierce", {
+  rarity: "epic",
+  display: "§9Fierce",
+  type: EnchantSlot.sword,
+  maxLevel: 5,
+  description: "Increases damage by one per level.",
+  entityHit: (data) => {
+    if (!SpawnerEntities.find((x) => x.id == data.entity.typeId.slice(10)))
+      return;
+    let damage = data.level == 5 ? 6 : data.level;
+    let mobHealth = world.scoreboard.getObjective("mobHealth");
+    let score = mobHealth?.getScore(data.entity);
+    if (!score) return;
+    mobHealth?.setScore(data.entity, Math.max(0, score - damage));
   },
 });
 
@@ -386,7 +426,7 @@ new Enchant("procure", {
   display: "§9Procure",
   type: EnchantSlot.sword,
   maxLevel: 10,
-  description: "Grants a chance to recieve extra drops when mining.",
+  description: "Grants a chance to recieve extra drops from entities.",
 });
 
 // UNIQUE ENCHANTS
@@ -451,11 +491,36 @@ new Enchant("regenerate", {
   description: "Grants a chance to instantly duplicate last mined ore.",
   blockBreak: (data) => {
     if (!DEF_ORES.includes(data.brokenBlockPermutation.type.id)) return;
-    if (randomIntFromInterval(1, 98 - data.level * 6) != 1) return;
+    if (randomIntFromInterval(1, 70 - data.level * 6) != 1) return;
     system.runTimeout(() => {
       data.block.setType(data.brokenBlockPermutation.type);
     }, 3);
   },
+});
+
+new Enchant("karat", {
+  rarity: "unique",
+  display: "§6Karat",
+  type: EnchantSlot.pickaxe,
+  maxLevel: 10,
+  description: "Grants a chance to generate an ore block while mining.",
+  blockBreak: (data) => {
+    if (!data.brokenBlockPermutation.type.id.includes("ore")) return;
+    if (randomIntFromInterval(1, 86 - data.level * 6) != 1) return;
+    system.runTimeout(() => {
+      data.block.setType(
+        data.brokenBlockPermutation.type.id.split("_")[0] + "_block"
+      );
+    }, 18);
+  },
+});
+
+new Enchant("cryptic", {
+  rarity: "unique",
+  display: "§6Cryptic",
+  type: EnchantSlot.tool,
+  maxLevel: 10,
+  description: "Increases your odds to obtain relics while using.",
 });
 
 new Enchant("flex", {
@@ -553,9 +618,9 @@ export const CHARMS = {
     // Increase in quality per rarity
     display: "§3Binding",
     description: ["Increases the grade quality of", "a refined enchantment."],
-    basic: [10, 25],
-    advanced: [20, 40],
-    superior: [35, 50],
+    basic: [12, 30],
+    advanced: [24, 55],
+    superior: [50, 80],
   },
   // Charm of Precision - Increases the level of an enchantment up to a max of 10.
   precision: {
@@ -962,7 +1027,6 @@ world.beforeEvents.itemUseOn.subscribe((data) => {
 
 export function animateBlacksmith(
   player: Player,
-  blacksmith: Entity,
   type:
     | "pickaxe"
     | "axe"
@@ -976,6 +1040,12 @@ export function animateBlacksmith(
   enchant: EnchantData,
   accuracy: number
 ) {
+  let blacksmith = overworld.getEntities({
+    location: player.location,
+    maxDistance: 7,
+    type: "palm:blacksmith",
+  })[0];
+  if (!blacksmith) return;
   player.runCommandAsync(`camera @s fade time 0.5 1 0.5`);
   system.runTimeout(() => {
     player.runCommandAsync(
@@ -1057,7 +1127,7 @@ function tierToGrade(runTier: number) {
   else if (runTier <= 6) return "§fIron";
   else if (runTier <= 8) return "§6Gold";
   else if (runTier <= 10) return "§3Diamond";
-  else if (runTier <= 12) return "§aEmerald";
+  else if (runTier > 10) return "§aEmerald";
   else return "§8Coal";
 }
 

@@ -1,39 +1,31 @@
 {
-    "format_version": "1.20.30",
-    "minecraft:block": {
-        "description": {
-            "identifier": "palm:oregen",
-            "menu_category": {
-                "category": "none"
-            }
-        },
-        "components": {
-            "minecraft:collision_box": true,
-            "minecraft:geometry": "geometry.oregen",
-            "minecraft:light_dampening": 7,
-"minecraft:destructible_by_mining": {
-    "seconds_to_destroy": 2
-},
-            "minecraft:material_instances": {
-                "*": {
-                    "texture": "oregen",
-                    "render_method": "alpha_test",
-                    "face_dimming": false,
-                    "ambient_occlusion": false
-                }
-            },
-            "minecraft:selection_box": {
-                "origin": [
-                    -8,
-                    0,
-                    -8
-                ],
-                "size": [
-                    16,
-                    16,
-                    16
-                ]
-            }
+  "format_version": "1.20.30",
+  "minecraft:block": {
+    "description": {
+      "identifier": "palm:oregen",
+      "menu_category": {
+        "category": "none"
+      }
+    },
+    "components": {
+      "minecraft:collision_box": true,
+      "minecraft:geometry": "geometry.oregen",
+      "minecraft:light_dampening": 7,
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 2
+      },
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "oregen",
+          "render_method": "alpha_test",
+          "face_dimming": false,
+          "ambient_occlusion": false
         }
+      },
+      "minecraft:selection_box": {
+        "origin": [-8, 0, -8],
+        "size": [16, 16, 16]
+      }
     }
+  }
 }

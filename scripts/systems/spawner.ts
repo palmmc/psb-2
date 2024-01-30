@@ -38,7 +38,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
       { item: "chicken", smelt: "cooked_chicken", amount: [1, 1] },
       { item: "feather", amount: [0, 2] },
     ],
-    price: 3000000,
+    price: 1000000,
   },
   {
     name: "§l§dPig",
@@ -46,7 +46,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     health: 10,
     xp: [4, 6],
     loot: [{ item: "porkchop", smelt: "cooked_porkchop", amount: [1, 3] }],
-    price: 4000000,
+    price: 2000000,
   },
   {
     name: "§l§fSheep",
@@ -57,7 +57,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
       { item: "mutton", smelt: "mutton", amount: [1, 2] },
       { item: "white_wool", amount: [1, 1] },
     ],
-    price: 5000000,
+    price: 2500000,
   },
   {
     name: "§l§6Cow",
@@ -68,7 +68,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
       { item: "beef", smelt: "cooked_beef", amount: [1, 3] },
       { item: "leather", amount: [1, 2] },
     ],
-    price: 6000000,
+    price: 3000000,
   },
   {
     name: "§l§cMooshroom",
@@ -79,7 +79,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
       { item: "beef", smelt: "cooked_beef", amount: [2, 5] },
       { item: "leather", amount: [1, 4] },
     ],
-    price: 7000000,
+    price: 3500000,
   },
   {
     name: "§l§2Zombie",
@@ -87,7 +87,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     health: 20,
     xp: [7, 10],
     loot: [{ item: "rotten_flesh", amount: [1, 4] }],
-    price: 7500000,
+    price: 4000000,
   },
   {
     name: "§l§4Spider",
@@ -98,7 +98,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
       { item: "string", amount: [1, 3] },
       { item: "spider_eye", amount: [1, 1] },
     ],
-    price: 8500000,
+    price: 4250000,
   },
   {
     name: "§l§aCreeper",
@@ -106,7 +106,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     health: 20,
     xp: [8, 12],
     loot: [{ item: "gunpowder", amount: [1, 4] }],
-    price: 9000000,
+    price: 4500000,
   },
   {
     name: "§l§7Skeleton",
@@ -114,7 +114,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     health: 20,
     xp: [8, 14],
     loot: [{ item: "bone", amount: [1, 3] }],
-    price: 10000000,
+    price: 5000000,
   },
   {
     name: "§l§eBlaze",
@@ -122,7 +122,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     health: 25,
     xp: [9, 16],
     loot: [{ item: "blaze_rod", amount: [1, 2] }],
-    price: 11000000,
+    price: 5500000,
   },
   {
     name: "§l§8Wither Skeleton",
@@ -133,7 +133,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
       { item: "coal", amount: [1, 4] },
       { item: "bone", amount: [1, 3] },
     ],
-    price: 12500000,
+    price: 6250000,
   },
   {
     name: "§l§fIron Golem",
@@ -144,7 +144,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
       { item: "iron_ingot", amount: [1, 8] },
       { item: "red_flower", amount: [1, 2] },
     ],
-    price: 13000000,
+    price: 7500000,
   },
   {
     name: "§l§cZombie Pigman",
@@ -155,11 +155,11 @@ export const SpawnerEntities: SpawnerEntity[] = [
       { item: "gold_ingot", amount: [1, 14] },
       { item: "gold_nugget", amount: [1, 5] },
     ],
-    price: 14000000,
+    price: 8000000,
   },
 ];
 
-function lootTheRoom(
+export function lootTheRoom(
   player: Player,
   id: string,
   entityInfo?: SpawnerEntity,
@@ -176,8 +176,8 @@ function lootTheRoom(
   if (mh) {
     let procure = Enchant.getEnchant(mh, "procure");
     if (procure) {
-      if (randomIntFromInterval(1, 26 - procure.level * 2) == 1) {
-        multi = Math.ceil(randomIntFromInterval(1, procure.level) / 3);
+      if (randomIntFromInterval(1, 23 - procure.level * 2) == 1) {
+        multi = Math.ceil(randomIntFromInterval(1, procure.level));
       }
     }
   }

@@ -72,6 +72,7 @@ export const CATEGORY = {
   items: 5,
   cebooks: 6,
   spawners: 7,
+  mobloot: 8,
   wood: 11,
   stone: 12,
   sand: 13,
@@ -260,13 +261,6 @@ export const ShopItems = [
   },
   {
     category: CATEGORY.stone,
-    texture: "textures/blocks/deepslate/cobbled_deepslate.png",
-    item: "cobbled_deepslate",
-    price: 350,
-    sell: 0,
-  },
-  {
-    category: CATEGORY.stone,
     texture: "textures/blocks/deepslate/deepslate.png",
     item: "deepslate",
     price: 350,
@@ -404,15 +398,13 @@ export const ShopItems = [
     price: 450,
     sell: 0,
   },
-  /*
   {
     category: CATEGORY.blocks,
     texture: "textures/blocks/bedrock.png",
     item: "bedrock",
-    price: 2000,
+    price: 2500,
     sell: 0,
   },
-  */
   {
     category: CATEGORY.blocks,
     texture: "textures/blocks/prismarine_bricks.png",
@@ -560,6 +552,7 @@ export const ShopItems = [
     price: 750,
     sell: 0,
   },
+  /*
   {
     category: CATEGORY.decoration,
     texture: "textures/items/item_frame.png",
@@ -576,6 +569,7 @@ export const ShopItems = [
     price: 1250,
     sell: 0,
   },
+  */
   {
     category: CATEGORY.decoration,
     texture: "textures/blocks/hay_block_side.png",
@@ -1506,6 +1500,13 @@ export const ShopItems = [
   },
   {
     category: CATEGORY.items,
+    texture: "textures/blocks/deepslate/cobbled_deepslate.png",
+    item: "cobbled_deepslate",
+    price: 450,
+    sell: 45,
+  },
+  {
+    category: CATEGORY.items,
     texture: "textures/blocks/netherrack.png",
     item: "netherrack",
     price: 0,
@@ -1537,143 +1538,185 @@ export const ShopItems = [
     texture: "textures/items/gold_ingot.png",
     item: "gold_ingot",
     price: 1500,
-    sell: 80,
+    sell: 90,
   },
   {
     category: CATEGORY.items,
     texture: "textures/items/diamond.png",
     item: "diamond",
     price: 2000,
-    sell: 100,
+    sell: 110,
   },
   {
     category: CATEGORY.items,
     texture: "textures/items/emerald.png",
     item: "emerald",
     price: 0,
-    sell: 110,
+    sell: 120,
   },
   {
     category: CATEGORY.items,
+    texture: "textures/items/coal.png",
+    item: "coal_block",
+    price: 0,
+    sell: 360,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "textures/items/dye_powder_blue.png",
+    item: "lapis_block",
+    price: 0,
+    sell: 540,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "textures/items/iron_ingot.png",
+    item: "iron_block",
+    price: 0,
+    sell: 630,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "textures/items/gold_ingot.png",
+    item: "gold_block",
+    price: 0,
+    sell: 810,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "textures/items/diamond.png",
+    item: "diamond_block",
+    price: 0,
+    sell: 990,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "textures/items/emerald.png",
+    item: "emerald_block",
+    price: 0,
+    sell: 1080,
+  },
+  {
+    category: CATEGORY.mobloot,
     texture: "",
     item: "chicken",
     price: 0,
     sell: 80,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "cooked_chicken",
     price: 0,
     sell: 90,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "feather",
     price: 0,
     sell: 110,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "porkchop",
     price: 0,
     sell: 100,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "cooked_porkchop",
     price: 0,
     sell: 135,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "mutton",
     price: 0,
     sell: 115,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "cooked_mutton",
     price: 0,
     sell: 145,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "white_wool",
     price: 0,
     sell: 130,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "beef",
     price: 0,
     sell: 140,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "cooked_beef",
     price: 0,
     sell: 175,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "leather",
     price: 0,
     sell: 160,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "rotten_flesh",
     price: 0,
     sell: 200,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "string",
     price: 0,
     sell: 180,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "spider_eye",
     price: 0,
     sell: 240,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "gunpowder",
     price: 0,
     sell: 230,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "bone",
     price: 0,
     sell: 220,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "blaze_rod",
     price: 0,
     sell: 280,
   },
   {
-    category: CATEGORY.items,
+    category: CATEGORY.mobloot,
     texture: "",
     item: "red_flower",
     price: 0,
@@ -1743,7 +1786,7 @@ export const ShopItems = [
     texture: "textures/items/beetroot.png",
     item: "beetroot",
     price: 225,
-    sell: 15,
+    sell: 25,
   },
   {
     category: CATEGORY.farming,
@@ -1757,21 +1800,21 @@ export const ShopItems = [
     texture: "textures/items/wheat.png",
     item: "wheat",
     price: 315,
-    sell: 20,
+    sell: 40,
   },
   {
     category: CATEGORY.farming,
     texture: "textures/items/carrot.png",
     item: "palm:carrot",
     price: 0,
-    sell: 30,
+    sell: 50,
   },
   {
     category: CATEGORY.farming,
     texture: "textures/items/potato.png",
     item: "palm:potato",
     price: 0,
-    sell: 35,
+    sell: 65,
   },
   /*
   {
@@ -1782,6 +1825,7 @@ export const ShopItems = [
     sell: 25,
   },
   */
+  /*
   {
     category: CATEGORY.farming,
     texture: "textures/blocks/cactus_side.tga",
@@ -1789,6 +1833,8 @@ export const ShopItems = [
     price: 425,
     sell: 25,
   },
+  */
+  /*
   {
     category: CATEGORY.farming,
     texture: "textures/items/seeds_pumpkin.png",
@@ -1796,13 +1842,15 @@ export const ShopItems = [
     price: 300,
     sell: 0,
   },
+  */
   {
     category: CATEGORY.farming,
     texture: "textures/blocks/pumpkin_side.png",
     item: "pumpkin",
     price: 900,
-    sell: 90,
+    sell: 125,
   },
+  /*
   {
     category: CATEGORY.farming,
     texture: "textures/items/seeds_melon.png",
@@ -1810,12 +1858,20 @@ export const ShopItems = [
     price: 325,
     sell: 0,
   },
+  */
   {
     category: CATEGORY.farming,
     texture: "textures/blocks/melon_side.png",
     item: "melon_block",
     price: 975,
-    sell: 100,
+    sell: 150,
+  },
+  {
+    category: CATEGORY.farming,
+    texture: "textures/items/sweet_berries.png",
+    item: "palm:sweet_berries",
+    price: 0,
+    sell: 300,
   },
   {
     category: CATEGORY.farming,
@@ -1916,6 +1972,23 @@ export const ShopItems = [
   },
   {
     category: CATEGORY.special,
+    texture: "textures/blocks/crafter.png",
+    name: "Crafter",
+    rarity: ITEMRARITY.epic,
+    item: "crafter",
+    price: 30000,
+    sell: 0,
+  },
+  {
+    category: CATEGORY.special,
+    texture: "textures/blocks/comparator.png",
+    rarity: ITEMRARITY.epic,
+    item: "comparator",
+    price: 15000,
+    sell: 0,
+  },
+  {
+    category: CATEGORY.special,
     texture: "textures/blocks/slime.png",
     name: "Autominer",
     rarity: ITEMRARITY.legendary,
@@ -1945,7 +2018,7 @@ export const ShopItems = [
     },
     item: "book",
     currency: "xp",
-    price: 600,
+    price: 750,
     sell: 0,
   },
   {
@@ -1958,7 +2031,7 @@ export const ShopItems = [
     },
     item: "book",
     currency: "xp",
-    price: 2000,
+    price: 3500,
     sell: 0,
   },
   {
@@ -1971,7 +2044,7 @@ export const ShopItems = [
     },
     item: "book",
     currency: "xp",
-    price: 8500,
+    price: 15000,
     sell: 0,
   },
   {
@@ -1984,7 +2057,7 @@ export const ShopItems = [
     },
     item: "book",
     currency: "xp",
-    price: 32000,
+    price: 70000,
     sell: 0,
   },
   {
@@ -1997,7 +2070,7 @@ export const ShopItems = [
     },
     item: "nautilus_shell",
     currency: "xp",
-    price: 1500,
+    price: 1250,
     sell: 0,
   },
   {
@@ -2023,7 +2096,47 @@ export const ShopItems = [
     },
     item: "nautilus_shell",
     currency: "xp",
-    price: 2000,
+    price: 2500,
+    sell: 0,
+  },
+
+  {
+    category: CATEGORY.cebooks,
+    texture: "textures/items/nautilus_shell.png",
+    name: `§@§r§f§5Charm ${CHARMS.binding.display} §r§8(${CHARM_DISPLAYS.advanced}§8)`,
+    rarity: ITEMRARITY.epic,
+    function: function shopCharm(player: Player, amount: number) {
+      giveCharm(player, "binding", "advanced", amount);
+    },
+    item: "nautilus_shell",
+    currency: "xp",
+    price: 4000,
+    sell: 0,
+  },
+  {
+    category: CATEGORY.cebooks,
+    texture: "textures/items/nautilus_shell.png",
+    name: `§@§r§f§5Charm ${CHARMS.precision.display} §r§8(${CHARM_DISPLAYS.advanced}§8)`,
+    rarity: ITEMRARITY.epic,
+    function: function shopCharm(player: Player, amount: number) {
+      giveCharm(player, "precision", "advanced", amount);
+    },
+    item: "nautilus_shell",
+    currency: "xp",
+    price: 5500,
+    sell: 0,
+  },
+  {
+    category: CATEGORY.cebooks,
+    texture: "textures/items/nautilus_shell.png",
+    name: `§@§r§f§5Charm ${CHARMS.expulsion.display} §r§8(${CHARM_DISPLAYS.advanced}§8)`,
+    rarity: ITEMRARITY.epic,
+    function: function shopCharm(player: Player, amount: number) {
+      giveCharm(player, "expulsion", "advanced", amount);
+    },
+    item: "nautilus_shell",
+    currency: "xp",
+    price: 6000,
     sell: 0,
   },
 ];
@@ -2163,6 +2276,13 @@ export const subCategories = [
     item: "sapling",
     name: "Saplings",
     group: CATEGORY.saplings,
+  },
+  {
+    category: CATEGORY.items,
+    texture: "textures/items/porkchop.png",
+    item: "porkchop",
+    name: "Mob Loot",
+    group: CATEGORY.mobloot,
   },
 ];
 
@@ -2431,7 +2551,9 @@ function purchaseItemBeta(
       iconPath: "textures/blocks/glass_white.png",
     },
   });
-  itemInfoUI.title(` §f$${formatNumber(coins)}`);
+  itemInfoUI.title(
+    `${optionData.currency == "xp" ? "" : ""} §f$${formatNumber(coins)}`
+  );
   itemInfoUI.button(10, "§9Amount", ["§a+1"], `${color}_wool`, 1);
   itemInfoUI.button(11, "§9Amount", ["§a+16"], `${color}_wool`, 16);
   itemInfoUI.button(12, "§9Amount", ["§a+64"], `${color}_wool`, 64);
@@ -2549,16 +2671,16 @@ export function openSellPortal(player: Player) {
   let tn = 0;
   let items = new Array();
   for (let i = 0; i < 36; i++) {
-    if (n >= 26) return;
+    if (n > 25) continue;
     let item = inventory?.container?.getItem(i);
     let x = ShopItems.find(
-      (x) =>
-        x.item ==
+      (c) =>
+        c.item ==
         (item?.typeId.startsWith("palm:")
           ? item.typeId
           : item?.typeId.slice(10))
     );
-    if (!item || !x || (x?.sell ?? 0) <= 0) continue;
+    if (!item || !x || (x?.sell ?? 0) == 0) continue;
     items.push([x, item.amount]);
     gui.button(
       n,

@@ -8,6 +8,7 @@ import {
   EntityInventoryComponent,
   EquipmentSlot,
   ItemEnchantsComponent,
+  ItemStack,
   ItemTypes,
   Player,
   TicksPerSecond,
@@ -37,6 +38,7 @@ import "./economy/itemcloud";
 import "./economy/shop";
 import "./systems/enchantments";
 import "./systems/npc";
+import "./economy/casino";
 import "./systems/generators";
 import "./systems/spawner";
 import "./systems/relic";
@@ -90,6 +92,7 @@ import {
   giveOpenCE,
 } from "./custom_enchants/customEnchants";
 import { auctionMenu } from "./economy/auctionhouse";
+import { Generator, genItems, genType } from "./systems/generators";
 // TEST CONNECTION
 
 world.sendMessage("hello world");
@@ -688,6 +691,7 @@ export const PREFIX = {
   ce: "§l§8[§r§l§cBlacksmith§r§8§l]§r >>§r",
   transfer: "§l§2[§aTransfer§2]§r >>§r",
   relic: "§l§f[§r§c§lRelic§r§f§l]§r >>§r",
+  casino: "§l§f[§r§c§lCasino§r§f§l]§r >>§r",
 };
 const ItemIds = ItemTypes.getAll().map((x) => {
   return x.id;
@@ -706,6 +710,7 @@ system.runInterval(() => {
     let coins = pdata.coins;
     let island = getIslandOn(player);
     let sidebarText = ``;
+    if (player.hasTag("pref:no_sidebar")) continue;
     if (player.hasTag("pref:minimal_sidebar")) {
       sidebarText = `\n\n §7|§f ${
         world.getPlayers().length
@@ -716,7 +721,7 @@ system.runInterval(() => {
       )}\n§g §6Time Played §7» §f${formatTime(getScore("time", player))}`;
       let owner = island?.operator.name;
       if (island && owner) {
-        let points = 0;
+        let points = island.points;
         let level = xpToLevel(points);
         let pointsNeeded = levelToXp(level - 1);
         let pointsBefore = levelToXp(level - 2);
@@ -728,6 +733,47 @@ system.runInterval(() => {
         }\n §l§6│§r §2Level §7» §f${level} §2(§f${points - pointsBefore}§2/§f${
           pointsNeeded - pointsBefore
         }§2)\n`;
+      }
+    } else if (player.hasTag("pref:mining_mode")) {
+      sidebarText = `\n\n §7|§f ${
+        world.getPlayers().length
+      }/10 §7| §f ${TicksPerSecond}t §7| §e 0 §7|\n\n§g §aUser §7» §f${
+        player.name.length > 15 ? player.name.slice(0, 15) + "..." : player.name
+      }\n §eBank §7»  §f$${formatNumber(coins)}  §a${shortFormatNumber(
+        player.getTotalXp()
+      )}\n§g §6Time Played §7» §f${formatTime(getScore("time", player))}\n`;
+      let item = player
+        .getComponent("equippable")
+        ?.getEquipment(EquipmentSlot.Mainhand);
+      if (item) {
+        let speed = 100;
+        let fortune = 100;
+        let dura = item.getComponent("durability");
+        let damage = 0;
+        let color = "§2";
+        if (dura) {
+          damage = Math.floor(
+            (1 - (dura?.damage ?? 0) / (dura?.maxDurability ?? 0)) * 100
+          );
+          if (damage < 5) {
+            color = "§c";
+            if (player.getItemCooldown("alert") == 0) {
+              sendAlert(player, `§cYour tool is reaching low durability.`);
+              player.startItemCooldown("alert", 20);
+            }
+          } else if (damage < 20) color = "§6";
+          else if (damage < 40) color = "§e";
+          else if (damage < 70) color = "§a";
+        }
+        let brisk = Enchant.getEnchant(item, "brisk");
+        if (brisk && brisk.level > 0)
+          speed += Math.floor(brisk.level * 0.8) * 20;
+        let trove = Enchant.getEnchant(item, "trove");
+        if (trove && trove.level > 0)
+          fortune += ((Math.floor(trove.level / 2) + 1) / 2) * 100;
+        sidebarText += `\n §b${
+          item.nameTag ?? formatItemName(item.typeId)
+        }§r\n §l§c│§r §9Durability §7» ${color}${damage}%%\n §l§c│§r §2Speed §7» §a${speed}%%\n §l§c│§r §3Fortune §7» §b${fortune}%%\n`;
       }
     } else {
       sidebarText = `\n\n §7|§f ${
@@ -788,7 +834,8 @@ system.runInterval(() => {
 
 const COMMAND_PERMS = {
   GUEST: 0,
-  ADMIN: 1,
+  MOD: 1,
+  ADMIN: 2,
 };
 
 const commands = [
@@ -1108,6 +1155,37 @@ const commands = [
           }
         },
       },
+      {
+        alias: ["crops"],
+        info: "Shows all crop levels.",
+        function: function (player: Player) {
+          let message = `§f---=======- §e[ §6Crops §e] §f-=======---`;
+          let crops = [
+            "Beetroot",
+            "Wheat",
+            "Carrot",
+            "Potato",
+            "Berries",
+            "Pumpkin",
+            "Melon",
+          ];
+          let idata: Island = islandDB.get(playerDB.get(player.id).island);
+          for (let i = 0; i < cropLevels.length; i++) {
+            let cropName = crops[i];
+            let cropInfo = cropLevels[i];
+            message =
+              message +
+              `\n§e - §a${cropName}§e: §6§l< §r${
+                xpToLevel(idata.points) >= cropInfo.levelReq ? "§b" : "§c"
+              }Level ${cropInfo.levelReq} §l§6>§r`;
+          }
+          message = message + `\n§f---======- §e----   ---- §f-======---`;
+          player.sendMessage(message);
+        },
+        arguments: [],
+        allowSigns: true,
+        closeChat: true,
+      },
     ],
     allowSigns: true,
     closeChat: true,
@@ -1277,44 +1355,117 @@ const commands = [
     closeChat: true,
   },
   {
+    alias: ["compress", "compressinv", "condenseall", "ca"],
+    info: "Compresses inventory ores into blocks.",
+    function: function (player: Player, message: string) {
+      if (player.getItemCooldown("compress") > 0) {
+        sendError(player, "§cThis action is on cooldown.");
+        return;
+      }
+      player.startItemCooldown("compress", 600);
+      let blocks = [
+        ["coal", "coal_block"],
+        ["iron_ingot", "iron_block"],
+        ["lapis_lazuli", "lapis_block"],
+        ["gold_ingot", "gold_block"],
+        ["diamond", "diamond_block"],
+        ["emerald", "emerald_block"],
+        ["copper_ingot", "copper_block"],
+      ];
+      let c = 0;
+      for (let block of blocks) {
+        let count = getItemAmount(player, block[0], true);
+        c += count;
+        if (count < 9) {
+          player.runCommandAsync(`give @s ${block[0]} ${count}`);
+        } else {
+          player.runCommandAsync(
+            `give @s ${block[1]} ${Math.floor(count / 9)}`
+          );
+          player.runCommandAsync(`give @s ${block[0]} ${count % 9}`);
+        }
+      }
+      sendAlert(player, `§eCompressed §8x§7${c} §bores §einto §6blocks§e!`);
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
     alias: ["repair", "fix", "mend"],
     info: "Shortcut to sell to shop.",
     function: function (player: Player, message: string) {
-      let holdInv = <EntityEquippableComponent>(
-        player.getComponent("equippable")
-      );
-      let item = holdInv.getEquipment(EquipmentSlot.Mainhand);
-      if (!item || item.isStackable == true) {
-        sendError(player, `This item cannot be repaired.`, PREFIX.shop);
-        return;
-      }
-      let dura = item.getComponent("durability");
-      if (!dura || !dura.damage) {
-        sendError(player, `This item cannot be repaired.`, PREFIX.shop);
-        return;
-      }
-      let price = dura.damage * 9;
-      let pdata = playerDB.get(player.id);
-      if (price > pdata.coins) {
-        sendError(
-          player,
-          `Insufficient funds. §4(§e$${formatNumber(price)}§4)`,
-          PREFIX.shop
+      system.runTimeout(() => {
+        let holdInv = <EntityEquippableComponent>(
+          player.getComponent("equippable")
         );
-        return;
-      }
-      pdata.coins = pdata.coins - price;
-      playerDB.set(player.id, pdata);
-      dura.damage = 0;
-      holdInv.setEquipment(EquipmentSlot.Mainhand, item);
-      sendAlert(
-        player,
-        `§3Repaired §b${
-          item.nameTag ?? formatItemName(item.typeId.slice(10))
-        } §3for §e$${formatNumber(price)}§3.`,
-        PREFIX.server,
-        `block.grindstone.use`
-      );
+        let item = holdInv.getEquipment(EquipmentSlot.Mainhand);
+        if (!item || item.isStackable == true) {
+          sendError(player, `This item cannot be repaired.`, PREFIX.shop);
+          return;
+        }
+        let dura = item.getComponent("durability");
+        if (!dura || !dura.damage) {
+          sendError(player, `This item cannot be repaired.`, PREFIX.shop);
+          return;
+        }
+        let price = dura.damage * 7;
+        let gui = new ChestFormData("light_blue");
+        gui.title("Repair Item");
+        gui.pattern([0, 0], ["xxxxxxxxx", "xooo_ooox", "xxxxxxxxx"], {
+          x: {
+            data: {
+              itemName: "",
+              itemDesc: [],
+              enchanted: false,
+              stackSize: 1,
+            },
+            iconPath: "textures/blocks/glass_white.png",
+          },
+          o: {
+            data: {
+              itemName: "",
+              itemDesc: [],
+              enchanted: false,
+              stackSize: 1,
+            },
+            iconPath: "textures/blocks/glass_gray.png",
+          },
+        });
+        gui.button(
+          13,
+          "§bRepair Item",
+          [`§9Price: §6$§e${price}`],
+          item.typeId,
+          1,
+          true
+        );
+        gui.show(player).then((result) => {
+          if (result.canceled || result.selection != 13) return;
+          let pdata = playerDB.get(player.id);
+          if (price > pdata.coins) {
+            sendError(
+              player,
+              `Insufficient funds. §4(§e$${formatNumber(price)}§4)`,
+              PREFIX.shop
+            );
+            return;
+          }
+          if (!dura || !item) return;
+          pdata.coins = pdata.coins - price;
+          playerDB.set(player.id, pdata);
+          dura.damage = 0;
+          holdInv.setEquipment(EquipmentSlot.Mainhand, item);
+          sendAlert(
+            player,
+            `§3Repaired §b${
+              item.nameTag ?? formatItemName(item.typeId.slice(10))
+            } §8(§c${price / 7}§8) §3for §e$${formatNumber(price)}§3.`,
+            PREFIX.server,
+            `block.grindstone.use`
+          );
+        });
+      }, 2);
     },
     arguments: [],
     allowSigns: true,
@@ -1380,6 +1531,11 @@ const commands = [
           description: "Silences the xp sound when\nmining ores.",
           tag: "pref:quieter_mining",
         },
+        {
+          name: "Mining Mode",
+          description: "Activates the mining sidebar.",
+          tag: "pref:mining_mode",
+        },
       ];
       system.runTimeout(() => {
         let gui = new ChestFormData("small");
@@ -1419,37 +1575,6 @@ const commands = [
           preferenceUI(player);
         });
       }, 2);
-    },
-    arguments: [],
-    allowSigns: true,
-    closeChat: true,
-  },
-  {
-    alias: ["crops"],
-    info: "Shows all crop levels.",
-    function: function (player: Player) {
-      let message = `§f---=======- §e[ §6Crops §e] §f-=======---`;
-      let crops = [
-        "Beetroot",
-        "Wheat",
-        "Carrot",
-        "Potato",
-        "Cactus",
-        "Melon",
-        "Pumpkin",
-      ];
-      let idata: Island = islandDB.get(playerDB.get(player.id).island);
-      for (let i = 0; i < cropLevels.length; i++) {
-        let cropName = crops[i];
-        let cropInfo = cropLevels[i];
-        message =
-          message +
-          `\n§e - §a${cropName}§e: §6§l< §r${
-            xpToLevel(idata.points) >= cropInfo.levelReq ? "§b" : "§c"
-          }Level ${cropInfo.levelReq} §l§6>§r`;
-      }
-      message = message + `\n§f---======- §e----   ---- §f-======---`;
-      player.sendMessage(message);
     },
     arguments: [],
     allowSigns: true,
@@ -1552,6 +1677,27 @@ const commands = [
     arguments: [],
     allowSigns: true,
     closeChat: true,
+  },
+  {
+    alias: ["break", "bedrock", "bb"],
+    info: "Breaks bedrock you're looking at.",
+    function: function (player: Player, message: string) {
+      let block = player.getBlockFromViewDirection({ maxDistance: 5 });
+      if (getIslandOn(player)?.operator.id != player.id) {
+        sendError(player, `§cYou must be §eIsland Owner §cto break that here.`);
+        return;
+      }
+      if (block?.block && block.block.typeId == "minecraft:bedrock") {
+        block.block.setType("air");
+        sendAlert(player, `§cBedrock block has been broken.`);
+        player
+          .getComponent("inventory")
+          ?.container?.addItem(new ItemStack("bedrock", 1));
+      }
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: false,
   },
   {
     alias: ["warp", "warps"],
@@ -1748,9 +1894,9 @@ const commands = [
     permission: COMMAND_PERMS.ADMIN,
     info: "Executes an island function as admin.",
     function: function (player: Player, message: string) {
-      let island = message.split(" ")[1];
+      let island = message.split('"')[1];
+      console.warn(island);
       let idata: Island = islandDB.get(island);
-      console.warn(idata.name);
       if (!idata) {
         sendError(
           player,
@@ -1759,11 +1905,45 @@ const commands = [
         );
         return;
       }
+      console.warn(idata.name);
       let func = message.split(" ")[2];
-      let arg1 = message.split(" ")[3] ?? "";
-      //@ts-ignore
-      IslandMethods[func as keyof typeof IslandMethods](idata, Number(arg1));
-      IslandMethods.updateData(idata);
+      let arg1: any = message.split(" ")[3] ?? "";
+      let arg2: any = message.split(" ")[4] ?? "";
+      if (!arg2) arg1 = Number(arg1);
+      else arg2 = Number(arg2);
+      if (func == "addPoints") IslandMethods.addPoints(idata, arg1);
+      else if (func == "removePoints") IslandMethods.removePoints(idata, arg1);
+      else if (func == "addLimit") IslandMethods.addLimit(idata, arg1, arg2);
+      else if (func == "removeLimit")
+        IslandMethods.removeLimit(idata, arg1, arg2);
+      else if (func == "expand") IslandMethods.increaseSize(idata);
+      else if (func == "contract") IslandMethods.decreaseSize(idata);
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
+    alias: ["enchant"],
+    permission: COMMAND_PERMS.ADMIN,
+    info: "Gives an open CE.",
+    function: function (player: Player, msg: string) {
+      let mod = msg.split(" ")[1];
+      let ench = msg.split(" ")[2];
+      let level = Number(msg.split(" ")[3]);
+      if (!mod || !ench || !level) return;
+      let equip = player.getComponent("equippable");
+      let item = equip?.getEquipment(EquipmentSlot.Mainhand);
+      if (!item) return;
+      if (mod == "add") {
+        Enchant.addEnchant(item, ench, level);
+        equip?.setEquipment(EquipmentSlot.Mainhand, item);
+      } else if (mod == "remove") {
+        Enchant.removeEnchant(item, ench);
+        equip?.setEquipment(EquipmentSlot.Mainhand, item);
+      } else {
+        sendError(player, `§cInvalid modifier: '§eadd§c' §4| §c'§eremove§c'.`);
+      }
     },
     arguments: [],
     allowSigns: true,
@@ -1805,6 +1985,122 @@ const commands = [
       let rarity = msg.split(" ")[2] as keyof typeof CHARMS.binding;
       if (!rarity) return;
       giveCharm(player, type, rarity, 1);
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
+    alias: ["creategen"],
+    permission: COMMAND_PERMS.ADMIN,
+    info: "Artifically constructs generator.",
+    function: function (player: Player, msg: string) {
+      // -creategen "PalmOnTop" oregen 1:1
+      let island: Island | undefined = islandDB.get(msg.split('"')[1]);
+      if (!island) return;
+      let type = msg.split(" ")[2];
+      let speed = msg.split(":")[0];
+      speed = speed.slice(speed.length - 1);
+      let fortune = msg.split(":")[1];
+      let gen = new Generator(
+        type as genType,
+        {
+          speed: Number(speed) - 1,
+          fortune: Number(fortune) - 1,
+        },
+        {
+          x: Math.floor(player.location.x),
+          y: Math.floor(player.location.y),
+          z: Math.floor(player.location.z),
+        },
+        island.operator.id,
+        ""
+      );
+      // Store generator data.
+      let key = JSON.stringify({
+        x: gen.location.x,
+        y: gen.location.y,
+        z: gen.location.z,
+      });
+      let block = overworld.getBlock(player.location);
+      block?.setType(genItems[type as keyof typeof genItems]);
+      generatorDB.set(key, gen);
+      // Send alert.
+      sendAlert(
+        player,
+        `§ePlaced §b§lGenerator§r\n§9Owner: §a${island.operator.name}`,
+        undefined,
+        "block.lantern.break",
+        0.75
+      );
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
+    alias: ["macro"],
+    permission: COMMAND_PERMS.MOD,
+    info: "Checks player for macro.",
+    function: function (p: Player, msg: string) {
+      let i = 0;
+      let total = 0;
+      let player = world.getPlayers({ name: msg.split('"')[1] })[0];
+      if (!player) {
+        sendError(p, `Player does not exist.`);
+        return;
+      }
+      function checkMacro() {
+        let elapse = 0;
+        let check1 = system.runInterval(() => {
+          total++;
+          if (
+            (player.getVelocity().x == 0 && player.getVelocity().z != 0) ||
+            (player.getVelocity().z == 0 && player.getVelocity().x != 0)
+          ) {
+            console.warn("START");
+            system.clearRun(check1);
+            let check2 = system.runInterval(() => {
+              // Velocity: == 0.2158203125
+              elapse++;
+              total++;
+              if (
+                Math.abs(player.getVelocity().x) > 0.21 ||
+                Math.abs(player.getVelocity().x) > 0.21
+              ) {
+                console.warn("RECORD IN PROGRESS");
+                system.clearRun(check2);
+                let check3 = system.runInterval(() => {
+                  elapse++;
+                  total++;
+                  if (
+                    (player.getVelocity().x == 0 &&
+                      player.getVelocity().z != 0) ||
+                    (player.getVelocity().z == 0 && player.getVelocity().x != 0)
+                  ) {
+                    console.warn("END");
+                    system.clearRun(check3);
+                    let time = elapse / 6.66;
+                    p.sendMessage(
+                      `§eResult: §6${time.toString().substring(0, 5)}s`
+                    );
+                    i++;
+                  }
+                }, 3);
+              }
+            }, 3);
+          }
+        }, 3);
+      }
+      checkMacro();
+      let m = system.runInterval(() => {
+        if (i < 3) checkMacro();
+        if (i == 3) {
+          system.clearRun(m);
+          total /= 6.66;
+          p.sendMessage(`§bTotal: §6${total.toString().substring(0, 5)}s`);
+        }
+      }, 200);
     },
     arguments: [],
     allowSigns: true,
@@ -1912,9 +2208,12 @@ function parseCommand(player: Player, msg: string, source: "chat" | "sign") {
     x.alias.includes(msg.slice(1).split(" ")[0].toLowerCase())
   );
   if (cmd?.allowSigns == false && source == "sign") return;
+  let mods = ["The Palm Healer", "EpicRedstone"];
+  let admins = ["The Palm Healer"];
   if (
     !cmd ||
-    (cmd.permission == COMMAND_PERMS.ADMIN && player.name != "The Palm Healer")
+    (cmd.permission == COMMAND_PERMS.MOD && !mods.includes(player.name)) ||
+    (cmd.permission == COMMAND_PERMS.ADMIN && !admins.includes(player.name))
   ) {
     system.run(() => {
       sendError(

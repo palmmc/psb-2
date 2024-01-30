@@ -31,6 +31,7 @@ import {
 import { ChestFormData } from "../chest-ui/forms";
 import { JsonDatabase } from "../database";
 import { xpToLevel } from "../island/levels";
+import { blackJackGame, stacksGame } from "../economy/casino";
 
 // Initialize Databases
 var playerDB: any = undefined;
@@ -81,21 +82,29 @@ world.afterEvents.worldInitialize.subscribe((data) => {
           if (lb.stat.db == "player") {
             let db = playerDB;
             let i = 1;
+            let score = new Array();
             for (let data of db.entries()) {
+              score.push([data[1].name, Number(data[1].coins)]);
+            }
+            for (let data of score.sort((a, b) => b[1] - a[1])) {
               display += `\n ${lb.format
                 .replace("%a", i.toString())
-                .replace("%b", data[1].name)
-                .replace("%c", formatNumber(Number(data[1][lb.stat.path])))} `;
+                .replace("%b", data[0])
+                .replace("%c", formatNumber(data[1]))} `;
               i++;
             }
           } else {
             let db = islandDB;
             let i = 1;
+            let score = new Array();
             for (let data of db.entries()) {
+              score.push([data[1].name, Number(data[1].points)]);
+            }
+            for (let data of score.sort((a, b) => b[1] - a[1])) {
               display += `\n ${lb.format
                 .replace("%a", i.toString())
-                .replace("%b", data[1].name)
-                .replace("%c", xpToLevel(Number(data[1].points)).toString())} `;
+                .replace("%b", data[0])
+                .replace("%c", xpToLevel(data[1]).toString())} `;
               i++;
             }
           }
@@ -156,6 +165,26 @@ const NPC_LIST: NPC[] = [
     followPlayer: false,
   },
   {
+    name: "",
+    id: "palm:slotmachine",
+    location: new Vector(-22.5, 89, -48.3),
+    facing: new Vector(-22.5, 90, -45),
+    function: function (player: Player) {
+      stacksGame(player);
+    },
+    followPlayer: false,
+  },
+  {
+    name: " ",
+    id: "palm:table",
+    location: new Vector(-21.5, 89, -44.5),
+    facing: new Vector(-21.5, 90, -41),
+    function: function (player: Player) {
+      blackJackGame(player);
+    },
+    followPlayer: false,
+  },
+  {
     name: "§8§lBlacksmith§r\n§cCLICK TO USE",
     id: "palm:blacksmith",
     location: new Vector(-45.5, 90, -15.5),
@@ -200,7 +229,7 @@ const NPC_LIST: NPC[] = [
             return;
           }
           const enchants = Enchant.getEnchants(item);
-          if (enchants.length >= 5) return;
+          if (enchants.length >= 7) return;
           function getSlotKey() {
             for (const key of Object.keys(EnchantSlot)) {
               //@ts-ignore
@@ -278,7 +307,7 @@ const NPC_LIST: NPC[] = [
           if (ench.tier == "Gold") accuracy = randomIntFromInterval(60, 80);
           if (ench.tier == "Diamond") accuracy = randomIntFromInterval(80, 100);
           if (ench.tier == "Emerald") accuracy = 100;
-          animateBlacksmith(player, npc, type, ench?.ench, accuracy);
+          animateBlacksmith(player, type, ench?.ench, accuracy);
         } else if (result.selection == 14) {
           const gui = new ChestFormData("magenta");
           gui.title("§d§lCharms");
@@ -342,7 +371,7 @@ world.afterEvents.worldInitialize.subscribe((data) => {
 });
 
 world.afterEvents.entityHitEntity.subscribe((data) => {
-  let findNpc = NPC_LIST.find((x) => x.name == data.hitEntity.nameTag);
+  let findNpc = NPC_LIST.find((x) => x.id == data.hitEntity.typeId);
   if (!findNpc) return;
   let player = <Player>data.damagingEntity;
   if (player.getItemCooldown("npc") > 0) {
@@ -354,7 +383,7 @@ world.afterEvents.entityHitEntity.subscribe((data) => {
 });
 
 world.afterEvents.playerInteractWithEntity.subscribe((data) => {
-  let findNpc = NPC_LIST.find((x) => x.name == data.target.nameTag);
+  let findNpc = NPC_LIST.find((x) => x.id == data.target.typeId);
   if (!findNpc) return;
   let player = data.player;
   if (player.getItemCooldown("npc") > 0) {
@@ -408,3 +437,13 @@ const LEADERBOARDS: Leaderboard[] = [
     location: new Vector(-45.5, 91.5, -63.5),
   },
 ];
+
+system.runInterval(() => {
+  let suits = overworld.getEntities({ type: "palm:suit" });
+  for (let suit of suits) {
+    if (randomIntFromInterval(1, 8) == 1)
+      suit.playAnimation("animation.suit.dance");
+    else if (randomIntFromInterval(1, 6) == 1)
+      suit.playAnimation("animation.suit.gamble");
+  }
+}, 140);

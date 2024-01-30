@@ -1,53 +1,38 @@
 {
-    "format_version": "1.20.30",
-    "minecraft:block": {
-        "description": {
-            "identifier": "palm:farmland",
-            "menu_category": {
-                "category": "nature"
-            }
+  "format_version": "1.20.30",
+  "minecraft:block": {
+    "description": {
+      "identifier": "palm:farmland",
+      "menu_category": {
+        "category": "nature"
+      }
+    },
+    "components": {
+      "minecraft:map_color": "#0A5E20",
+      "minecraft:geometry": "geometry.farmland",
+      "minecraft:light_dampening": 0,
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.3
+      },
+      "minecraft:destructible_by_explosion": false,
+      "minecraft:selection_box": {
+        "origin": [-8, 0, -8],
+        "size": [16, 15, 16]
+      },
+      "minecraft:collision_box": {
+        "origin": [-8, 0, -8],
+        "size": [16, 15, 16]
+      },
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "dirt",
+          "render_method": "alpha_test"
         },
-        "components": {
-            "minecraft:map_color": "#0A5E20",
-            "minecraft:geometry": "geometry.farmland",
-            "minecraft:light_dampening": 0,
-            "minecraft:destructible_by_mining": {
-                "seconds_to_destroy": 0.6
-            },
-            "minecraft:selection_box": {
-                "origin": [
-                    -8,
-                    0,
-                    -8
-                ],
-                "size": [
-                    16,
-                    15,
-                    16
-                ]
-            },
-            "minecraft:collision_box": {
-                "origin": [
-                    -8,
-                    0,
-                    -8
-                ],
-                "size": [
-                    16,
-                    15,
-                    16
-                ]
-            },
-            "minecraft:material_instances": {
-                "*": {
-                    "texture": "dirt",
-                    "render_method": "alpha_test"
-                },
-                "up": {
-                    "texture": "farmland",
-                    "render_method": "alpha_test"
-                }
-            }
+        "up": {
+          "texture": "farmland",
+          "render_method": "alpha_test"
         }
+      }
     }
+  }
 }

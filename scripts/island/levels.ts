@@ -3,6 +3,7 @@ import {
   Entity,
   EntityEquippableComponent,
   EquipmentSlot,
+  ItemStack,
   ItemUseOnBeforeEvent,
   MolangVariableMap,
   Player,
@@ -94,7 +95,24 @@ world.afterEvents.worldInitialize.subscribe((data) => {
     playerDB = new JsonDatabase("playerDB", world);
     islandDB = new JsonDatabase("islandDB", world);
     system.runInterval(() => {
+      let headRot = world.scoreboard.getObjective("headRot");
+      let afk = world.scoreboard.getObjective("afkScore");
       for (let player of world.getPlayers()) {
+        // AFK DETECTION
+        let dist = Math.floor(
+          Math.abs(player.getRotation().x - player.getRotation().y)
+        );
+        if (Math.abs((headRot?.getScore(player) ?? 0) - dist) < 15)
+          afk?.addScore(player, 1);
+        afk?.setScore(player, 0);
+        headRot?.setScore(player, dist);
+        if ((afk?.getScore(player) ?? 0) >= 160) {
+          let whitelist = ["The Palm Healer", "PalmSkyblock"];
+          afk?.addScore(player, -20);
+          if (whitelist.includes(player.name)) return;
+          overworld.runCommandAsync(`kick "${player.name}" §cKicked for AFK.`);
+        }
+        //
         let pdata = playerDB.get(player.id);
         if (!pdata.island) continue;
         let idata: Island = islandDB.get(pdata.island);
@@ -166,7 +184,7 @@ export const cropLevels = [
     levelReq: 35,
   },
   {
-    crop: "minecraft:cactus",
+    crop: "palm:berry_seeds",
     levelReq: 50,
   },
   {
@@ -209,35 +227,36 @@ function emptyReward(player: Player) {}
 // XP WEIGHTS
 export const BREAK_XP = [
   // Format: ["minecraft:tile": String, xpMin: number, xpMax: number, isCrop: boolean]
-  ["minecraft:coal_ore", 0, 2],
-  ["minecraft:iron_ore", 0, 2],
-  ["minecraft:lapis_ore", 1, 4],
-  ["minecraft:gold_ore", 1, 3],
-  ["minecraft:diamond_ore", 1, 3],
-  ["minecraft:emerald_ore", 1, 4],
-  ["palm:beetroots", 0, 2, true],
-  ["palm:wheat", 1, 2, true],
-  ["palm:carrots", 1, 3, true],
-  ["palm:potatoes", 1, 3, true],
+  ["minecraft:coal_ore", 1, 3],
+  ["minecraft:iron_ore", 1, 3],
+  ["minecraft:lapis_ore", 2, 5],
+  ["minecraft:gold_ore", 1, 4],
+  ["minecraft:diamond_ore", 1, 6],
+  ["minecraft:emerald_ore", 1, 7],
+  ["palm:beetroots", 0, 4, true],
+  ["palm:wheat", 2, 4, true],
+  ["palm:carrots", 2, 6, true],
+  ["palm:potatoes", 2, 6, true],
+  ["palm:sweet_berry_bush", 1, 4, true],
   //["minecraft:reeds", 0, 0],
   //["minecraft:cactus", 0, 0],
-  ["minecraft:pumpkin", 1, 3],
-  ["minecraft:melon_block", 1, 3],
-  ["minecraft:coal_block", -14],
-  ["minecraft:iron_block", -16],
-  ["minecraft:lapis_block", -18],
-  ["minecraft:gold_block", -20],
-  ["minecraft:diamond_block", -22],
-  ["minecraft:emerald_block", -24],
+  ["minecraft:pumpkin", 3, 6],
+  ["minecraft:melon_block", 3, 6],
+  ["minecraft:coal_block", -16],
+  ["minecraft:iron_block", -18],
+  ["minecraft:lapis_block", -20],
+  ["minecraft:gold_block", -22],
+  ["minecraft:diamond_block", -24],
+  ["minecraft:emerald_block", -28],
 ];
 const PLACE_XP = [
   // Format: ["minecraft:tile": String, xpMin: number, xpMax: number, isCrop: boolean]
-  ["minecraft:coal_block", 14],
-  ["minecraft:iron_block", 16],
-  ["minecraft:lapis_block", 18],
-  ["minecraft:gold_block", 20],
-  ["minecraft:diamond_block", 22],
-  ["minecraft:emerald_block", 24],
+  ["minecraft:coal_block", 16],
+  ["minecraft:iron_block", 18],
+  ["minecraft:lapis_block", 20],
+  ["minecraft:gold_block", 22],
+  ["minecraft:diamond_block", 24],
+  ["minecraft:emerald_block", 28],
 ];
 
 // LEVEL EVENTS
@@ -258,6 +277,12 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
     IslandMethods.removeLimit(island, "crop", 1);
     if (block.getState("palm:growth_stage") != 7) return;
     giveRelic(data.player, rollRelic("FARM"));
+  } else if (id == "palm:farmland") {
+    let f = data.block.above(1);
+    if (f?.typeId.includes("palm") && !f.typeId.includes("farmland")) {
+      let island = islandDB.get(playerDB.get(player.id).island);
+      IslandMethods.removeLimit(island, "crop", 1);
+    }
   }
   if (id == "minecraft:pumpkin" || id == "minecraft:melon_block") {
     giveRelic(data.player, rollRelic("MELON_PUMPKIN"));
@@ -293,13 +318,14 @@ world.beforeEvents.itemUseOn.subscribe((data) => {
   let C_LEVEL = cropLevels.find((x) => x.crop == data.itemStack.typeId);
   if (!C_LEVEL) return;
   let player = <Player>data.source;
-  let idata: Island = islandDB.get(playerDB.get(player.id).island);
+  let idata: Island | undefined = getIslandOn(player);
+  if (!idata) return;
   if (C_LEVEL.levelReq > xpToLevel(idata.points)) {
     data.cancel = true;
     system.run(() =>
       sendError(
         player,
-        `This island has not unlocked this crop yet.\n§6Use §e-crops §6to see when it unlocks.`,
+        `This island has not unlocked this crop yet.\n§6Use §e-is crops §6to see when it unlocks.`,
         PREFIX.island
       )
     );
@@ -314,7 +340,8 @@ world.afterEvents.playerPlaceBlock.subscribe((data) => {
   )
     return;
   let player = data.player;
-  let idata: Island = islandDB.get(playerDB.get(player.id).island);
+  let idata: Island | undefined = getIslandOn(player);
+  if (!idata) return;
   if (idata.limits.crop.amount >= idata.limits.crop.max) {
     data.block.setType("air");
     player.startItemCooldown("crop", 15);
@@ -344,3 +371,22 @@ function getBlockAtFace(
   //console.warn(overworld.getBlock(loc)?.typeId);
   return overworld.getBlock(loc);
 }
+
+world.beforeEvents.playerInteractWithBlock.subscribe((data) => {
+  if (data.block.typeId == "pumpkin") data.cancel = true;
+  if (data.block.typeId != "palm:sweet_berry_bush") return;
+  if ((data.block.permutation.getState("palm:growth_stage") as number) < 7)
+    return;
+  system.run(() => {
+    if (data.player.getItemCooldown("berry") > 0) return;
+    data.player.startItemCooldown("berry", 20);
+    data.player.runCommandAsync(
+      `setblock ${data.block.x} ${data.block.y} ${data.block.z} palm:sweet_berry_bush`
+    );
+    data.player
+      .getComponent("inventory")
+      ?.container?.addItem(
+        new ItemStack("palm:sweet_berries", randomIntFromInterval(1, 4))
+      );
+  });
+});

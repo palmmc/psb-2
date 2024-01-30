@@ -18,7 +18,15 @@ type itemTexture = Map<string, [string, boolean]>;
 
 const itemTextures: itemTexture = new Map([
   //Used to find custom items, if not defined in extensions/typeIds.js (non-vanilla ones, for instance)
-  ["custom:itemname", ["minecraft:dirt", true /*If the item has glint in UI*/]],
+  ["palm:beetroot_seeds", ["minecraft:beetroot_seeds", false]],
+  ["palm:wheat_seeds", ["minecraft:wheat_seeds", false]],
+  ["palm:carrot", ["minecraft:carrot", false]],
+  ["palm:potato", ["minecraft:potato", false]],
+  ["palm:sweet_berries", ["minecraft:sweet_berries", false]],
+  ["palm:berry_seeds", ["textures/items/berry_seeds", false]],
+  ["palm:pumpkin_seeds", ["minecraft:pumpkin_seeds", false]],
+  ["palm:melon_seeds", ["minecraft:melon_seeds", false]],
+  ["palm:farmland", ["minecraft:farmland", false]],
   //Repeat the above as many times as is needed
 ]);
 const fakeItemNames = new Map([
@@ -584,18 +592,15 @@ export function placeAuc(player: Player) {
             prefixMulti.get(
               (price.match(/\D$/)?.shift() ?? "").toLowerCase()
             ) ?? 1;
-          const finalPrice =
-            Math.floor(
-              parseFloat(
-                price
-                  .replace(/,|-/g, "")
-                  .match(/[0-9.]+/)
-                  ?.shift() ?? "0"
-              ) *
-                multiplier *
-                100
-            ) / 100;
-          if (finalPrice <= 0) return sendError(player, `Invalid item price.`);
+          const finalPrice = Math.floor(
+            parseInt(
+              price
+                .replace(/,|-/g, "")
+                .match(/[0-9.]+/)
+                ?.shift() ?? "0"
+            ) * multiplier
+          );
+          if (finalPrice < 1) return sendError(player, `Invalid item price.`);
           if (item.amount <= amount) {
             player
               .getComponent("inventory")

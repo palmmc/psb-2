@@ -287,7 +287,7 @@ export function islandInfo(player: Player, idata: Island) {
         islandPlayers.push(x);
       }
       if (islandPlayers.length == 0) {
-        sendError(player, `Your island has no members.`);
+        sendError(player, `This island has no online members.`);
         return;
       }
       gui.show(player).then((result) => {
@@ -322,7 +322,7 @@ export function islandInfo(player: Player, idata: Island) {
         islandPlayers.push(x);
       }
       if (islandPlayers.length == 0) {
-        sendError(player, `There are no other owners on your island.`);
+        sendError(player, `There are no other owners online on your island.`);
         return;
       }
       gui.show(player).then((result) => {
@@ -401,7 +401,7 @@ const LIMIT_INCREMENTS = {
 
 function UPGRADE_PRICE(size: number) {
   // Upgrade price formula.
-  return 125000 + 75000 * ((size - 16) / UPGRADE_SIZE - 1);
+  return 60000 + 80000 * ((size - 16) / UPGRADE_SIZE - 1);
 }
 
 export function islandExpand(player: Player) {
@@ -640,7 +640,7 @@ export function visitIslandUI(player: Player) {
   let islands = new Array();
   for (let x of world.getPlayers()) {
     let xi = playerDB.get(x.id).island;
-    if (!xi) continue;
+    if (!xi || x.name == "PalmSkyblock") continue;
     gui.button(
       i++,
       `§d${xi}`,

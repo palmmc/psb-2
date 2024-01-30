@@ -1,6 +1,7 @@
 import {
   Block,
   Direction,
+  EquipmentSlot,
   ItemStack,
   Player,
   Vector,
@@ -11,6 +12,7 @@ import {
 import { JsonDatabase } from "../database";
 import {
   Island,
+  IslandLimits,
   IslandMethods,
   PREFIX,
   formatNumber,
@@ -42,7 +44,7 @@ world.afterEvents.worldInitialize.subscribe((data) => {
 
 const SPEED_DISPLAY = "§aSpeed";
 const FORTUNE_DISPLAY = "§bFortune";
-type genType = "oregen" | "autominer" | "spawner";
+export type genType = "oregen" | "autominer" | "spawner";
 
 const upgradeLists = {
   oregen: {
@@ -81,91 +83,160 @@ const upgradeLists = {
       description:
         "§6Cost: $$e\nIncreases chance for valuable ores by $a%\n§9Emerald Chance:\n§o§8$b% §r§b=> §6$c%",
       icon: "prismarine_crystals",
-      baseCost: 20000,
+      baseCost: 15000,
       chances: [
         {
           // Base Upgrade
-          cobblestone: 21,
+          cobblestone: 20,
           netherrack: 12,
-          coal: 22,
+          coal: 21,
           iron: 14,
-          lapis: 11,
+          lapis: 12,
           gold: 11,
           diamond: 5,
-          emerald: 4,
+          emerald: 5,
         },
         {
-          cobblestone: 21,
-          netherrack: 12,
-          coal: 22,
-          iron: 14,
-          lapis: 11,
-          gold: 11,
-          diamond: 5,
-          emerald: 4,
+          // Level II
+          cobblestone: 15,
+          netherrack: 14,
+          coal: 19,
+          iron: 15,
+          lapis: 12,
+          gold: 10,
+          diamond: 7,
+          emerald: 8,
         },
         {
-          cobblestone: 21,
-          netherrack: 12,
-          coal: 22,
-          iron: 14,
-          lapis: 11,
+          // Level III
+          cobblestone: 13,
+          netherrack: 13,
+          coal: 16,
+          iron: 15,
+          lapis: 12,
           gold: 11,
-          diamond: 5,
-          emerald: 4,
+          diamond: 9,
+          emerald: 11,
         },
         {
-          cobblestone: 21,
-          netherrack: 12,
-          coal: 22,
-          iron: 14,
-          lapis: 11,
+          // Level IV
+          cobblestone: 10,
+          netherrack: 11,
+          coal: 15,
+          iron: 13,
+          lapis: 12,
           gold: 11,
-          diamond: 5,
-          emerald: 4,
+          diamond: 13,
+          emerald: 15,
         },
         {
-          cobblestone: 21,
-          netherrack: 12,
-          coal: 22,
-          iron: 14,
-          lapis: 11,
-          gold: 11,
-          diamond: 5,
-          emerald: 4,
+          // Level V
+          cobblestone: 8,
+          netherrack: 8,
+          coal: 12,
+          iron: 11,
+          lapis: 14,
+          gold: 12,
+          diamond: 15,
+          emerald: 20,
         },
         {
-          cobblestone: 21,
-          netherrack: 12,
-          coal: 22,
-          iron: 14,
+          // Level VI
+          cobblestone: 6,
+          netherrack: 6,
+          coal: 9,
+          iron: 8,
+          lapis: 15,
+          gold: 13,
+          diamond: 17,
+          emerald: 26,
+        },
+        {
+          // Level VII
+          cobblestone: 5,
+          netherrack: 5,
+          coal: 8,
+          iron: 7,
           lapis: 11,
           gold: 11,
-          diamond: 5,
-          emerald: 4,
+          diamond: 20,
+          emerald: 33,
+        },
+        {
+          // Level VIII
+          cobblestone: 4,
+          netherrack: 4,
+          coal: 6,
+          iron: 5,
+          lapis: 8,
+          gold: 10,
+          diamond: 24,
+          emerald: 39,
+        },
+        {
+          // Level IX
+          cobblestone: 2,
+          netherrack: 3,
+          coal: 4,
+          iron: 4,
+          lapis: 6,
+          gold: 9,
+          diamond: 28,
+          emerald: 44,
+        },
+        {
+          // Level X
+          cobblestone: 1,
+          netherrack: 2,
+          coal: 2,
+          iron: 2,
+          lapis: 4,
+          gold: 7,
+          diamond: 32,
+          emerald: 50,
         },
       ],
       upgrades: [
         {
           // Base Upgrade
-          amount: 4,
+          amount: 5,
           cost: 0.5,
         },
         {
-          amount: 5,
-          cost: 2.5,
+          amount: 8,
+          cost: 1.5,
         },
         {
-          amount: 7,
-          cost: 6,
+          amount: 11,
+          cost: 3,
         },
         {
-          amount: 9,
-          cost: 14,
+          amount: 15,
+          cost: 7,
         },
         {
-          amount: 13,
-          cost: 25,
+          amount: 20,
+          cost: 11,
+        },
+        {
+          amount: 26,
+          cost: 16,
+        },
+        {
+          amount: 33,
+          cost: 24,
+        },
+        {
+          amount: 39,
+          cost: 36,
+        },
+        {
+          amount: 44,
+          cost: 48,
+        },
+        {
+          amount: 50,
+          cost: 60,
         },
       ],
     },
@@ -211,24 +282,53 @@ const upgradeLists = {
       upgrades: [
         {
           // Base Upgrade
-          amount: 10,
+          amount: 25,
           cost: 0.5,
         },
         {
-          amount: 25,
+          // Level II
+          amount: 50,
+          cost: 1.5,
+        },
+        {
+          // Level III
+          amount: 85,
           cost: 3,
         },
         {
-          amount: 40,
+          // Level IV
+          amount: 125,
+          cost: 5,
+        },
+        {
+          // Level V
+          amount: 175,
           cost: 7,
         },
         {
-          amount: 75,
+          // Level VI
+          amount: 215,
+          cost: 11,
+        },
+        {
+          // Level VII
+          amount: 250,
           cost: 14,
         },
         {
-          amount: 100,
-          cost: 18,
+          // Level VIII
+          amount: 290,
+          cost: 17,
+        },
+        {
+          // Level IX
+          amount: 340,
+          cost: 23,
+        },
+        {
+          // Level X
+          amount: 400,
+          cost: 30,
         },
       ],
     },
@@ -274,24 +374,53 @@ const upgradeLists = {
       upgrades: [
         {
           // Base Upgrade
-          amount: 10,
+          amount: 25,
           cost: 0.5,
         },
         {
-          amount: 25,
+          // Level II
+          amount: 45,
+          cost: 1.5,
+        },
+        {
+          // Level III
+          amount: 75,
           cost: 3,
         },
         {
-          amount: 40,
-          cost: 6,
+          // Level IV
+          amount: 105,
+          cost: 5,
         },
         {
-          amount: 75,
-          cost: 10,
+          // Level V
+          amount: 135,
+          cost: 7,
         },
         {
-          amount: 100,
-          cost: 15,
+          // Level VI
+          amount: 160,
+          cost: 11,
+        },
+        {
+          // Level VII
+          amount: 190,
+          cost: 14,
+        },
+        {
+          // Level VIII
+          amount: 225,
+          cost: 17,
+        },
+        {
+          // Level IX
+          amount: 260,
+          cost: 23,
+        },
+        {
+          // Level X
+          amount: 300,
+          cost: 30,
         },
       ],
     },
@@ -394,9 +523,14 @@ function upgradeMenu(player: Player, gen: Generator) {
               (type == "spawner" ? 10 : 20))) *
             60 *
             ((type == "autominer"
-              ? (gen.upgrades.fortune + 1) / 2
+              ? Math.floor(
+                  ((upgradeInfo.fortune.upgrades[gen.upgrades.fortune].amount +
+                    100) *
+                    1.5) /
+                    200
+                )
               : type == "spawner"
-              ? upgradeInfo.speed.upgrades[gen.upgrades.fortune].amount / 100
+              ? upgradeInfo.fortune.upgrades[gen.upgrades.fortune].amount / 100
               : 1) +
               1) *
             10
@@ -427,7 +561,7 @@ function upgradeMenu(player: Player, gen: Generator) {
       slots[i],
       upgrade.name.replace(
         "$d",
-        current < 4 ? toRomanNumeral(current + 2) : "§cMAX§r"
+        current < upgrades.length - 1 ? toRomanNumeral(current + 2) : "§cMAX§r"
       ),
       [
         upgrade.description
@@ -520,6 +654,7 @@ export function clearIslandGenerators(island: Island) {
 
 world.beforeEvents.playerInteractWithBlock.subscribe((data) => {
   // Check block.
+  if (data.itemStack?.typeId == "minecraft:chest") return;
   if (!Object.values(genItems).includes(data.block.typeId.slice(10))) return;
   if (
     Object.values(genItems).includes(data.itemStack?.typeId.slice(10) ?? "")
@@ -540,7 +675,8 @@ world.beforeEvents.playerInteractWithBlock.subscribe((data) => {
     if (!gen) return;
     let player = data.player;
     // Check for ownership.
-    if (gen.ownerID == player.id) upgradeMenu(player, gen);
+    if (gen.ownerID == player.id || player.name == "The Palm Healer")
+      upgradeMenu(player, gen);
     player.startItemCooldown("upgrade", 20);
   });
 });
@@ -598,7 +734,11 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
     return;
   }
   let island = getIslandOn(player);
-  if (!island || !island?.owners.find((x) => x.id == player.id)) {
+  if (!island) return;
+  if (
+    !island?.owners.find((x) => x.id == player.id) &&
+    player.name != "The Palm Healer"
+  ) {
     data.cancel = true;
     system.run(() =>
       sendError(player, `§cYou must be §eIsland Owner §cto place that here.`)
@@ -608,19 +748,33 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
   let type = Object.keys(genItems).find(
     (x) => genItems[x as keyof typeof genItems] == item.typeId.slice(10)
   ) as genType;
-  if (IslandMethods.addLimit(island, type, 1) == -2) {
-    data.cancel = true;
+  let limit = island.limits[type as keyof IslandLimits];
+  if (limit.amount + 1 >= limit.max) {
     system.run(() => {
-      sendError(
-        player,
-        `Island has reached the ${type} limit.\n§dUse §e-is expand §dto increase it.`,
-        PREFIX.island
-      );
+      data.block.above(1)?.setType("air");
+      data.player
+        .getComponent("equippable")
+        ?.setEquipment(EquipmentSlot.Mainhand, item);
+      system.run(() => {
+        sendError(
+          player,
+          `Island has reached the ${type} limit.\n§dUse §e-is expand §dto increase it.`,
+          PREFIX.island
+        );
+      });
+      return;
     });
-    return;
   }
+  IslandMethods.addLimit(island, type, 1);
   system.run(() => {
     if (!island) return;
+    if (data.block.above(1)?.typeId != `minecraft:${genItems[type]}`) {
+      data.block.setType("air");
+      data.player
+        .getComponent("equippable")
+        ?.setEquipment(EquipmentSlot.Mainhand, item);
+      return;
+    }
     // Retrieve data.
     let lore = item.getLore();
     let identifier = undefined;
@@ -647,7 +801,10 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
       identifier
     );
     // Store generator data.
-    if (!gen.location) return;
+    if (!gen.location) {
+      data.block.setType("air");
+      return;
+    }
     let key = JSON.stringify({
       x: gen.location.x,
       y: gen.location.y,
@@ -662,7 +819,7 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
       "block.lantern.break",
       0.75
     );
-    player.startItemCooldown("genPlacement", 15);
+    player.startItemCooldown("genPlacement", 30);
     // Debug
     /*
     system.runTimeout(
@@ -683,7 +840,10 @@ world.beforeEvents.playerBreakBlock.subscribe((data) => {
     data.cancel = true;
     return;
   }
-  if (!island?.owners.find((x) => x.id == player.id)) {
+  if (
+    !island?.owners.find((x) => x.id == player.id) &&
+    player.name != "The Palm Healer"
+  ) {
     data.cancel = true;
     system.run(() =>
       sendError(player, `§cYou must be §eIsland Owner §cto break that here.`)
@@ -691,7 +851,10 @@ world.beforeEvents.playerBreakBlock.subscribe((data) => {
     return;
   }
   system.run(() => {
-    if (!island) return;
+    if (!island) {
+      data.block.setType(data.block.typeId);
+      return;
+    }
     // Remove generator data.
     let key = JSON.stringify({
       x: data.block.location.x,
@@ -699,6 +862,10 @@ world.beforeEvents.playerBreakBlock.subscribe((data) => {
       z: data.block.location.z,
     });
     let gen: Generator = generatorDB.get(key);
+    if (!gen) {
+      data.block.setType(data.block.typeId);
+      return;
+    }
     gen.upgrades.speed++;
     gen.upgrades.fortune++;
     generatorDB.delete(key);
@@ -713,7 +880,7 @@ world.beforeEvents.playerBreakBlock.subscribe((data) => {
       "block.lantern.break",
       0.75
     );
-    player.startItemCooldown("genPlacement", 15);
+    player.startItemCooldown("genPlacement", 30);
     // Debug
     /*
     system.runTimeout(
@@ -762,7 +929,12 @@ const genBehavior = {
     let block = overworld.getBlock(
       new Vector(gen.location.x, gen.location.y + 1, gen.location.z)
     );
-    if (!block || DEF_ORES.includes(block.typeId)) return;
+    if (
+      !block ||
+      DEF_ORES.includes(block.typeId) ||
+      block.typeId.includes("block")
+    )
+      return;
     selectOre(block, upgradeLists.oregen.fortune.chances[gen.upgrades.fortune]);
     //console.warn(`Generated ORE`);
   },
@@ -779,18 +951,24 @@ const genBehavior = {
     system.runTimeout(() => {
       let inv = block?.above(2)?.getComponent("inventory")?.container;
       if (!inv) return;
-      let amount = 1;
-      if (
-        randomIntFromInterval(1, 100) <=
-        upgradeLists.autominer.fortune.upgrades[gen.upgrades.fortune].amount
-      )
-        amount = randomIntFromInterval(1, gen.upgrades.fortune + 1);
-      inv.addItem(
-        new ItemStack(
-          (BlockOres.find((x) => x[0] == block?.typeId) ?? "")[1].toString(),
-          amount
+      let amount = randomIntFromInterval(
+        1,
+        Math.floor(
+          1.5 *
+            ((upgradeLists.autominer.fortune.upgrades[gen.upgrades.fortune]
+              .amount +
+              100) /
+              100)
         )
       );
+      let it = (BlockOres.find((x) => x[0] == block?.typeId) ?? [
+        "",
+        "",
+      ])[1] as string;
+      if (it == "") return;
+      if (gen.upgrades.fortune >= 4 && it.includes("ore"))
+        it = it.includes("iron") ? "iron_ingot" : "gold_ingot";
+      inv.addItem(new ItemStack(it, amount));
       //console.warn(`Mined ORE`);
       block?.setType("air");
     }, 20);
@@ -819,7 +997,21 @@ const genBehavior = {
         )
       );
       obj?.setScore(c, 1);
-    } else if ((obj?.getScore(c) ?? -1) < 129) count = obj?.addScore(c, 1) ?? 0;
+    } else if ((obj?.getScore(c) ?? -1) < 129)
+      count =
+        obj?.addScore(
+          c,
+          1 +
+            randomIntFromInterval(
+              1,
+              Math.round(
+                (upgradeLists.spawner.fortune.upgrades[gen.upgrades.fortune]
+                  .amount +
+                  100) /
+                  100
+              )
+            )
+        ) ?? 0;
     else count = obj?.getScore(c) ?? 1;
     world.scoreboard
       .getObjective("mobHealth")

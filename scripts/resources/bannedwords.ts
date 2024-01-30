@@ -734,6 +734,8 @@ const bannedWords = [
   "queerbait",
   "queerhole",
   "quim",
+  "racist",
+  "racism",
   "raghead",
   "raging boner",
   "rape",

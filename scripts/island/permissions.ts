@@ -47,6 +47,7 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
   const player = data.player;
   const idata = getIslandOn(player);
   const loc = data.block.location;
+  if (player.hasTag("admin:bypass")) return;
   if (idata && !itemsBanned.includes(data.itemStack.typeId.slice(10))) {
     if (IslandMethods.isInBounds(idata, player.location) == true) {
       if (
@@ -78,6 +79,7 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
 world.beforeEvents.playerBreakBlock.subscribe((data) => {
   const player = data.player;
   const idata = getIslandOn(player);
+  if (player.hasTag("admin:bypass")) return;
   if (idata) {
     if (IslandMethods.isInBounds(idata, player.location) == true) {
       if (
@@ -112,6 +114,7 @@ world.afterEvents.entityHurt.subscribe((data) => {
   if (!player) return;
   let ent = data.hurtEntity;
   const idata = getIslandOn(player);
+  if (player.hasTag("admin:bypass")) return;
   if (idata) {
     if (IslandMethods.isInBounds(idata, player.location) == true) {
       if (
@@ -136,6 +139,7 @@ world.afterEvents.entityHurt.subscribe((data) => {
 world.beforeEvents.itemUse.subscribe((data) => {
   const player = data.source;
   const idata = getIslandOn(player);
+  if (player.hasTag("admin:bypass")) return;
   if (idata) {
     if (IslandMethods.isInBounds(idata, player.location) == true) {
       if (
@@ -159,6 +163,7 @@ world.beforeEvents.playerInteractWithBlock.subscribe((data) => {
   const idata = getIslandOn(player);
   let msg = `§cYou cannot interact here.`;
   if (data.block.typeId == "minecraft:end_portal_frame") return;
+  if (player.hasTag("admin:bypass")) return;
   if (idata) {
     if (IslandMethods.isInBounds(idata, player.location) == true) {
       if (idata.owners.find((x) => x.id == player.id)) return;
@@ -488,7 +493,7 @@ export function islandInvite(player: Player) {
       let epOwner = idata.owners.find((x) => x.id == ep.id);
       if (role.id == 8) {
         let lm = idata.limits.owners.max;
-        if (idata.owners.length + 1 >= lm) {
+        if (idata.owners.length >= lm) {
           sendError(
             player,
             `Island has reached the owner limit (§4${lm}§c).\n§dUse §e-is expand §dto increase it.`,

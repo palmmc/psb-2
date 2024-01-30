@@ -14,6 +14,11 @@ import { genItems } from "./generators";
 import { Enchant } from "../custom_enchants/enchantHandler";
 import { giveRelic, rollRelic } from "./relic";
 
+export const CustomDrops = [
+  ["minecraft:stone", "minecraft:cobblestone", 100],
+  ["minecraft:leaves", "minecraft:sapling", 8],
+];
+
 // EVENT HANDLER
 world.afterEvents.playerBreakBlock.subscribe((data) => {
   if (
@@ -33,14 +38,13 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
   });
   if (item && inv) {
     let itemStack = new ItemStack(item[1] as string, 1);
-    giveRelic(data.player, rollRelic("ORE"));
     let mh = data.player
       .getComponent("equippable")
       ?.getEquipment(EquipmentSlot.Mainhand);
-    if (mh) {
+    if (mh && (item[0] as string).includes("ore")) {
       let trove = Enchant.getEnchant(mh, "trove");
       if (trove) {
-        if (randomIntFromInterval(1, 26 - trove.level * 2) == 1) {
+        if (randomIntFromInterval(1, 23 - trove.level * 2) == 1) {
           itemStack.amount = randomIntFromInterval(
             1,
             Math.floor(trove.level / 2)
@@ -57,6 +61,10 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
             );
         }
       }
+      let cryptic = Enchant.getEnchant(mh, "cryptic");
+      if (cryptic) {
+        giveRelic(data.player, rollRelic("ORE", cryptic.level * 14));
+      } else giveRelic(data.player, rollRelic("ORE"));
     }
     inv.addItem(itemStack);
     /*
@@ -86,12 +94,27 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
     }
     let it = data.brokenBlockPermutation.getItemStack();
     if (!it) return;
-    if (!itemsBanned.includes(it.typeId.slice(10))) inv.addItem(it.clone());
+    if (itemsBanned.includes(it.typeId.slice(10))) return;
+    let cit = CustomDrops.find((x) => x[0] == it?.typeId);
+    if (cit) {
+      if (randomIntFromInterval(1, Math.floor(100 / (cit[2] as number))) == 1) {
+        inv.addItem(new ItemStack(cit[1] as string, 1));
+      }
+      return;
+    }
+    inv.addItem(it);
   }
 });
 
 // PREVENT PLACE/BREAK XP
-world.beforeEvents.playerPlaceBlock.subscribe((data) => {
+world.beforeEvents.itemUseOn.subscribe((data) => {
+  if (
+    data.block.typeId.includes("palm") &&
+    !data.block.typeId.includes("farmland")
+  ) {
+    data.cancel = true;
+    return;
+  }
   let item = BREAK_XP.find((x) => {
     return x[0] == data.itemStack.typeId && (x[1] as number) >= 0 && !x[3];
   });
@@ -105,4 +128,29 @@ world.beforeEvents.playerInteractWithBlock.subscribe((data) => {
       data.block.typeId == "minecraft:grass")
   )
     system.run(() => data.block.setType("palm:farmland"));
+});
+
+// Chest Mmm inventory
+world.beforeEvents.playerBreakBlock.subscribe((data) => {
+  let binv = data.block.getComponent("inventory")?.container;
+  if (!binv) return;
+  let inv = data.player.getComponent("inventory")?.container;
+  if (!inv) return;
+  if (binv.emptySlotsCount == binv.size) return;
+  if (binv.size > 27) return;
+  data.cancel = true;
+  if (inv.emptySlotsCount == 0) {
+    data.player.sendMessage(`${PREFIX.island} §cYour inventory is full!`);
+    return;
+  }
+  system.run(() => {
+    if (!inv || !binv) return;
+    let emptySlots = inv.emptySlotsCount;
+    for (let i = 0; i < binv.size; i++) {
+      if (emptySlots - i == 0) return;
+      let item = binv.getItem(i);
+      if (item) inv.addItem(item);
+      binv.setItem(i);
+    }
+  });
 });

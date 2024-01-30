@@ -1,0 +1,21 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shapeless": {
+        "description": {
+            "identifier": "palmpumpkin_seeds"
+        },
+        "tags": [
+            "crafting_table"
+        ],
+     "priority": 0,
+        "ingredients": [
+            {
+                "item": "minecraft:pumpkin"
+            }
+        ],
+        "result": {
+            "item": "palm:pumpkin_seeds",
+            "count": 2
+        }
+    }
+}

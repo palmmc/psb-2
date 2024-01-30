@@ -2,7 +2,7 @@
   "format_version": "1.20.30",
   "minecraft:block": {
     "description": {
-      "identifier": "palm:melon_stem",
+      "identifier": "palm:sweet_berry_bush",
       "menu_category": {
         "category": "none"
       },
@@ -12,30 +12,22 @@
     },
     "components": {
       "minecraft:collision_box": false,
-      "minecraft:geometry": "geometry.stem",
+      "minecraft:geometry": "geometry.bush",
       "minecraft:light_dampening": 0,
       "minecraft:destructible_by_explosion": false,
       "minecraft:placement_filter": {
         "conditions": [
           {
             "allowed_faces": ["up"],
-            "block_filter": ["palm:farmland"]
+            "block_filter": ["minecraft:grass"]
           }
         ]
       },
-      "minecraft:loot": "loot_tables/blocks/melon_young.json",
+      "minecraft:loot": "loot_tables/blocks/sweet_berry_bush_young.json",
       "minecraft:random_ticking": {
         "on_tick": {
           "event": "palm:grow",
           "condition": "q.block_state('palm:growth_stage') < 7"
-        }
-      },
-      "minecraft:queued_ticking": {
-        "interval_range": [3600, 46000],
-        "looping": true,
-        "on_tick": {
-          "event": "palm:plump",
-          "condition": "q.block_state('palm:growth_stage') == 7"
         }
       },
       "minecraft:on_interact": {
@@ -47,11 +39,6 @@
       "palm:grow": {
         "set_block_state": {
           "palm:growth_stage": "q.block_state('palm:growth_stage') + 1"
-        }
-      },
-      "palm:plump": {
-        "run_command": {
-          "command": "function plump2"
         }
       },
       "palm:fertilize": {
@@ -73,15 +60,15 @@
         "components": {
           "minecraft:material_instances": {
             "*": {
-              "texture": "stem_stage_0",
+              "texture": "sweet_berry_bush_stage_0",
               "render_method": "alpha_test",
               "face_dimming": false,
               "ambient_occlusion": false
             }
           },
           "minecraft:selection_box": {
-            "origin": [-2, 0, -2],
-            "size": [4, 2, 4]
+            "origin": [-3, 0, -3],
+            "size": [6, 6, 6]
           }
         }
       },
@@ -90,15 +77,15 @@
         "components": {
           "minecraft:material_instances": {
             "*": {
-              "texture": "stem_stage_1",
+              "texture": "sweet_berry_bush_stage_1",
               "render_method": "alpha_test",
               "face_dimming": false,
               "ambient_occlusion": false
             }
           },
           "minecraft:selection_box": {
-            "origin": [-2, 0, -2],
-            "size": [4, 3, 4]
+            "origin": [-7, 0, -7],
+            "size": [14, 14, 14]
           }
         }
       },
@@ -107,15 +94,15 @@
         "components": {
           "minecraft:material_instances": {
             "*": {
-              "texture": "stem_stage_2",
+              "texture": "sweet_berry_bush_stage_1",
               "render_method": "alpha_test",
               "face_dimming": false,
               "ambient_occlusion": false
             }
           },
           "minecraft:selection_box": {
-            "origin": [-2, 0, -2],
-            "size": [4, 5, 4]
+            "origin": [-7, 0, -7],
+            "size": [14, 14, 14]
           }
         }
       },
@@ -124,15 +111,15 @@
         "components": {
           "minecraft:material_instances": {
             "*": {
-              "texture": "stem_stage_3",
+              "texture": "sweet_berry_bush_stage_1",
               "render_method": "alpha_test",
               "face_dimming": false,
               "ambient_occlusion": false
             }
           },
           "minecraft:selection_box": {
-            "origin": [-2, 0, -2],
-            "size": [4, 5, 4]
+            "origin": [-7, 0, -7],
+            "size": [14, 14, 14]
           }
         }
       },
@@ -141,15 +128,15 @@
         "components": {
           "minecraft:material_instances": {
             "*": {
-              "texture": "stem_stage_4",
+              "texture": "sweet_berry_bush_stage_2",
               "render_method": "alpha_test",
               "face_dimming": false,
               "ambient_occlusion": false
             }
           },
           "minecraft:selection_box": {
-            "origin": [-2, 0, -2],
-            "size": [4, 7, 4]
+            "origin": [-7, 0, -7],
+            "size": [14, 14, 14]
           }
         }
       },
@@ -158,15 +145,15 @@
         "components": {
           "minecraft:material_instances": {
             "*": {
-              "texture": "stem_stage_5",
+              "texture": "sweet_berry_bush_stage_2",
               "render_method": "alpha_test",
               "face_dimming": false,
               "ambient_occlusion": false
             }
           },
           "minecraft:selection_box": {
-            "origin": [-2, 0, -2],
-            "size": [4, 9, 4]
+            "origin": [-7, 0, -7],
+            "size": [14, 14, 14]
           }
         }
       },
@@ -175,15 +162,15 @@
         "components": {
           "minecraft:material_instances": {
             "*": {
-              "texture": "stem_stage_6",
+              "texture": "sweet_berry_bush_stage_2",
               "render_method": "alpha_test",
               "face_dimming": false,
               "ambient_occlusion": false
             }
           },
           "minecraft:selection_box": {
-            "origin": [-2, 0, -2],
-            "size": [4, 11, 4]
+            "origin": [-7, 0, -7],
+            "size": [14, 14, 14]
           }
         }
       },
@@ -192,17 +179,17 @@
         "components": {
           "minecraft:material_instances": {
             "*": {
-              "texture": "stem_stage_7",
+              "texture": "sweet_berry_bush_stage_3",
               "render_method": "alpha_test",
               "face_dimming": false,
               "ambient_occlusion": false
             }
           },
           "minecraft:selection_box": {
-            "origin": [-2, 0, -2],
-            "size": [4, 13, 4]
+            "origin": [-7, 0, -7],
+            "size": [14, 14, 14]
           },
-          "minecraft:loot": "loot_tables/blocks/melon_mature.json"
+          "minecraft:loot": "loot_tables/blocks/sweet_berry_bush_mature.json"
         }
       }
     ]
