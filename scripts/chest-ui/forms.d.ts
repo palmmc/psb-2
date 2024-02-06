@@ -22,6 +22,7 @@ declare class ChestFormData {
       | "yellow"
       | "blockjack"
       | "stacks"
+      | "vendor"
   );
   /**
    * @remarks This builder method sets the title for the chest ui.

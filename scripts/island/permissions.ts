@@ -162,9 +162,10 @@ world.beforeEvents.playerInteractWithBlock.subscribe((data) => {
   const player = data.player;
   const idata = getIslandOn(player);
   let msg = `§cYou cannot interact here.`;
-  if (data.block.typeId == "minecraft:end_portal_frame") return;
+  let bypassBlocks = ["minecraft:end_portal_frame", "palm:vending_machine"];
+  if (bypassBlocks.includes(data.block.typeId)) return;
   if (player.hasTag("admin:bypass")) return;
-  if (idata) {
+  if (idata && !itemsBanned.includes(data.itemStack?.typeId.slice(10) ?? "")) {
     if (IslandMethods.isInBounds(idata, player.location) == true) {
       if (idata.owners.find((x) => x.id == player.id)) return;
       else if (IslandMethods.getPermission(idata, player, "interact") == true) {
@@ -228,6 +229,7 @@ export const ISLAND_ROLES = {
   // Worker
   guest: {
     id: 0,
+    name: "§7Guest",
     info: "No permissions.",
     permissions: {
       break: false,
@@ -242,6 +244,7 @@ export const ISLAND_ROLES = {
   },
   builder: {
     id: 1,
+    name: "§bBuilder",
     info: "Permission to progress island through building.",
     permissions: {
       break: false,
@@ -256,6 +259,7 @@ export const ISLAND_ROLES = {
   },
   farmer: {
     id: 2,
+    name: "§aFarmer",
     info: "Permission to progress island through farming.",
     permissions: {
       break: false,
@@ -270,6 +274,7 @@ export const ISLAND_ROLES = {
   },
   miner: {
     id: 3,
+    name: "§bMiner",
     info: "Permission to progress island through mining.",
     permissions: {
       break: false,
@@ -284,6 +289,7 @@ export const ISLAND_ROLES = {
   },
   slayer: {
     id: 4,
+    name: "§cSlayer",
     info: "Permission to progress island through mob farming.",
     permissions: {
       break: false,
@@ -299,6 +305,7 @@ export const ISLAND_ROLES = {
   // Member
   initiate: {
     id: 5,
+    name: "§aInitiate",
     info: "Permission to progress island in every way.",
     permissions: {
       break: false,
@@ -313,6 +320,7 @@ export const ISLAND_ROLES = {
   },
   officer: {
     id: 6,
+    name: "§bOfficer",
     info: "Full permissions, excluding container access.",
     permissions: {
       break: true,
@@ -327,6 +335,7 @@ export const ISLAND_ROLES = {
   },
   admin: {
     id: 7,
+    name: "§cAdmin",
     info: "Full permissions, including container access. (Be careful who you give this to).",
     permissions: {
       break: true,
@@ -341,6 +350,7 @@ export const ISLAND_ROLES = {
   },
   coowner: {
     id: 8,
+    name: "§eCo-Owner",
     info: "Full co-ownership of your island. (Be careful who you give this to).",
     permissions: {
       break: false,
@@ -391,12 +401,15 @@ export function islandEditPerms(player: Player) {
   });
 }
 
-export function inviteDirect(player: Player, ep: Player) {
-  let editPlayer = ep.nameTag;
+export function inviteDirect(player: Player, ep: Player | string) {
   let island = playerDB.get(player.id).island;
   let idata: Island = islandDB.get(island);
   let members = idata.members;
-  let epMember = idata.members.find((x) => x.id == ep.id);
+  let epMember = idata.members.find(
+    (x) => x.id == (ep instanceof Player ? ep.id : ep)
+  );
+  let id = epMember?.id ?? (ep as string);
+  let editPlayer = epMember?.name;
   let perms = ISLAND_ROLES.guest.permissions;
   let lm = idata.limits.members.max;
   if (epMember) perms = epMember.permissions;
@@ -429,17 +442,21 @@ export function inviteDirect(player: Player, ep: Player) {
       `§aPermissions for §e${editPlayer} §ahave been saved.`,
       PREFIX.island
     );
-    sendAlert(
-      ep,
-      `§aYour permissions on island §e${island} §ahave been changed.`,
-      PREFIX.island,
-      "note.bit"
-    );
     if (!Object.values(perms).includes(true)) {
-      IslandMethods.removeMember(idata, ep);
+      IslandMethods.removeMember(idata, id);
     } else if (epMember) {
       idata.members[idata.members.indexOf(epMember)].permissions = perms;
-    } else IslandMethods.addMember(idata, ep, perms);
+    } else {
+      if (!(ep instanceof Player)) return;
+      IslandMethods.addMember(idata, ep as Player, perms);
+    }
+    if (ep instanceof Player)
+      sendAlert(
+        ep,
+        `§aYour permissions on island §e${island} §ahave been changed.`,
+        PREFIX.island,
+        "note.bit"
+      );
   });
 }
 
@@ -511,7 +528,7 @@ export function islandInvite(player: Player) {
         gui.show(ep).then((result) => {
           if (result.selection == 0) {
             IslandMethods.addOwner(idata, ep);
-            if (epMember) IslandMethods.removeMember(idata, ep);
+            if (epMember) IslandMethods.removeMember(idata, ep.id);
             sendAlert(
               player,
               `§dPromoted §e${editPlayer} §ato §6Co-Owner§a.`,
@@ -530,7 +547,7 @@ export function islandInvite(player: Player) {
           }
         });
       } else if (epOwner && role.id != 8) {
-        IslandMethods.removeOwner(idata, ep);
+        IslandMethods.removeOwner(idata, ep.id);
         let pdata = playerDB.get(ep.id);
         pdata.island = "";
         playerDB.set(ep.id, pdata);
@@ -562,7 +579,7 @@ export function islandInvite(player: Player) {
       if (epMember) {
         let index = idata.members.indexOf(epMember);
         if (role.id == 0) {
-          IslandMethods.removeMember(idata, ep);
+          IslandMethods.removeMember(idata, ep.id);
         } else idata.members[index].permissions = role.permissions;
       } else if (role.id != 0)
         IslandMethods.addMember(idata, ep, role.permissions);

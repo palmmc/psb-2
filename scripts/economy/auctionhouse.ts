@@ -27,6 +27,10 @@ const itemTextures: itemTexture = new Map([
   ["palm:pumpkin_seeds", ["minecraft:pumpkin_seeds", false]],
   ["palm:melon_seeds", ["minecraft:melon_seeds", false]],
   ["palm:farmland", ["minecraft:farmland", false]],
+  ["palm:lotus_token", ["textures/items/lotus_token", false]],
+  ["palm:small_gem", ["textures/items/smallgem", false]],
+  ["palm:medium_gem", ["textures/items/mediumgem", false]],
+  ["palm:large_gem", ["textures/items/largegem", false]],
   //Repeat the above as many times as is needed
 ]);
 const fakeItemNames = new Map([
@@ -565,6 +569,10 @@ export function placeAuc(player: Player) {
       if (selection > 44) return sellShow();
       /** @type {ItemStack} */
       const item = validItems[selection];
+      if (item.typeId.includes("gem")) {
+        sendError(player, `§cYou cannot auction this item.`);
+        return;
+      }
       if (
         JSON.stringify(
           (

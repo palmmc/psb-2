@@ -15,6 +15,8 @@ import {
   IslandMethods,
   warpLobby,
   IslandLimits,
+  IslandOwner,
+  IslandMember,
 } from "../main";
 import { ISLAND_GENERATOR, islandCreator, testValidName } from "./create";
 import {
@@ -186,7 +188,6 @@ export function islandInfo(player: Player, idata: Island) {
   let pointsNeeded = levelToXp(level - 1);
   let pointsBefore = levelToXp(level - 2);
   pointsBefore = level > 1 ? pointsBefore : 0;
-
   let status = idata.status == true ? "§aOPEN" : "§6CLOSED";
   if (
     world.getPlayers({ excludeNames: idata.owners.map((x) => x.name) })
@@ -225,7 +226,7 @@ export function islandInfo(player: Player, idata: Island) {
     false
   );
   let limitsArr = new Array();
-  let limitsText = ["§a", "§e", "§b", "§e", "§6", "§c", "§e"];
+  let limitsText = ["§a", "§e", "§b", "§e", "§a", "§6", "§c", "§e"];
   let i = 0;
   for (let l of Object.keys(idata.limits)) {
     let limit = idata.limits[l as keyof IslandLimits];
@@ -273,27 +274,30 @@ export function islandInfo(player: Player, idata: Island) {
       });
       let e = 10;
       let i = e;
-      let islandPlayers = new Array();
-      for (let x of world.getPlayers()) {
+      if (idata.members.length == 0) {
+        sendError(player, `This island has no members.`);
+        return;
+      }
+      for (let x of idata.members) {
         if (x.name == player.name || x.name == "PalmSkyblock") continue;
+        let role =
+          Object.values(ISLAND_ROLES).find(
+            (p) =>
+              JSON.stringify(p.permissions) == JSON.stringify(x?.permissions)
+          )?.name ?? "§eCustom";
         gui.button(
           i++,
           `§a${x.name}`,
-          [`§l§2CLICK TO EDIT`],
+          [`§6Role: ${role}`, `§l§2CLICK TO EDIT`],
           "iron_helmet",
           0,
           true
         );
-        islandPlayers.push(x);
-      }
-      if (islandPlayers.length == 0) {
-        sendError(player, `This island has no online members.`);
-        return;
       }
       gui.show(player).then((result) => {
-        if (result.canceled) return;
-        let p = islandPlayers[(result.selection ?? i) - e];
-        inviteDirect(player, p);
+        if (result.canceled || idata.operator.id != player.id) return;
+        let p: IslandMember = idata.members[(result.selection ?? i) - e];
+        inviteDirect(player, p.id);
       });
     } else if (result.selection == 12) {
       islandExpand(player);
@@ -308,34 +312,43 @@ export function islandInfo(player: Player, idata: Island) {
       });
       let e = 10;
       let i = e;
-      let islandPlayers = new Array();
-      for (let x of world.getPlayers()) {
-        if (x.name == player.name || x.name == "PalmSkyblock") continue;
+      if (idata.owners.length == 1) {
+        sendError(player, `There are no other owners on this island.`);
+        return;
+      }
+      let owners: IslandOwner[] = [];
+      for (let x of idata.owners) {
+        if (
+          x.name == player.name ||
+          x.name == "PalmSkyblock" ||
+          x.id == idata.operator.id
+        )
+          continue;
         gui.button(
           i++,
           `§b${x.name}`,
-          [`§l§cCLICK TO REMOVE`],
+          [`§6Role: §9Co-Owner`, `§l§cCLICK TO REMOVE`],
           "diamond_helmet",
           0,
           true
         );
-        islandPlayers.push(x);
-      }
-      if (islandPlayers.length == 0) {
-        sendError(player, `There are no other owners online on your island.`);
-        return;
+        owners.push(x);
       }
       gui.show(player).then((result) => {
-        if (result.canceled) return;
-        let p = islandPlayers[(result.selection ?? i) - e];
-        sendAlert(
-          p,
-          `§cRemoved ownership from §e${p.name}: Removed by island operator.`
-        );
-        IslandMethods.removeOwner(idata, p);
+        if (result.canceled || idata.operator.id != player.id) return;
+        let pinfo: IslandOwner = owners[(result.selection ?? i) - e];
+        let p = world.getPlayers({
+          name: pinfo.name,
+        })[0];
+        if (p)
+          sendAlert(
+            p,
+            `§cRemoved ownership from §e${p.name}§c: §4Removed by island operator.`
+          );
+        IslandMethods.removeOwner(idata, pinfo.id);
         sendAlert(
           player,
-          `§e${p.nameTag} §chas been §8removed §cfrom your island.`
+          `§e${pinfo.name} §chas been §8removed §cfrom your island.`
         );
       });
     } else if (result.selection == 22) {
@@ -363,13 +376,15 @@ system.runInterval(() => {
       return;
     }
     if (IslandMethods.isInBounds(idata, loc) == true) continue;
-    if (loc.y > 16) {
-      player.applyKnockback(
-        -(loc.x - idata.spawn.x),
-        -(loc.z - idata.spawn.z),
-        1,
-        0.5
-      );
+    if (loc.y > 16 && !player.hasTag("admin:bypass")) {
+      if (Math.abs(loc.y - idata.spawn.y) < 32 + Math.min(idata.size, 48))
+        player.applyKnockback(
+          -(loc.x - idata.spawn.x),
+          -(loc.z - idata.spawn.z),
+          1,
+          0.5
+        );
+      else player.applyKnockback(0, 0, 0, -0.5);
       player.playSound(`item.trident.return`, { volume: 0.6 });
       player.sendMessage(
         `${PREFIX.island} §cYou have reached the bounds of this island.\n§dUse §e-is expand §dto increase them.`
@@ -381,6 +396,29 @@ system.runInterval(() => {
     }
   }
 }, 5);
+
+// AFK DETECTION
+let headRot = world.scoreboard.getObjective("headRot");
+let afk = world.scoreboard.getObjective("afkScore");
+system.runInterval(() => {
+  for (let player of world.getPlayers()) {
+    let dist = Math.floor(
+      Math.abs(player.getRotation().x - player.getRotation().y)
+    );
+    let whitelist = ["The Palm Healer", "PalmSkyblock"];
+    if (!whitelist.includes(player.name)) {
+      if (Math.abs((headRot?.getScore(player) ?? 0) - dist) < 15)
+        afk?.addScore(player, 1);
+      else if ((afk?.getScore(player) ?? 0) > 15) afk?.addScore(player, -15);
+      headRot?.setScore(player, Math.floor(dist));
+    }
+    if ((afk?.getScore(player) ?? 0) >= 180) {
+      afk?.setScore(player, 0);
+      overworld.runCommandAsync(`kick "${player.name}" §cKicked for AFK.`);
+    }
+  }
+}, 200);
+//
 
 // ISLAND EXPANSION
 export const MAX_SIZE = 184; // Max island size.
@@ -397,11 +435,12 @@ const LIMIT_INCREMENTS = {
   homes: [2, 16, 8],
   members: [1, 8, 8],
   owners: [1, 32, 5],
+  hoppers: [1, 8, 12],
 };
 
 function UPGRADE_PRICE(size: number) {
   // Upgrade price formula.
-  return 60000 + 80000 * ((size - 16) / UPGRADE_SIZE - 1);
+  return 50000 + 100000 * ((size - 16) / UPGRADE_SIZE - 1);
 }
 
 export function islandExpand(player: Player) {
@@ -442,7 +481,7 @@ export function islandExpand(player: Player) {
   }
   let limitsArr = [`§dSize: §u(§f${size} §dx §f${size}§u)`];
   let newLimitsArr = [`§eSize: §6(§f${nextSize} §6x §f${nextSize}§6)`];
-  let limitsText = ["§a", "§e", "§b", "§e", "§6", "§c", "§e"];
+  let limitsText = ["§a", "§e", "§b", "§e", "§a", "§6", "§c", "§e"];
   let i = 0;
   for (let l of Object.keys(idata.limits)) {
     let limit = idata.limits[l as keyof IslandLimits];
@@ -620,6 +659,61 @@ export function banPlayerIsland(player: Player) {
     );
   });
 }
+export function islandUserUI(user: Player, player: Player) {
+  const gui = new ChestFormData("light_blue");
+  gui.title(`Showing Info: ${user.name}`);
+  gui.pattern([0, 0], ["xxxxxxxxx", "x_______x", "xxxxxxxxx"], {
+    x: {
+      data: { itemName: "", itemDesc: [], enchanted: false, stackSize: 1 },
+      iconPath: "textures/blocks/glass_white.png",
+    },
+  });
+  let e = 10;
+  let i = e;
+  let islands: Island[] = [];
+  for (let x of world.getPlayers()) {
+    if (x.name == "PalmSkyblock") continue;
+    let xi = playerDB.get(x.id).island;
+    if (!xi) continue;
+    let idata: Island = islandDB.get(xi);
+    let role = "§eCustom";
+    if (idata.operator.id == user.id) role = "§dOwner";
+    else {
+      let member = idata.members.find((x) => x.id == user.id);
+      if (!member) continue;
+      role =
+        Object.values(ISLAND_ROLES).find(
+          (x) =>
+            JSON.stringify(x.permissions) == JSON.stringify(member?.permissions)
+        )?.name ?? "§eCustom";
+    }
+    islands.push(idata);
+    let desc = [
+      `§9Status: §l§f[§r ${idata.status == true ? "§aOPEN" : "§6CLOSED"} §f§l]`,
+      `§bOwner: §f${idata.operator.name}`,
+      `§aLevel: §e${xpToLevel(idata.points)}`,
+      `§6Role: ${role}`,
+    ];
+    if (user.id == player.id) desc.push("\n§c§lCLICK TO LEAVE");
+    gui.button(i++, `§e${idata.name}`, desc, "cobblestone", 0, true);
+  }
+  gui.show(player).then((result) => {
+    if (result.canceled || player.id != user.id) return;
+    let island = islands[(result.selection ?? -1) - e];
+    if (island.operator.id == player.id) {
+      sendError(player, `You cannot leave your own island.`, PREFIX.island);
+      return;
+    }
+    if (IslandMethods.removeMember(island, player.id) == true) {
+      sendAlert(
+        player,
+        `§cYou have left the §e${island.name} §cisland.`,
+        PREFIX.island
+      );
+      return;
+    }
+  });
+}
 
 export function visitIslandUI(player: Player) {
   let idata = islandDB.get(playerDB.get(player.id).island);
@@ -633,14 +727,11 @@ export function visitIslandUI(player: Player) {
   });
   let e = 10;
   let i = e;
-  if (world.getPlayers().filter((x) => x.name != "PalmSkyblock").length == 1) {
-    sendError(player, `There are no other players online.`);
-    return;
-  }
   let islands = new Array();
   for (let x of world.getPlayers()) {
+    if (x.name == "PalmSkyblock") continue;
     let xi = playerDB.get(x.id).island;
-    if (!xi || x.name == "PalmSkyblock") continue;
+    if (!xi) continue;
     gui.button(
       i++,
       `§d${xi}`,
@@ -802,9 +893,12 @@ export function islandManage(player: Player) {
           kickPlayerIsland(player);
         } else if (result.selection == 13) {
           let gui = new ModalFormData();
+          let cost = 1000 * island.size - 5000;
           gui.title(`Power Actions / Rename Island`);
           gui.textField(
-            `\n               §eRename Island\n §6Island renames cost §c$5,000§6, so make\n      sure you choose a good one!\n\n§fChoose a name:`,
+            `\n               §eRename Island\n §6Island renames cost §c$${formatNumber(
+              cost
+            )}§6, so make\n      sure you choose a good one!\n\n§fChoose a name:`,
             ``
           );
           gui.toggle(`Confirm Rename`, false);
@@ -815,21 +909,29 @@ export function islandManage(player: Player) {
               result.formValues[1] == false
             )
               return;
+            if (island.operator.id != player.id) {
+              sendError(player, `§cYou must be §eIsland Owner§c to do that.`);
+              return;
+            }
             let name = result.formValues[0] as string;
             if (testValidName(player, name) == false) return;
-            if (coins < 5000) {
+            if (coins < cost) {
               sendError(player, `§cYou cannot afford an island rename.`);
               return;
             }
-            pdata.coins = pdata.coins - 5000;
-            pdata.island = name;
-            playerDB.set(player.id, pdata);
+            pdata.coins = pdata.coins - cost;
+            for (let owner of island.owners) {
+              let odata = playerDB.get(owner.id);
+              odata.island = name;
+              playerDB.set(owner.id, odata);
+            }
             islandDB.delete(island.name);
             IslandMethods.setName(island, name);
             sendAlert(player, `§dYour island has been renamed.`);
             return;
           });
         } else if (result.selection == 14) {
+          return;
           let gui = new ChestFormData("blue");
           gui.pattern([0, 0], ["xxxxxxxxx", "x_______x", "xxxxxxxxx"], {
             x: {
@@ -877,6 +979,7 @@ export function islandManage(player: Player) {
                 oregen: { amount: 0, max: 5 },
                 autominer: { amount: 0, max: 2 },
                 spawner: { amount: 0, max: 0 },
+                hoppers: { amount: 0, max: 2 },
                 crop: { amount: 0, max: 100 },
                 homes: { amount: 0, max: 3 },
                 members: { amount: 0, max: 3 },

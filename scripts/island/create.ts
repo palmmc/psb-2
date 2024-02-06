@@ -36,6 +36,7 @@ world.afterEvents.playerSpawn.subscribe((data) => {
   playerDB.set(data.player.id, {
     name: data.player.nameTag,
     coins: 100,
+    gems: 0,
     island: "",
   });
   data.player.addTag("setData");
@@ -162,24 +163,26 @@ export function islandCreator(player: Player) {
 }
 
 // Check island names
-export function testValidName(player: Player, name: string) {
-  if (testDuplicate(name) == true) {
-    sendError(player, `Island name is already taken.`);
+export function testValidName(
+  player: Player,
+  name: string,
+  noDuplicates?: boolean
+) {
+  if (testDuplicate(name) == true && noDuplicates != true) {
+    sendError(player, `Name is already taken.`);
     return false;
   } else if (bannedWords.find((x) => x.includes(name))) {
-    sendError(player, `Island name contains a banned word.`);
+    sendError(player, `Name contains a banned word.`);
     return false;
   } else if (name.length < 4) {
-    sendError(player, `Island name must be at least 4 characters long.`);
+    sendError(player, `Name must be at least 4 characters long.`);
     return false;
   } else if (name.length > 19) {
-    sendError(player, `Island name must be at most 18 characters long.`);
+    sendError(player, `Name must be at most 18 characters long.`);
     return false;
   } else if (/^[a-zA-Z]+$/.test(name) === false) {
-    sendError(
-      player,
-      `Island name must not contain symbols, numbers, or spaces.`
-    );
+    sendError(player, `Name must not contain symbols, numbers, or spaces.`);
+    return false;
   }
   return true;
 }

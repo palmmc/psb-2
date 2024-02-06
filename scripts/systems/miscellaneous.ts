@@ -15,6 +15,8 @@ export const itemsBanned = [
   "enchanting_table",
   "ender_chest",
   "tnt",
+  "hopper_minecart",
+  "campfire",
 ];
 export const itemsSuperBanned = ["command_block"];
 
@@ -88,6 +90,7 @@ export const DEF_SEEDS_BREAK = [
   "palm:wheat",
   "palm:carrots",
   "palm:potatoes",
+  "palm:sweet_berry_bush",
   "palm:pumpkin_stem",
   "palm:melon_stem",
 ];

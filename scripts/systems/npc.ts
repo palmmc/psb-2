@@ -12,15 +12,17 @@ import {
   world,
 } from "@minecraft/server";
 import {
+  Island,
   PREFIX,
   formatNumber,
   formatTime,
   randomIntFromInterval,
+  sendAlert,
   sendError,
   warpList,
 } from "../main";
 import { OpenShopBeta } from "../economy/shop";
-import { islandManage } from "../island/manage";
+import { getIslandOn, islandManage } from "../island/manage";
 import { Enchant } from "../custom_enchants/enchantHandler";
 import {
   CHARMS,
@@ -64,7 +66,9 @@ world.afterEvents.worldInitialize.subscribe((data) => {
               ?.setScore("o" + p.name, p.getTotalXp());
           }
           let i = 1;
-          for (let p of obj.getScores().sort((a, b) => b.score - a.score)) {
+          let scores = obj.getScores().sort((a, b) => b.score - a.score);
+          scores = scores.slice(0, Math.min(scores.length, 9));
+          for (let p of scores) {
             display += `\n ${lb.format
               .replace("%a", i.toString())
               .replace("%b", p.participant.displayName.slice(1))
@@ -87,6 +91,7 @@ world.afterEvents.worldInitialize.subscribe((data) => {
               score.push([data[1].name, Number(data[1].coins)]);
             }
             for (let data of score.sort((a, b) => b[1] - a[1])) {
+              if (i > 9) continue;
               display += `\n ${lb.format
                 .replace("%a", i.toString())
                 .replace("%b", data[0])
@@ -101,6 +106,7 @@ world.afterEvents.worldInitialize.subscribe((data) => {
               score.push([data[1].name, Number(data[1].points)]);
             }
             for (let data of score.sort((a, b) => b[1] - a[1])) {
+              if (i > 9) continue;
               display += `\n ${lb.format
                 .replace("%a", i.toString())
                 .replace("%b", data[0])
@@ -382,16 +388,102 @@ world.afterEvents.entityHitEntity.subscribe((data) => {
   findNpc.function(player, data.hitEntity);
 });
 
-world.afterEvents.playerInteractWithEntity.subscribe((data) => {
-  let findNpc = NPC_LIST.find((x) => x.id == data.target.typeId);
-  if (!findNpc) return;
-  let player = data.player;
-  if (player.getItemCooldown("npc") > 0) {
-    sendError(player, "This action is on cooldown.");
-    return;
+world.afterEvents.effectAdd.subscribe((data) => {
+  if (data.entity.typeId == "palm:nomad") {
+    data.entity.playAnimation("animation.nomad.joy");
+    system.runTimeout(() => {
+      data.entity.triggerEvent("nomad:kill");
+    }, 70);
   }
-  player.startItemCooldown("npc", 30);
-  findNpc.function(player);
+});
+
+world.afterEvents.itemUse.subscribe((data) => {
+  if (data.itemStack.typeId.includes("_gem")) {
+    let item = data.itemStack;
+    let player = <Player>data.source;
+    let gems = 0;
+    if (item.typeId == "palm:small_gem") gems = randomIntFromInterval(1, 2);
+    else if (item.typeId == "palm:medium_gem")
+      gems = randomIntFromInterval(2, 5);
+    else if (item.typeId == "palm:large_gem")
+      gems = randomIntFromInterval(5, 15);
+    else return;
+    let pdata = playerDB.get(player.id);
+    pdata.gems = pdata.gems + gems;
+    playerDB.set(player.id, pdata);
+    sendAlert(player, `§eRedeemed §c${gems} Gems`);
+    let equip = player.getComponent("equippable");
+    if (item.amount > 1) {
+      item.amount--;
+      equip?.setEquipment(EquipmentSlot.Mainhand, item);
+    } else equip?.setEquipment(EquipmentSlot.Mainhand);
+  }
+});
+
+system.runInterval(() => {
+  let completedIslands: Island[] = [];
+  for (let player of world.getPlayers()) {
+    if (randomIntFromInterval(1, 5) != 1) continue;
+    let island: Island | undefined = islandDB.get(
+      playerDB.get(player.id).island
+    );
+    if (!island) continue;
+    if (completedIslands.includes(island)) continue;
+    completedIslands.push(island);
+    // Despawn existing nomads.
+    let npcs = overworld.getEntities({
+      type: "palm:nomad",
+      location: island.spawn,
+      maxDistance: 20,
+    });
+    if (npcs.length > 0) {
+      for (let npc of npcs) npc.triggerEvent("nomad:kill");
+    }
+    // Spawn nomad.
+    overworld.spawnEntity("palm:nomad", {
+      x: island.spawn.x + 0.5,
+      y: island.spawn.y + 1,
+      z: island.spawn.z + 0.5,
+    });
+    for (let owner of island.owners) {
+      let ow = world.getPlayers({ name: owner.name })[0];
+      if (ow)
+        sendAlert(
+          ow,
+          `§eA §dNomadic Visitor §eteleported to your island.`,
+          PREFIX.island
+        );
+    }
+  }
+}, 3000);
+
+world.beforeEvents.playerInteractWithEntity.subscribe((data) => {
+  // NOMAD CODE
+  if (data.target.typeId == "palm:nomad") {
+    if (!getIslandOn(data.player)?.owners.find((x) => x.id == data.player.id)) {
+      data.cancel = true;
+      return;
+    }
+    /*
+    if (data.target.hasTag("palm:oneTrade")) {
+      data.target.triggerEvent("nomad:kill");
+      return;
+    }
+    data.target.addTag("palm:oneTrade");
+    */
+    system.run(() => data.target.playAnimation("animation.nomad.wave"));
+  }
+  system.run(() => {
+    let findNpc = NPC_LIST.find((x) => x.id == data.target.typeId);
+    if (!findNpc) return;
+    let player = data.player;
+    if (player.getItemCooldown("npc") > 0) {
+      sendError(player, "This action is on cooldown.");
+      return;
+    }
+    player.startItemCooldown("npc", 30);
+    findNpc.function(player);
+  });
 });
 
 interface Leaderboard {

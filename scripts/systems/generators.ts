@@ -34,10 +34,12 @@ const overworld = world.getDimension("overworld");
 
 // Initialize Databases
 var playerDB: any = undefined;
+var islandDB: any = undefined;
 var generatorDB: any = undefined;
 world.afterEvents.worldInitialize.subscribe((data) => {
   system.runTimeout(() => {
     playerDB = new JsonDatabase("playerDB", world);
+    islandDB = new JsonDatabase("islandDB", world);
     generatorDB = new JsonDatabase("generatorDB", world);
   }, 180);
 });
@@ -674,8 +676,14 @@ world.beforeEvents.playerInteractWithBlock.subscribe((data) => {
     let gen: Generator = generatorDB.get(key);
     if (!gen) return;
     let player = data.player;
+    let idata: Island | undefined = getIslandOn(player);
+    if (!idata) return;
     // Check for ownership.
-    if (gen.ownerID == player.id || player.name == "The Palm Healer")
+    if (
+      (gen.ownerID == idata.operator.id &&
+        idata.owners.find((x) => x.id == player.id)) ||
+      player.name == "The Palm Healer"
+    )
       upgradeMenu(player, gen);
     player.startItemCooldown("upgrade", 20);
   });
@@ -749,25 +757,20 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
     (x) => genItems[x as keyof typeof genItems] == item.typeId.slice(10)
   ) as genType;
   let limit = island.limits[type as keyof IslandLimits];
-  if (limit.amount + 1 >= limit.max) {
+  if (limit.amount >= limit.max) {
+    data.cancel = true;
     system.run(() => {
-      data.block.above(1)?.setType("air");
-      data.player
-        .getComponent("equippable")
-        ?.setEquipment(EquipmentSlot.Mainhand, item);
-      system.run(() => {
-        sendError(
-          player,
-          `Island has reached the ${type} limit.\n§dUse §e-is expand §dto increase it.`,
-          PREFIX.island
-        );
-      });
-      return;
+      if (player.getItemCooldown("genPlacement") != 0) return;
+      player.startItemCooldown("genPlacement", 30);
+      sendError(
+        player,
+        `Island has reached the ${type} limit.\n§dUse §e-is expand §dto increase it.`,
+        PREFIX.island
+      );
     });
+    return;
   }
-  IslandMethods.addLimit(island, type, 1);
   system.run(() => {
-    if (!island) return;
     if (data.block.above(1)?.typeId != `minecraft:${genItems[type]}`) {
       data.block.setType("air");
       data.player
@@ -775,6 +778,7 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
         ?.setEquipment(EquipmentSlot.Mainhand, item);
       return;
     }
+    if (!island) return;
     // Retrieve data.
     let lore = item.getLore();
     let identifier = undefined;
@@ -797,7 +801,7 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
         y: data.block.location.y + 1,
         z: data.block.location.z,
       },
-      player.id,
+      island.operator.id,
       identifier
     );
     // Store generator data.
@@ -810,6 +814,7 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
       y: gen.location.y,
       z: gen.location.z,
     });
+    IslandMethods.addLimit(island, type, 1);
     generatorDB.set(key, gen);
     // Send alert.
     sendAlert(
@@ -834,16 +839,31 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
 world.beforeEvents.playerBreakBlock.subscribe((data) => {
   if (!Object.values(genItems).includes(data.block.typeId.slice(10))) return;
   let player = data.player;
+  // Checks if player is in mining mode.
+  if (player.hasTag(`pref:mining_mode`)) {
+    data.cancel = true;
+    system.run(() => {
+      sendError(
+        player,
+        `§cDisable mining mode in preferences to break that here.`
+      );
+    });
+    return;
+  }
+  if (data.player.getComponent("inventory")?.container?.emptySlotsCount == 0) {
+    data.cancel = true;
+    system.run(() => {
+      sendError(player, `§cYour inventory is full.`);
+    });
+    return;
+  }
   // Check if removal is allowed.
   let island = getIslandOn(player);
   if (!island || player.getItemCooldown("genPlacement") != 0) {
     data.cancel = true;
     return;
   }
-  if (
-    !island?.owners.find((x) => x.id == player.id) &&
-    player.name != "The Palm Healer"
-  ) {
+  if (island.operator.id != player.id && player.name != "The Palm Healer") {
     data.cancel = true;
     system.run(() =>
       sendError(player, `§cYou must be §eIsland Owner §cto break that here.`)

@@ -63,6 +63,17 @@ export function checkItemAmount(
   return itemAmount;
 }
 
+export function findItem(player: Player, itemId: string) {
+  const inventory = (<EntityInventoryComponent>player.getComponent("inventory"))
+    .container;
+  for (let i = 0; i < 36; i++) {
+    if (!inventory) return -1;
+    let item = inventory.getItem(i);
+    if (item?.typeId == (itemId.includes(":") ? itemId : `minecraft:${itemId}`))
+      return item;
+  }
+}
+
 export const CATEGORY = {
   special: 0,
   blocks: 1,
@@ -501,13 +512,6 @@ export const ShopItems = [
   */
   {
     category: CATEGORY.decoration,
-    texture: "textures/blocks/hopper_top.png",
-    item: "hopper",
-    price: 5600,
-    sell: 0,
-  },
-  {
-    category: CATEGORY.decoration,
     texture: "textures/blocks/furnace_front_off.png",
     item: "furnace",
     price: 800,
@@ -639,7 +643,8 @@ export const ShopItems = [
     texture: "textures/blocks/flower_rose.png",
     name: "Poppy",
     item: "red_flower",
-    price: 250,
+    price: 500,
+    data: 11,
     sell: 0,
   },
   {
@@ -647,7 +652,7 @@ export const ShopItems = [
     texture: "textures/blocks/flower_dandelion.png",
     name: "Dandelion",
     item: "yellow_flower",
-    price: 250,
+    price: 500,
     sell: 0,
   },
   {
@@ -656,7 +661,7 @@ export const ShopItems = [
     name: "Blue Orchid",
     item: "red_flower",
     data: 1,
-    price: 250,
+    price: 500,
     sell: 0,
   },
   {
@@ -665,7 +670,7 @@ export const ShopItems = [
     name: "Allium",
     item: "red_flower",
     data: 2,
-    price: 250,
+    price: 500,
     sell: 0,
   },
   {
@@ -674,7 +679,7 @@ export const ShopItems = [
     name: "Azure Bluet",
     item: "red_flower",
     data: 3,
-    price: 250,
+    price: 500,
     sell: 0,
   },
   {
@@ -683,7 +688,7 @@ export const ShopItems = [
     name: "Red Tulip",
     item: "red_flower",
     data: 4,
-    price: 250,
+    price: 500,
     sell: 0,
   },
   {
@@ -692,7 +697,7 @@ export const ShopItems = [
     name: "Orange Tulip",
     item: "red_flower",
     data: 5,
-    price: 250,
+    price: 500,
     sell: 0,
   },
   {
@@ -701,7 +706,7 @@ export const ShopItems = [
     name: "White Tulip",
     item: "red_flower",
     data: 6,
-    price: 250,
+    price: 500,
     sell: 0,
   },
   {
@@ -710,7 +715,7 @@ export const ShopItems = [
     name: "Pink Tulip",
     item: "red_flower",
     data: 7,
-    price: 250,
+    price: 500,
     sell: 0,
   },
   {
@@ -719,7 +724,7 @@ export const ShopItems = [
     name: "Oxeye Daisy",
     item: "red_flower",
     data: 8,
-    price: 250,
+    price: 500,
     sell: 0,
   },
   {
@@ -728,7 +733,7 @@ export const ShopItems = [
     name: "Cornflower",
     item: "red_flower",
     data: 9,
-    price: 250,
+    price: 500,
     sell: 0,
   },
   {
@@ -737,7 +742,7 @@ export const ShopItems = [
     name: "Lily of the Valley",
     item: "red_flower",
     data: 10,
-    price: 250,
+    price: 500,
     sell: 0,
   },
   {
@@ -1678,49 +1683,42 @@ export const ShopItems = [
     texture: "",
     item: "rotten_flesh",
     price: 0,
-    sell: 200,
+    sell: 180,
   },
   {
     category: CATEGORY.mobloot,
     texture: "",
     item: "string",
     price: 0,
-    sell: 180,
+    sell: 200,
   },
   {
     category: CATEGORY.mobloot,
     texture: "",
     item: "spider_eye",
     price: 0,
-    sell: 240,
+    sell: 260,
   },
   {
     category: CATEGORY.mobloot,
     texture: "",
     item: "gunpowder",
     price: 0,
-    sell: 230,
-  },
-  {
-    category: CATEGORY.mobloot,
-    texture: "",
-    item: "bone",
-    price: 0,
-    sell: 220,
+    sell: 280,
   },
   {
     category: CATEGORY.mobloot,
     texture: "",
     item: "blaze_rod",
     price: 0,
-    sell: 280,
+    sell: 320,
   },
   {
     category: CATEGORY.mobloot,
     texture: "",
     item: "red_flower",
     price: 0,
-    sell: 150,
+    sell: 160,
   },
   // FARMING
   // FOOD
@@ -2006,6 +2004,28 @@ export const ShopItems = [
     },
     item: "slime",
     price: 360000,
+    sell: 0,
+  },
+  {
+    category: CATEGORY.special,
+    texture: "textures/blocks/hopper.png",
+    rarity: ITEMRARITY.epic,
+    item: "hopper",
+    currency: "gems",
+    price: 20,
+    sell: 0,
+  },
+  {
+    category: CATEGORY.special,
+    texture: "textures/ui/vendorrender.png",
+    rarity: ITEMRARITY.legendary,
+    name: "Vendor",
+    item: "palm:vendor",
+    function: function shopGen(player: Player, amount: number) {
+      player.runCommandAsync(`give @s palm:vending_machine ${amount}`);
+    },
+    currency: "gems",
+    price: 30,
     sell: 0,
   },
   {
@@ -2398,7 +2418,7 @@ export function OpenShopBeta(player: Player) {
         `random.enderchestopen`,
         CATEGORY.special,
         player,
-        true
+        false
       );
     } else if (result.selection == 13) {
       ShopTabBeta(
@@ -2469,6 +2489,8 @@ export function ShopTabBeta(
       p.push([`§9Price: §2$${formatNumber(x.price)}§8`]);
     else p.push([`§9Price: §c$${formatNumber(x.price)}§8`]);
     if (x.currency == "xp") p = [`§9Price: §2${formatNumber(x.price)} §aXP`];
+    else if (x.currency == "gems")
+      p = [`§9Price: §e${formatNumber(x.price)} §cGems`];
     if (x.sell > 0) p.push(`§3Value: §b$${formatNumber(x.sell)}`);
     let item = x.item;
     if (item.startsWith("white_")) item = item.slice(6);
@@ -2541,6 +2563,8 @@ function purchaseItemBeta(
   }
   let coins = playerDB.get(player.id).coins;
   if (optionData.currency == "xp") coins = player.getTotalXp();
+  else if (optionData.currency == "gems")
+    coins = playerDB.get(player.id).gems ?? 0;
   let name = optionData.name ?? formatItemName(optionData.item);
   let price = optionData.price;
   let color = "lime";
@@ -2552,7 +2576,13 @@ function purchaseItemBeta(
     },
   });
   itemInfoUI.title(
-    `${optionData.currency == "xp" ? "" : ""} §f$${formatNumber(coins)}`
+    `${
+      optionData.currency == "xp"
+        ? " §f"
+        : optionData.currency == "gems"
+        ? " §f"
+        : " §f$"
+    }${formatNumber(coins)}`
   );
   itemInfoUI.button(10, "§9Amount", ["§a+1"], `${color}_wool`, 1);
   itemInfoUI.button(11, "§9Amount", ["§a+16"], `${color}_wool`, 16);
@@ -2562,13 +2592,20 @@ function purchaseItemBeta(
     13,
     "§a§lConfirm Transaction",
     [
-      `§3Amount: §9${famount}\n§6Cost: §f$${famount * price}§f${
-        optionData.currency == "xp" ? " §aXP" : ""
+      `§3Amount: §9${famount}\n§6Cost: §f${
+        optionData.currency ? "" : "$"
+      }${formatNumber(famount * price)}§f${
+        optionData.currency == "xp"
+          ? ""
+          : optionData.currency == "gems"
+          ? ""
+          : ""
       }`,
     ],
     optionData.item,
     amount,
-    true
+    true,
+    optionData.texture
   );
   itemInfoUI.button(14, "§9Amount", ["§c-64"], "red_wool", 64);
   itemInfoUI.button(15, "§9Amount", ["§c-16"], "red_wool", 16);
@@ -2612,6 +2649,10 @@ function purchaseItemBeta(
       if (optionData.currency == "xp") {
         player.runCommandAsync(`xp -9999L @s`);
         player.runCommandAsync(`xp ${coins - price * amount} @s`);
+      } else if (optionData.currency == "gems") {
+        let pdata = playerDB.get(player.id);
+        pdata.gems = pdata.gems - price * amount;
+        playerDB.set(player.id, pdata);
       } else {
         let pdata = playerDB.get(player.id);
         pdata.coins = pdata.coins - price * amount;
@@ -2676,9 +2717,9 @@ export function openSellPortal(player: Player) {
     let x = ShopItems.find(
       (c) =>
         c.item ==
-        (item?.typeId.startsWith("palm:")
-          ? item.typeId
-          : item?.typeId.slice(10))
+          (item?.typeId.startsWith("palm:")
+            ? item.typeId
+            : item?.typeId.slice(10)) && !c.data
     );
     if (!item || !x || (x?.sell ?? 0) == 0) continue;
     items.push([x, item.amount]);

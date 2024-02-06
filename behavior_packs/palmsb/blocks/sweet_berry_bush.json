@@ -128,7 +128,7 @@
         "components": {
           "minecraft:material_instances": {
             "*": {
-              "texture": "sweet_berry_bush_stage_2",
+              "texture": "sweet_berry_bush_stage_1",
               "render_method": "alpha_test",
               "face_dimming": false,
               "ambient_occlusion": false
@@ -145,7 +145,7 @@
         "components": {
           "minecraft:material_instances": {
             "*": {
-              "texture": "sweet_berry_bush_stage_2",
+              "texture": "sweet_berry_bush_stage_1",
               "render_method": "alpha_test",
               "face_dimming": false,
               "ambient_occlusion": false

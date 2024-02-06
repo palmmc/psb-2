@@ -24,6 +24,7 @@ import {
 } from "../main";
 import {
   BlockOres,
+  CROP_DROPS,
   DEF_CROPS_BREAK,
   DEF_CROPS_PLACE,
   DEF_ORES,
@@ -95,24 +96,7 @@ world.afterEvents.worldInitialize.subscribe((data) => {
     playerDB = new JsonDatabase("playerDB", world);
     islandDB = new JsonDatabase("islandDB", world);
     system.runInterval(() => {
-      let headRot = world.scoreboard.getObjective("headRot");
-      let afk = world.scoreboard.getObjective("afkScore");
       for (let player of world.getPlayers()) {
-        // AFK DETECTION
-        let dist = Math.floor(
-          Math.abs(player.getRotation().x - player.getRotation().y)
-        );
-        if (Math.abs((headRot?.getScore(player) ?? 0) - dist) < 15)
-          afk?.addScore(player, 1);
-        afk?.setScore(player, 0);
-        headRot?.setScore(player, dist);
-        if ((afk?.getScore(player) ?? 0) >= 160) {
-          let whitelist = ["The Palm Healer", "PalmSkyblock"];
-          afk?.addScore(player, -20);
-          if (whitelist.includes(player.name)) return;
-          overworld.runCommandAsync(`kick "${player.name}" §cKicked for AFK.`);
-        }
-        //
         let pdata = playerDB.get(player.id);
         if (!pdata.island) continue;
         let idata: Island = islandDB.get(pdata.island);
@@ -123,18 +107,21 @@ world.afterEvents.worldInitialize.subscribe((data) => {
           player.runCommandAsync(`scoreboard players add @s lastLevel 0`);
           continue;
         } else if (level > lastLevel) {
-          player.runCommandAsync(`scoreboard players add @s lastLevel 1`);
+          let l = Math.min(5, level - lastLevel);
+          player.runCommandAsync(`scoreboard players add @s lastLevel ${l}`);
           player.onScreenDisplay.setActionBar(
-            `§f[§eIsland§f] >> §e${lastLevel} §a-> §e${lastLevel + 1}`
+            `§f[§eIsland§f] >> §e${lastLevel} §a-> §e${lastLevel + l}`
           );
           player.sendMessage(
             `${
               PREFIX.island
             } §kaa§r §l§6Level Up!§r §kaa§r §l[§r§e${lastLevel} §a-> §e${
-              lastLevel + 1
+              lastLevel + l
             }§f§l]§r`
           );
-          let reward = islandRewards.find((x) => level == lastLevel);
+          let reward = islandRewards.find(
+            (x) => x.level <= lastLevel && x.level > lastLevel - 5
+          );
           if (
             reward &&
             (world.scoreboard.getObjective("isReward")?.getScore(player) ?? 0) <
@@ -265,22 +252,20 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
   let id = block.type.id;
   let ldata = BREAK_XP.find((x) => x[0] == id);
   // Copper additions
-  if (id.includes("copper") && !id.includes("slab") && !id.includes("stairs")) {
-    if (id.includes("cut")) ldata = ["minecraft:cut", -7];
-    else ldata = ["minecraft:copper", -28];
-  }
+  if (id.includes("copper") && id.includes("block"))
+    ldata = ["minecraft:copper", -28];
+  const player = data.player;
+  let island = islandDB.get(playerDB.get(player.id).island);
+  if (id == "minecraft:hopper") IslandMethods.removeLimit(island, "hoppers", 1);
   if (!ldata) return;
   if (id.includes("ore") && randomIntFromInterval(1, 5) != 1) return;
-  const player = data.player;
   if (ldata[3] && (ldata[3] as boolean) == true) {
-    let island = islandDB.get(playerDB.get(player.id).island);
     IslandMethods.removeLimit(island, "crop", 1);
     if (block.getState("palm:growth_stage") != 7) return;
     giveRelic(data.player, rollRelic("FARM"));
   } else if (id == "palm:farmland") {
     let f = data.block.above(1);
     if (f?.typeId.includes("palm") && !f.typeId.includes("farmland")) {
-      let island = islandDB.get(playerDB.get(player.id).island);
       IslandMethods.removeLimit(island, "crop", 1);
     }
   }
@@ -301,10 +286,8 @@ world.afterEvents.playerPlaceBlock.subscribe((data) => {
   let id = block.type.id;
   let ldata = PLACE_XP.find((x) => x[0] == id);
   // Copper additions
-  if (id.includes("copper") && !id.includes("slab") && !id.includes("stairs")) {
-    if (id.includes("cut")) ldata = ["minecraft:cut", 7];
-    else ldata = ["minecraft:copper", 28];
-  }
+  if (id.includes("copper") && id.includes("block"))
+    ldata = ["minecraft:copper", 28];
   if (!ldata) return;
   const player = data.player;
   let idata = getIslandOn(player);
@@ -335,22 +318,38 @@ world.beforeEvents.itemUseOn.subscribe((data) => {
 
 world.afterEvents.playerPlaceBlock.subscribe((data) => {
   if (
-    !data.block.typeId.startsWith("palm:") ||
-    data.block.typeId.includes("farmland")
+    (!data.block.typeId.startsWith("palm:") ||
+      data.block.typeId.includes("farmland")) &&
+    data.block.typeId != "minecraft:hopper"
   )
     return;
   let player = data.player;
   let idata: Island | undefined = getIslandOn(player);
   if (!idata) return;
-  if (idata.limits.crop.amount >= idata.limits.crop.max) {
+  if (data.block.typeId == "minecraft:hopper") {
+    if (idata.limits.hoppers.amount >= idata.limits.hoppers.max) {
+      data.block.setType("air");
+      player.runCommandAsync(`give @s hopper`);
+      sendError(
+        data.player,
+        `Island has reached the hopper limit.\n§dUse §e-is expand §dto increase it.`,
+        PREFIX.island
+      );
+      return;
+    } else {
+      IslandMethods.addLimit(idata, "hoppers", 1);
+      return;
+    }
+  } else if (idata.limits.crop.amount >= idata.limits.crop.max) {
+    let id = DEF_CROPS_PLACE[DEF_SEEDS_BREAK.indexOf(data.block.typeId)];
     data.block.setType("air");
     player.startItemCooldown("crop", 15);
+    player.runCommandAsync(`give @s ${id}`);
     sendError(
       player,
       `Island has reached the crop limit.\n§dUse §e-is expand §dto increase it.`,
       PREFIX.island
     );
-    return;
   } else {
     IslandMethods.addLimit(idata, "crop", 1);
   }
@@ -372,21 +371,21 @@ function getBlockAtFace(
   return overworld.getBlock(loc);
 }
 
-world.beforeEvents.playerInteractWithBlock.subscribe((data) => {
-  if (data.block.typeId == "pumpkin") data.cancel = true;
+world.afterEvents.playerInteractWithBlock.subscribe((data) => {
   if (data.block.typeId != "palm:sweet_berry_bush") return;
-  if ((data.block.permutation.getState("palm:growth_stage") as number) < 7)
-    return;
-  system.run(() => {
-    if (data.player.getItemCooldown("berry") > 0) return;
-    data.player.startItemCooldown("berry", 20);
-    data.player.runCommandAsync(
-      `setblock ${data.block.x} ${data.block.y} ${data.block.z} palm:sweet_berry_bush`
+  let growth = data.block.permutation.getState("palm:growth_stage") as number;
+  if (growth < 6) return;
+  if (data.player.getItemCooldown("berry") > 0) return;
+  data.player.startItemCooldown("berry", 20);
+  data.player.runCommandAsync(
+    `setblock ${data.block.x} ${data.block.y} ${data.block.z} palm:sweet_berry_bush`
+  );
+  data.player
+    .getComponent("inventory")
+    ?.container?.addItem(
+      new ItemStack(
+        "palm:sweet_berries",
+        growth >= 7 ? randomIntFromInterval(1, 4) : 1
+      )
     );
-    data.player
-      .getComponent("inventory")
-      ?.container?.addItem(
-        new ItemStack("palm:sweet_berries", randomIntFromInterval(1, 4))
-      );
-  });
 });

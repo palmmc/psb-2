@@ -1,8 +1,12 @@
 import {
+  Block,
+  BlockPermutation,
   EntityInventoryComponent,
   EquipmentSlot,
   GameMode,
   ItemStack,
+  Player,
+  PlayerBreakBlockAfterEvent,
   system,
   world,
 } from "@minecraft/server";
@@ -18,6 +22,41 @@ export const CustomDrops = [
   ["minecraft:stone", "minecraft:cobblestone", 100],
   ["minecraft:leaves", "minecraft:sapling", 8],
 ];
+
+export function orelepathy(data: { player: Player; block: Block }) {
+  const inv = (<EntityInventoryComponent>data.player.getComponent("inventory"))
+    ?.container;
+  let item = BlockOres.find((x) => {
+    return x[0] == data.block.typeId;
+  });
+  if (!item || !inv) return;
+  let itemStack = new ItemStack(item[1] as string, 1);
+  let mh = data.player
+    .getComponent("equippable")
+    ?.getEquipment(EquipmentSlot.Mainhand);
+  if (mh && (item[0] as string).includes("ore")) {
+    let trove = Enchant.getEnchant(mh, "trove");
+    if (trove) {
+      if (randomIntFromInterval(1, 23 - trove.level * 2) == 1) {
+        itemStack.amount = randomIntFromInterval(
+          1,
+          Math.floor(trove.level / 2)
+        );
+      }
+    }
+    let forge = Enchant.getEnchant(mh, "forge");
+    if (forge) {
+      if (randomIntFromInterval(1, 21 - forge.level * 4) == 1) {
+        if (itemStack.typeId.includes("ore"))
+          itemStack = new ItemStack(
+            itemStack.typeId.split("_")[0] + "_ingot",
+            itemStack.amount
+          );
+      }
+    }
+  }
+  inv.addItem(itemStack);
+}
 
 // EVENT HANDLER
 world.afterEvents.playerBreakBlock.subscribe((data) => {

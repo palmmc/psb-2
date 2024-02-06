@@ -2,9 +2,11 @@ import {
   Entity,
   EntityDamageCause,
   EquipmentSlot,
+  ItemStack,
   Player,
   ScoreboardObjective,
   Vector,
+  Vector3,
   world,
 } from "@minecraft/server";
 import { randomIntFromInterval } from "../main";
@@ -36,7 +38,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     xp: [3, 5],
     loot: [
       { item: "chicken", smelt: "cooked_chicken", amount: [1, 1] },
-      { item: "feather", amount: [0, 2] },
+      { item: "feather", amount: [1, 2] },
     ],
     price: 1000000,
   },
@@ -86,7 +88,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     id: "zombie",
     health: 20,
     xp: [7, 10],
-    loot: [{ item: "rotten_flesh", amount: [1, 4] }],
+    loot: [{ item: "rotten_flesh", amount: [1, 6] }],
     price: 4000000,
   },
   {
@@ -95,8 +97,8 @@ export const SpawnerEntities: SpawnerEntity[] = [
     health: 16,
     xp: [7, 11],
     loot: [
-      { item: "string", amount: [1, 3] },
-      { item: "spider_eye", amount: [1, 1] },
+      { item: "string", amount: [1, 4] },
+      { item: "spider_eye", amount: [1, 2] },
     ],
     price: 4250000,
   },
@@ -104,34 +106,34 @@ export const SpawnerEntities: SpawnerEntity[] = [
     name: "§l§aCreeper",
     id: "creeper",
     health: 20,
-    xp: [8, 12],
-    loot: [{ item: "gunpowder", amount: [1, 4] }],
+    xp: [8, 10],
+    loot: [{ item: "gunpowder", amount: [1, 5] }],
     price: 4500000,
   },
   {
     name: "§l§7Skeleton",
     id: "skeleton",
     health: 20,
-    xp: [8, 14],
-    loot: [{ item: "bone", amount: [1, 3] }],
+    xp: [8, 12],
+    loot: [{ item: "bone", amount: [1, 4] }],
     price: 5000000,
   },
   {
     name: "§l§eBlaze",
     id: "blaze",
-    health: 25,
-    xp: [9, 16],
-    loot: [{ item: "blaze_rod", amount: [1, 2] }],
+    health: 30,
+    xp: [9, 10],
+    loot: [{ item: "blaze_rod", amount: [1, 6] }],
     price: 5500000,
   },
   {
     name: "§l§8Wither Skeleton",
     id: "wither_skeleton",
     health: 40,
-    xp: [8, 14],
+    xp: [8, 12],
     loot: [
-      { item: "coal", amount: [1, 4] },
-      { item: "bone", amount: [1, 3] },
+      { item: "coal", amount: [1, 12] },
+      { item: "bone", amount: [1, 6] },
     ],
     price: 6250000,
   },
@@ -139,10 +141,10 @@ export const SpawnerEntities: SpawnerEntity[] = [
     name: "§l§fIron Golem",
     id: "iron_golem",
     health: 90,
-    xp: [12, 16],
+    xp: [11, 14],
     loot: [
-      { item: "iron_ingot", amount: [1, 8] },
-      { item: "red_flower", amount: [1, 2] },
+      { item: "iron_ingot", amount: [1, 22] },
+      { item: "red_flower", amount: [1, 5] },
     ],
     price: 7500000,
   },
@@ -150,55 +152,52 @@ export const SpawnerEntities: SpawnerEntity[] = [
     name: "§l§cZombie Pigman",
     id: "zombie_pigman",
     health: 50,
-    xp: [12, 18],
+    xp: [12, 16],
     loot: [
-      { item: "gold_ingot", amount: [1, 14] },
-      { item: "gold_nugget", amount: [1, 5] },
+      { item: "gold_ingot", amount: [1, 22] },
+      { item: "gold_nugget", amount: [1, 18] },
     ],
     price: 8000000,
   },
 ];
 
 export function lootTheRoom(
-  player: Player,
   id: string,
-  entityInfo?: SpawnerEntity,
-  fire?: boolean
+  loc: Vector3,
+  player?: Player,
+  fire?: boolean,
+  am?: number
 ) {
-  if (!entityInfo)
-    entityInfo = SpawnerEntities.find((x) => x.id == id.slice(10));
+  let entityInfo = SpawnerEntities.find((x) => x.id == id.slice(10));
   if (!entityInfo) return;
   let loot = entityInfo.loot;
   let multi = 1;
-  let mh = player
-    .getComponent("equippable")
-    ?.getEquipment(EquipmentSlot.Mainhand);
-  if (mh) {
-    let procure = Enchant.getEnchant(mh, "procure");
-    if (procure) {
-      if (randomIntFromInterval(1, 23 - procure.level * 2) == 1) {
-        multi = Math.ceil(randomIntFromInterval(1, procure.level));
+  if (player) {
+    let mh = player
+      .getComponent("equippable")
+      ?.getEquipment(EquipmentSlot.Mainhand);
+    if (mh) {
+      let procure = Enchant.getEnchant(mh, "procure");
+      if (procure) {
+        if (randomIntFromInterval(1, 23 - procure.level * 2) == 1) {
+          multi = Math.ceil(randomIntFromInterval(1, procure.level));
+        }
       }
     }
   }
   for (let l of loot) {
+    let a = randomIntFromInterval(l.amount[0], l.amount[1] * multi) * (am ?? 1);
     if (fire == true && l.smelt) {
-      player.runCommandAsync(
-        `give @s ${l.smelt} ${randomIntFromInterval(
-          l.amount[0],
-          l.amount[1] * multi
-        )}`
+      if (player) player.runCommandAsync(`give @s ${l.smelt} ${a}`);
+      else overworld.spawnItem(new ItemStack(l.smelt, a), loc);
+    } else {
+      if (player) player.runCommandAsync(`give @s ${l.item} ${a}`);
+      else overworld.spawnItem(new ItemStack(l.item, a), loc);
+    }
+    if (player)
+      player.addExperience(
+        randomIntFromInterval(entityInfo.xp[0], entityInfo.xp[1]) * (am ?? 1)
       );
-    } else
-      player.runCommandAsync(
-        `give @s ${l.item} ${randomIntFromInterval(
-          l.amount[0],
-          l.amount[1] * multi
-        )}`
-      );
-    player.addExperience(
-      randomIntFromInterval(entityInfo.xp[0], entityInfo.xp[1])
-    );
   }
 }
 
@@ -211,15 +210,13 @@ function getScoreEnt(obj: ScoreboardObjective, entity: Entity) {
 }
 
 world.afterEvents.entityHurt.subscribe((data) => {
-  if (data.damageSource.cause == EntityDamageCause.void) {
+  if (
+    data.damageSource.cause == EntityDamageCause.void ||
+    data.damageSource.cause == EntityDamageCause.suicide
+  ) {
     data.hurtEntity.kill();
     return;
   }
-  if (
-    data.damageSource.cause != EntityDamageCause.entityAttack ||
-    !data.damageSource.damagingEntity
-  )
-    return;
   let obj = world.scoreboard.getObjective("mobCount");
   let ent = data.hurtEntity;
   let healthObj = world.scoreboard.getObjective("mobHealth");
@@ -227,29 +224,47 @@ world.afterEvents.entityHurt.subscribe((data) => {
   if ((healthObj?.getScore(data.hurtEntity) ?? 0) <= 0) {
     let fire = ent.getComponent("onfire") ? true : false;
     if (obj && getScoreEnt(obj, data.hurtEntity) <= 1) {
-      ent.kill();
+      if (!ent.location) return;
       lootTheRoom(
-        <Player>data.damageSource.damagingEntity,
         ent.typeId,
-        undefined,
+        ent.location,
+        <Player>data.damageSource.damagingEntity,
         fire
       );
+      ent.kill();
       return;
     }
-    data.hurtEntity.getComponent("health")?.resetToMaxValue();
+    ent.getComponent("health")?.resetToMaxValue();
     let entInfo = SpawnerEntities.find((x) => x.id == ent.typeId.slice(10));
     if (!entInfo) return;
     healthObj?.setScore(ent, entInfo?.health);
     let score = obj?.getScore(ent) ?? 0;
-    obj?.setScore(ent, --score);
+    let amount = 1;
+    if (data.damageSource.damagingEntity) {
+      let player = data.damageSource.damagingEntity;
+      let mh = player
+        .getComponent("equippable")
+        ?.getEquipment(EquipmentSlot.Mainhand);
+      if (mh) {
+        let fracture = Enchant.getEnchant(mh, "fracture");
+        if (fracture) {
+          if (randomIntFromInterval(1, 22 - fracture.level * 2) == 1) {
+            amount += randomIntFromInterval(1, 2);
+          }
+        }
+      }
+    }
+    obj?.setScore(ent, score - amount);
     ent.nameTag = `§l§c${formatItemName(
       ent.typeId.slice(10) ?? ""
     )} §r§ex${score}`;
+    if (!ent.location) return;
     lootTheRoom(
-      <Player>data.damageSource.damagingEntity,
       ent.typeId,
-      entInfo,
-      fire
+      ent.location,
+      <Player>data.damageSource.damagingEntity,
+      fire,
+      amount
     );
   }
 });

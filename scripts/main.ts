@@ -17,7 +17,11 @@ import {
   system,
   world,
 } from "@minecraft/server";
-import { ISLAND_GENERATOR, islandCreator } from "./island/create";
+import {
+  ISLAND_GENERATOR,
+  islandCreator,
+  testValidName,
+} from "./island/create";
 
 // SCRIPT MODULES
 
@@ -27,19 +31,14 @@ import "./island/permissions";
 import "./systems/telepathy";
 import "./systems/miscellaneous";
 import "./systems/events";
-import {
-  exportToCloud,
-  formatItemName,
-  importFromCloud,
-  infoInHand,
-  listFromCloud,
-} from "./economy/itemcloud";
-import "./economy/itemcloud";
+import { formatItemName } from "./economy/itemcloud";
+import "./economy/vending";
 import "./economy/shop";
 import "./systems/enchantments";
 import "./systems/npc";
 import "./economy/casino";
 import "./systems/generators";
+import "./systems/fishing";
 import "./systems/spawner";
 import "./systems/relic";
 import "./custom_enchants/enchantHandler";
@@ -59,6 +58,7 @@ import {
   islandExpand,
   islandInfo,
   islandManage,
+  islandUserUI,
   lockIsland,
   visitIsland,
   visitIslandUI,
@@ -152,6 +152,7 @@ export function formatTime(s: number) {
     new Date(s * 1000).toISOString().slice(13, 19)
   );
 }
+
 export function returnTime(time: number) {
   let years = Math.max(Math.floor(time / 31536e6), 0);
   let days = Math.max(Math.floor(time / 864e5) % 365, 0);
@@ -322,13 +323,13 @@ islandDB.set(pdata.island, idata)
 
 // ISLAND CLASS DEFINITIONS
 
-interface IslandMember {
+export interface IslandMember {
   name: string;
   id: string;
   permissions: MemberPermissions;
 }
 
-interface IslandOwner extends IslandMember {
+export interface IslandOwner extends IslandMember {
   name: string;
   id: string;
   permissions: MemberPermissions;
@@ -353,6 +354,7 @@ export interface IslandLimits {
   homes: { amount: number; max: number };
   members: { amount: number; max: number };
   owners: { amount: number; max: number };
+  hoppers: { amount: number; max: number };
 }
 
 interface IslandHome {
@@ -400,6 +402,7 @@ export class Island {
       autominer: { amount: 0, max: 2 },
       spawner: { amount: 0, max: 0 },
       crop: { amount: 0, max: 100 },
+      hoppers: { amount: 0, max: 2 },
       homes: { amount: 0, max: 3 },
       members: { amount: 0, max: 3 },
       owners: { amount: 1, max: 2 },
@@ -439,9 +442,9 @@ export const IslandMethods = {
 
   removeMember: function removeMember(
     island: Island,
-    player: Player
+    id: string
   ): boolean | Error {
-    let member = island.members.find((x) => x.id == player.id);
+    let member = island.members.find((x) => x.id == id);
     if (!member) return new Error("Player is not an existing member.");
     island.members.splice(island.members.indexOf(member), 1);
     IslandMethods.updateData(island);
@@ -481,14 +484,14 @@ export const IslandMethods = {
 
   removeOwner: function removeOwner(
     island: Island,
-    player: Player
+    id: string
   ): boolean | Error {
-    let owner = island.owners.find((x) => x.id == player.id);
+    let owner = island.owners.find((x) => x.id == id);
     if (!owner) return new Error("Player is not an existing owner.");
     island.owners.splice(island.owners.indexOf(owner), 1);
-    let pdata = playerDB.get(player.id);
+    let pdata = playerDB.get(id);
     pdata.island = pdata.oldisland ?? "";
-    playerDB.set(player.id, pdata);
+    playerDB.set(id, pdata);
     IslandMethods.updateData(island);
     return true;
   },
@@ -621,7 +624,7 @@ export const IslandMethods = {
   ): boolean | Error {
     let home = island.homes.find((x) => x.name == name);
     if (!home) return new Error("Home does not exist.");
-    delete island.homes[island.homes.indexOf(home)];
+    island.homes.splice(island.homes.indexOf(home), 1);
     IslandMethods.updateData(island);
     return true;
   },
@@ -692,6 +695,7 @@ export const PREFIX = {
   transfer: "§l§2[§aTransfer§2]§r >>§r",
   relic: "§l§f[§r§c§lRelic§r§f§l]§r >>§r",
   casino: "§l§f[§r§c§lCasino§r§f§l]§r >>§r",
+  fish: "§l§f[§r§b§lFishing§r§f§l]§r >>§r",
 };
 const ItemIds = ItemTypes.getAll().map((x) => {
   return x.id;
@@ -714,9 +718,11 @@ system.runInterval(() => {
     if (player.hasTag("pref:minimal_sidebar")) {
       sidebarText = `\n\n §7|§f ${
         world.getPlayers().length
-      }/10 §7| §f ${TicksPerSecond}t §7| §e 0 §7|\n\n§g §aUser §7» §f${
+      }/10 §7| §f ${TicksPerSecond} §7| §e ${shortFormatNumber(
+        pdata.gems ?? 0
+      )} §7|\n\n§g §aUser §7» §f${
         player.name.length > 15 ? player.name.slice(0, 15) + "..." : player.name
-      }\n §eBank §7»  §f$${formatNumber(coins)}  §a${shortFormatNumber(
+      }\n §eBal. §7»  §f$${formatNumber(coins)}  §a${shortFormatNumber(
         player.getTotalXp()
       )}\n§g §6Time Played §7» §f${formatTime(getScore("time", player))}`;
       let owner = island?.operator.name;
@@ -730,16 +736,18 @@ system.runInterval(() => {
           (island.name.length > 11
             ? island.name.slice(0, 11) + "..."
             : island.name) ?? "-is create"
-        }\n §l§6│§r §2Level §7» §f${level} §2(§f${points - pointsBefore}§2/§f${
-          pointsNeeded - pointsBefore
-        }§2)\n`;
+        }\n §l§6│§r §2Level §7» §f${level} §2(§f${shortFormatNumber(
+          points - pointsBefore
+        )}§2/§f${shortFormatNumber(pointsNeeded - pointsBefore)}§2)\n`;
       }
     } else if (player.hasTag("pref:mining_mode")) {
       sidebarText = `\n\n §7|§f ${
         world.getPlayers().length
-      }/10 §7| §f ${TicksPerSecond}t §7| §e 0 §7|\n\n§g §aUser §7» §f${
+      }/10 §7| §f ${TicksPerSecond} §7| §e ${shortFormatNumber(
+        pdata.gems ?? 0
+      )} §7|\n\n§g §aUser §7» §f${
         player.name.length > 15 ? player.name.slice(0, 15) + "..." : player.name
-      }\n §eBank §7»  §f$${formatNumber(coins)}  §a${shortFormatNumber(
+      }\n §eBal. §7»  §f$${formatNumber(coins)}  §a${shortFormatNumber(
         player.getTotalXp()
       )}\n§g §6Time Played §7» §f${formatTime(getScore("time", player))}\n`;
       let item = player
@@ -778,9 +786,11 @@ system.runInterval(() => {
     } else {
       sidebarText = `\n\n §7|§f ${
         world.getPlayers().length
-      }/10 §7| §f ${TicksPerSecond}t §7| §e 0 §7|\n\n§g §aUser §7» §f${
+      }/10 §7| §f ${TicksPerSecond} §7| §e ${shortFormatNumber(
+        pdata.gems ?? 0
+      )} §7|\n\n§g §aUser §7» §f${
         player.name.length > 15 ? player.name.slice(0, 15) + "..." : player.name
-      }\n §eBank §7»  §f$${formatNumber(coins)}  §a${shortFormatNumber(
+      }\n §eBal. §7»  §f$${formatNumber(coins)}  §a${shortFormatNumber(
         player.getTotalXp()
       )}\n§g §6Time Played §7» §f${formatTime(getScore("time", player))}`;
       let owner = island?.operator.name;
@@ -796,9 +806,11 @@ system.runInterval(() => {
             : island.name) ?? "-is create"
         }\n §l§6│§r §6Owner §7» §f${
           owner.length > 11 ? owner.slice(0, 11) + "..." : owner
-        }\n §l§6│§r §2Level §7» §f${level} §2(§f${points - pointsBefore}§2/§f${
+        }\n §l§6│§r §2Level §7» §f${level} §2(§f${shortFormatNumber(
+          points - pointsBefore
+        )}§2/§f${shortFormatNumber(
           pointsNeeded - pointsBefore
-        }§2)\n §l§6│§r §eSize §7» §d(§f${island.size} §dx §f${
+        )}§2)\n §l§6│§r §eSize §7» §d(§f${island.size} §dx §f${
           island.size
         }§d)\n §l§6│§r §6Funds §7» §f$${formatNumber(island.funds)}`;
       }
@@ -1030,6 +1042,70 @@ const commands = [
         },
       },
       {
+        alias: ["member"],
+        info: "Shows all islands a user is member of.",
+        function: function (player: Player, message: string) {
+          let user = player;
+          let username = message.split(" ")[2];
+          if (message.includes('"')) username = message.split('"')[1];
+          if (username)
+            user = world.getPlayers({ name: username })[0] ?? player;
+          system.runTimeout(() => islandUserUI(user, player), 2);
+        },
+      },
+      {
+        alias: ["leave"],
+        info: "Leaves an island you are member of.",
+        function: function (player: Player, message: string) {
+          let island = message.split(" ")[2];
+          if (!island) {
+            sendError(
+              player,
+              `Invalid format.\n§4Use: §e-is leave §g<name>`,
+              PREFIX.server
+            );
+            return;
+          }
+          let idata: Island | undefined = islandDB.get(island);
+          if (!idata) {
+            sendError(player, `Island does not exist.`, PREFIX.island);
+            return;
+          }
+          if (idata.operator.id == player.id) {
+            sendError(
+              player,
+              `You cannot leave your own island.`,
+              PREFIX.island
+            );
+            return;
+          }
+          if (idata.owners.find((x) => x.id == player.id)) {
+            if (IslandMethods.removeOwner(idata, player.id) == true) {
+              sendAlert(
+                player,
+                `§cYou have left the §e${idata.name} §cisland.`,
+                PREFIX.island
+              );
+              return;
+            }
+          }
+          if (IslandMethods.removeMember(idata, player.id) == true) {
+            sendAlert(
+              player,
+              `§cYou have left the §e${idata.name} §cisland.`,
+              PREFIX.island
+            );
+            return;
+          } else {
+            sendError(
+              player,
+              `You are not a member of this island.`,
+              PREFIX.island
+            );
+          }
+        },
+      },
+      {
         alias: ["lock"],
         info: "Toggles the status of your island.",
         function: lockIsland,
@@ -1061,6 +1137,43 @@ const commands = [
                   islandDB.get(playerDB.get(player.id).island)
               ),
             2
+          );
+        },
+      },
+      {
+        alias: ["setspawn"],
+        info: "Sets your island spawn.",
+        function: function (player: Player, message: string) {
+          let island: Island | undefined = islandDB.get(
+            playerDB.get(player.id).island
+          );
+          if (!island) return;
+          if (!IslandMethods.isInBounds(island, player.location)) {
+            sendError(
+              player,
+              `You cannot set your island spawn here.`,
+              PREFIX.island
+            );
+            return;
+          }
+          let oldSpawn = island.spawn;
+          let oldBedrock = overworld.getBlock({
+            x: island.spawn.x,
+            y: island.spawn.y - 1,
+            z: island.spawn.z,
+          });
+          if (!oldBedrock) return;
+          oldBedrock.setType("air");
+          player.runCommandAsync(`setblock ~ ~-1 ~ bedrock`);
+          IslandMethods.setSpawn(island, {
+            x: Math.floor(player.location.x),
+            y: Math.floor(player.location.y),
+            z: Math.floor(player.location.z),
+          });
+          sendAlert(
+            player,
+            `§aIsland §bspawn§a has been set at your location.`,
+            PREFIX.island
           );
         },
       },
@@ -1185,6 +1298,153 @@ const commands = [
         arguments: [],
         allowSigns: true,
         closeChat: true,
+      },
+      {
+        alias: ["addhome"],
+        info: "Adds an island home.",
+        function: function (player: Player, message: string) {
+          let island: Island | undefined = islandDB.get(
+            playerDB.get(player.id).island
+          );
+          if (!island) return;
+          let name = message.split(" ")[2];
+          if (!name) {
+            sendError(player, `Format: §e-is addhome §g<name>`, PREFIX.island);
+            return;
+          }
+          if (testValidName(player, name, true) == false) return;
+          if (!IslandMethods.isInBounds(island, player.location)) {
+            sendError(
+              player,
+              `You cannot create an island home here.`,
+              PREFIX.island
+            );
+            return;
+          }
+          if (island.homes.length >= island.limits.homes.max) {
+            sendError(
+              player,
+              `Island has reached the homes limit.\n§dUse §e-is expand §dto increase it.`,
+              PREFIX.island
+            );
+            return;
+          }
+          if (island.homes.length > 0)
+            if (island.homes.find((x) => x.name == name)) {
+              sendError(
+                player,
+                `Home by that name already exists.`,
+                PREFIX.island
+              );
+              return;
+            }
+          IslandMethods.addLimit(island, "homes", 1);
+          IslandMethods.addHome(island, name, {
+            x: Math.floor(player.location.x),
+            y: Math.floor(player.location.y),
+            z: Math.floor(player.location.z),
+          });
+          sendAlert(
+            player,
+            `§aIsland home §d${name}§a has been created at your location.`,
+            PREFIX.island
+          );
+        },
+      },
+      {
+        alias: ["delhome"],
+        info: "Deletes an island home.",
+        function: function (player: Player, message: string) {
+          let island: Island | undefined = islandDB.get(
+            playerDB.get(player.id).island
+          );
+          if (!island) return;
+          let name = message.split(" ")[2];
+          if (!name) {
+            sendError(player, `Format: §e-is delhome §g<name>`, PREFIX.island);
+            return;
+          }
+          if (!island.homes.find((x) => x.name == name)) {
+            sendError(player, `Home does not exist.`, PREFIX.island);
+            return;
+          }
+          IslandMethods.removeLimit(island, "homes", 1);
+          IslandMethods.removeHome(island, name);
+          sendAlert(
+            player,
+            `§cIsland home §d${name}§c has been removed at your location.`,
+            PREFIX.island
+          );
+        },
+      },
+      {
+        alias: ["clearhomes"],
+        info: "Clears all island homes.",
+        function: function (player: Player, message: string) {
+          let island: Island | undefined = islandDB.get(
+            playerDB.get(player.id).island
+          );
+          if (!island) return;
+          island.homes = [];
+          IslandMethods.updateData(island);
+          sendAlert(player, `§cIsland homes have been cleared.`, PREFIX.island);
+        },
+      },
+      {
+        alias: ["home"],
+        info: "Warps to an island home.",
+        function: function (player: Player, message: string) {
+          let island: Island | undefined = islandDB.get(
+            playerDB.get(player.id).island
+          );
+          if (!island) return;
+          let name = message.split(" ")[2];
+          if (!name) {
+            sendError(player, `Format: §e-is home §g<name>`, PREFIX.island);
+            return;
+          }
+          let home = island.homes.find((x) => x.name == name);
+          if (!home) {
+            sendError(player, `Home does not exist.`, PREFIX.island);
+            return;
+          }
+          player.teleport({
+            x: home.location.x + 0.5,
+            y: home.location.y + 1,
+            z: home.location.z + 0.5,
+          });
+          sendAlert(
+            player,
+            `§aYou have been teleported to your §d${home.name} §aisland home.`,
+            PREFIX.server
+          );
+        },
+      },
+      {
+        alias: ["homes"],
+        info: "Lists all island homes.",
+        function: function (player: Player, message: string) {
+          let island: Island | undefined = islandDB.get(
+            playerDB.get(player.id).island
+          );
+          if (!island) return;
+          if (island.homes.length == 0) {
+            sendError(
+              player,
+              `You do not have any island homes.`,
+              PREFIX.island
+            );
+            return;
+          }
+          let list = island.homes
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((x) => {
+              return `§e${x.name}`;
+            })
+            .toString()
+            .replace(/,/g, "§6, ");
+          sendAlert(player, `§e§l§dHomes: §r${list}`, PREFIX.island);
+        },
       },
     ],
     allowSigns: true,
@@ -1322,7 +1582,13 @@ const commands = [
         return;
       }
       let amount = item.amount;
-      let optionData = ShopItems.find((x) => x.item == item?.typeId.slice(10));
+      let optionData = ShopItems.find(
+        (x) =>
+          x.item ==
+          (item?.typeId.includes("palm")
+            ? item?.typeId
+            : item?.typeId.slice(10))
+      );
       if (!optionData || optionData.sell == 0) {
         sendError(player, `This item cannot be sold.`, PREFIX.shop);
         return;
@@ -1371,6 +1637,7 @@ const commands = [
         ["diamond", "diamond_block"],
         ["emerald", "emerald_block"],
         ["copper_ingot", "copper_block"],
+        ["gold_nugget", "gold_ingot"],
       ];
       let c = 0;
       for (let block of blocks) {
@@ -1683,11 +1950,22 @@ const commands = [
     info: "Breaks bedrock you're looking at.",
     function: function (player: Player, message: string) {
       let block = player.getBlockFromViewDirection({ maxDistance: 5 });
-      if (getIslandOn(player)?.operator.id != player.id) {
+      let island = getIslandOn(player);
+      if (!island || island?.operator.id != player.id) {
         sendError(player, `§cYou must be §eIsland Owner §cto break that here.`);
         return;
       }
       if (block?.block && block.block.typeId == "minecraft:bedrock") {
+        if (
+          block.block.location.x == island.spawn.x &&
+          block.block.location.z == island.spawn.z
+        ) {
+          sendError(
+            player,
+            `§cYou cannot break your island spawn.\n§cUse §e-is setspawn §cinstead.`
+          );
+          return;
+        }
         block.block.setType("air");
         sendAlert(player, `§cBedrock block has been broken.`);
         player
@@ -1736,74 +2014,6 @@ const commands = [
         function: function (player: Player, message: string) {
           player.teleport(new Vector(-45.5, 91, -19.5));
           sendAlert(player, `§aWarped to §dBlacksmith§a.`, PREFIX.server);
-        },
-      },
-    ],
-    allowSigns: true,
-    closeChat: true,
-  },
-  {
-    alias: ["itemstore", "it", "ic"],
-    info: "External item storage.",
-    function: function (player: Player, message: string) {},
-    arguments: [
-      {
-        alias: ["upload", "up"],
-        info: "",
-        function: function (player: Player, message: string) {
-          if (!ItemIds.includes(`minecraft:${message.split(" ")[2]}`))
-            sendError(
-              player,
-              `§cInvalid format: Item must be registered (e.g. emerald).\n§cFormat: §e-it upload [§gitem§e] [§gamount§e]`,
-              PREFIX.server
-            );
-          let amount = Number(message.split(" ")[3]);
-          if (!message.split(" ")[3]) amount = 32767;
-          if (!(amount > 0))
-            sendError(
-              player,
-              `Invalid format: Amount must be greater than zero.\n§cFormat: §e-it upload [§gitem§e] [§gamount§e]`,
-              PREFIX.server
-            );
-          else exportToCloud(player, message.split(" ")[2], amount);
-        },
-      },
-      {
-        alias: ["download", "down"],
-        info: "",
-        function: function (player: Player, message: string) {
-          if (!ItemIds.includes(`minecraft:${message.split(" ")[2]}`))
-            sendError(
-              player,
-              `Invalid format: Item must be registered (e.g. emerald).\n§cFormat: §e-it download [§gitem§e] [§gamount§e]`,
-              PREFIX.server
-            );
-          else if (!(Number(message.split(" ")[3]) > 0))
-            sendError(
-              player,
-              `Invalid format: Amount must be greater than zero.\n§cFormat: §e-it download [§gitem§e] [§gamount§e]`,
-              PREFIX.server
-            );
-          else
-            importFromCloud(
-              player,
-              message.split(" ")[2],
-              Number(message.split(" ")[3])
-            );
-        },
-      },
-      {
-        alias: ["info"],
-        info: "",
-        function: function (player: Player, message: string) {
-          infoInHand(player);
-        },
-      },
-      {
-        alias: ["list"],
-        info: "",
-        function: function (player: Player, message: string) {
-          listFromCloud(player, message);
         },
       },
     ],
@@ -2106,6 +2316,68 @@ const commands = [
     allowSigns: true,
     closeChat: true,
   },
+  {
+    alias: ["forcerename"],
+    permission: COMMAND_PERMS.ADMIN,
+    info: "Sets a player's island name.",
+    function: function (player: Player, msg: string) {
+      let is = msg.split(" ")[1];
+      if (!is) return;
+      let island: Island | undefined = islandDB.get(is);
+      if (!island) return;
+      let name = msg.split(" ")[2];
+      if (!name) return;
+      for (let owner of island.owners) {
+        let odata = playerDB.get(owner.id);
+        odata.island = name;
+        playerDB.set(owner.id, odata);
+      }
+      islandDB.delete(island.name);
+      IslandMethods.setName(island, name);
+      sendAlert(player, `§dIsland has been force renamed.`);
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  /*
+  {
+    alias: ["hoppergoblin"],
+    permission: COMMAND_PERMS.ADMIN,
+    info: "Sets hopper stats.",
+    function: function (p: Player, msg: string) {
+      for (let isle of islandDB.entries()) {
+        let island: Island = isle[1];
+        if (!island.limits.hoppers) {
+          island.limits.hoppers = {
+            amount: 0,
+            max: 2 + Math.floor((island.size - 16) / 8),
+          };
+          islandDB.set(island.name, island);
+        }
+      }
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  */
+  /*
+  {
+    alias: ["gemsetter"],
+    permission: COMMAND_PERMS.ADMIN,
+    info: "Adds gem statistic.",
+    function: function (p: Player, msg: string) {
+      for (let pdata of playerDB.entries()) {
+        pdata[1].gems = 0;
+        playerDB.set(pdata[0], pdata[1]);
+      }
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  */
 ];
 
 export function warpLobby(player: Player) {

@@ -21,9 +21,14 @@ import {
   toRomanNumeral,
 } from "../main";
 import { ChestFormData } from "../chest-ui/forms";
-import { DEF_ORES } from "../systems/miscellaneous";
+import {
+  DEF_CROPS_BREAK,
+  DEF_CROPS_PLACE,
+  DEF_ORES,
+} from "../systems/miscellaneous";
 import { SpawnerEntities } from "../systems/spawner";
 import { getIslandOn } from "../island/manage";
+import { orelepathy } from "../systems/telepathy";
 
 const overworld = world.getDimension("overworld");
 
@@ -76,11 +81,11 @@ export const EnchantSlot = {
     "minecraft:iron_axe",
     "minecraft:golden_axe",
     "minecraft:diamond_axe",
-    "minecraft:wooden_hoe",
-    "minecraft:stone_hoe",
-    "minecraft:iron_hoe",
-    "minecraft:golden_hoe",
-    "minecraft:diamond_hoe",
+    "minecraft:wooden_shovel",
+    "minecraft:stone_shovel",
+    "minecraft:iron_shovel",
+    "minecraft:golden_shovel",
+    "minecraft:diamond_shovel",
   ],
   helmet: [
     "minecraft:leather_helmet",
@@ -199,18 +204,20 @@ new Enchant("bobble", {
 new Enchant("brisk", {
   rarity: "common",
   display: "§7Brisk",
-  type: EnchantSlot.pickaxe,
+  type: EnchantSlot.tool,
   maxLevel: 10,
   description: "Grants haste while mining.",
   blockBreak: (data) => {
     if (randomIntFromInterval(1, 13 - data.level) != 1) return;
     let id = data.brokenBlockPermutation.type.id;
-    if (
-      !id.includes("ore") &&
-      !(id == "minecraft:pumpkin") &&
-      !(id == "minecraft:melon_block")
-    )
-      return;
+    let procBlocks = [
+      "minecraft:pumpkin",
+      "minecraft:melon_block",
+      "palm:farmland",
+      "minecraft:grass",
+      "minecraft:dirt",
+    ];
+    if (!id.includes("ore") && !procBlocks.includes(id)) return;
     data.player.addEffect("haste", 80 + data.level * 6, {
       amplifier: Math.floor(data.level * 0.8),
       showParticles: false,
@@ -234,9 +241,9 @@ new Enchant("wedge", {
 new Enchant("trove", {
   rarity: "common",
   display: "§7Trove",
-  type: EnchantSlot.tool,
+  type: EnchantSlot.pickaxe,
   maxLevel: 10,
-  description: "Grants a chance to recieve extra drops when mining.",
+  description: "Grants a chance to receive extra drops when mining.",
 });
 
 new Enchant("durable", {
@@ -281,24 +288,6 @@ new Enchant("spring", {
   },
 });
 
-new Enchant("quake", {
-  rarity: "common",
-  display: "§7Quake",
-  type: EnchantSlot.leggings,
-  maxLevel: 10,
-  description: "Increases speed and agility while worn.",
-  hold: (data) => {
-    data.player.addEffect("speed", 60, {
-      amplifier: Math.ceil(data.level / 3) - 1,
-      showParticles: false,
-    });
-    data.player.addEffect("jump_boost", 60, {
-      amplifier: Math.ceil(data.level / 3) - 1,
-      showParticles: false,
-    });
-  },
-});
-
 new Enchant("toxin", {
   rarity: "common",
   display: "§7Toxin",
@@ -318,12 +307,47 @@ new Enchant("toxin", {
 
 // RARE EMCHANTS
 
+new Enchant("quake", {
+  rarity: "rare",
+  display: "§2Quake",
+  type: EnchantSlot.leggings,
+  maxLevel: 10,
+  description: "Increases speed and agility while worn.",
+  hold: (data) => {
+    data.player.addEffect("speed", 60, {
+      amplifier: Math.ceil(data.level / 3) - 1,
+      showParticles: false,
+    });
+    data.player.addEffect("jump_boost", 60, {
+      amplifier: Math.ceil(data.level / 3) - 1,
+      showParticles: false,
+    });
+  },
+});
+
 new Enchant("forge", {
   rarity: "rare",
   display: "§2Forge",
   type: EnchantSlot.pickaxe,
   maxLevel: 5,
   description: "Grants a chance to smelt drops when mining.",
+});
+
+new Enchant("fierce", {
+  rarity: "rare",
+  display: "§2Fierce",
+  type: EnchantSlot.sword,
+  maxLevel: 10,
+  description: "Increases damage dealt.",
+  entityHit: (data) => {
+    if (!SpawnerEntities.find((x) => x.id == data.entity.typeId.slice(10)))
+      return;
+    let damage = Math.ceil(data.level * 1.5);
+    let mobHealth = world.scoreboard.getObjective("mobHealth");
+    let score = mobHealth?.getScore(data.entity);
+    if (!score) return;
+    mobHealth?.setScore(data.entity, Math.max(0, score - damage));
+  },
 });
 
 new Enchant("ignite", {
@@ -364,7 +388,7 @@ new Enchant("splash", {
   display: "§9Splash",
   type: EnchantSlot.tool,
   maxLevel: 10,
-  description: "Grants a chance to recieve extra XP when mining.",
+  description: "Grants a chance to receive extra XP when mining.",
   blockBreak: (data) => {
     let id = data.brokenBlockPermutation.type.id;
     if (!DEF_ORES.includes(id) || !id.includes("ore")) return;
@@ -396,7 +420,7 @@ new Enchant("polish", {
   display: "§9Polish",
   type: EnchantSlot.pickaxe,
   maxLevel: 10,
-  description: "Grants a recieve copper when mining.",
+  description: "Grants a receive copper when mining.",
   blockBreak: (data) => {
     if (!DEF_ORES.includes(data.brokenBlockPermutation.type.id)) return;
     if (randomIntFromInterval(1, 82 - data.level * 6) != 1) return;
@@ -404,21 +428,12 @@ new Enchant("polish", {
   },
 });
 
-new Enchant("fierce", {
+new Enchant("fracture", {
   rarity: "epic",
-  display: "§9Fierce",
+  display: "§9Fracture",
   type: EnchantSlot.sword,
-  maxLevel: 5,
-  description: "Increases damage by one per level.",
-  entityHit: (data) => {
-    if (!SpawnerEntities.find((x) => x.id == data.entity.typeId.slice(10)))
-      return;
-    let damage = data.level == 5 ? 6 : data.level;
-    let mobHealth = world.scoreboard.getObjective("mobHealth");
-    let score = mobHealth?.getScore(data.entity);
-    if (!score) return;
-    mobHealth?.setScore(data.entity, Math.max(0, score - damage));
-  },
+  maxLevel: 10,
+  description: "Grants a chance to kill multiple entities.",
 });
 
 new Enchant("procure", {
@@ -426,7 +441,7 @@ new Enchant("procure", {
   display: "§9Procure",
   type: EnchantSlot.sword,
   maxLevel: 10,
-  description: "Grants a chance to recieve extra drops from entities.",
+  description: "Grants a chance to receive extra drops from entities.",
 });
 
 // UNIQUE ENCHANTS
@@ -454,10 +469,7 @@ new Enchant("talaria", {
       data.player.runCommandAsync(`ability @s mayfly true`);
       data.player.playSound(`mob.enderdragon.flap`, { volume: 1, pitch: 1 });
       data.player.sendMessage(`[§o§6Talaria§r§f] >> §aON`);
-      data.player.startItemCooldown(
-        "flight",
-        data.level * 2400 + data.level * 1200
-      );
+      data.player.startItemCooldown("flight", data.level * 2200);
       system.runTimeout(() => {
         data.player.sendMessage(
           `[§o§6Talaria§r§f] >> §cFlight will wear off in §710§8s§c.`
@@ -490,11 +502,39 @@ new Enchant("regenerate", {
   maxLevel: 10,
   description: "Grants a chance to instantly duplicate last mined ore.",
   blockBreak: (data) => {
-    if (!DEF_ORES.includes(data.brokenBlockPermutation.type.id)) return;
+    if (!data.brokenBlockPermutation.type.id.includes("ore")) return;
     if (randomIntFromInterval(1, 70 - data.level * 6) != 1) return;
     system.runTimeout(() => {
       data.block.setType(data.brokenBlockPermutation.type);
     }, 3);
+  },
+});
+
+new Enchant("meteor", {
+  rarity: "unique",
+  display: "§6Meteor",
+  type: EnchantSlot.pickaxe,
+  maxLevel: 15,
+  description: "Grants a chance to mine attached ores.",
+  blockBreak: (data) => {
+    if (!DEF_ORES.includes(data.brokenBlockPermutation.type.id)) return;
+    if (randomIntFromInterval(1, 97 - data.level * 6) != 1) return;
+    function getAttached(block: Block) {
+      if (DEF_ORES.includes(block.west(1)?.typeId ?? "")) return block.west(1);
+      else if (DEF_ORES.includes(block.east(1)?.typeId ?? ""))
+        return block.east(1);
+      if (DEF_ORES.includes(block.north(1)?.typeId ?? ""))
+        return block.north(1);
+      else if (DEF_ORES.includes(block.south(1)?.typeId ?? ""))
+        return block.south(1);
+    }
+    let block = getAttached(data.block);
+    for (let i = 0; i < Math.floor(data.level / 1.5); i++) {
+      if (!block) continue;
+      orelepathy({ player: data.player, block: block });
+      block?.setType("air");
+      block = getAttached(block);
+    }
   },
 });
 
@@ -526,13 +566,13 @@ new Enchant("cryptic", {
 new Enchant("flex", {
   rarity: "unique",
   display: "§6Flex",
-  type: EnchantSlot.armor,
+  type: EnchantSlot.helmet,
   maxLevel: 5,
   description: "Changes the size of the player while worn.",
   hold: (data) => {
     if (data.player.isSneaking == true) {
       if (
-        ((data.player.getProperty(`property:size`) as number) ?? -1) >=
+        (data.player.getProperty(`property:size`) as number) >=
         1.25 + 0.25 * data.level
       ) {
         data.player.triggerEvent(`palm:min_size`);

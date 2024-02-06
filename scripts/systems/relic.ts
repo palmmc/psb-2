@@ -282,25 +282,25 @@ export const RELICS: Relic[] = [
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveMoney(player, RELIC_INFO, 800, 15000);
+          giveMoney(player, RELIC_INFO, 4000, 20000);
         },
         amount: [1, 1],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveMoney(player, RELIC_INFO, 800, 15000);
+          giveMoney(player, RELIC_INFO, 4000, 20000);
         },
         amount: [1, 1],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveMoney(player, RELIC_INFO, 800, 15000);
+          giveMoney(player, RELIC_INFO, 4000, 20000);
         },
         amount: [1, 1],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveMoney(player, RELIC_INFO, 800, 15000);
+          giveMoney(player, RELIC_INFO, 4000, 20000);
         },
         amount: [1, 1],
       },
@@ -324,16 +324,20 @@ export const RELICS: Relic[] = [
         amount: [6, 32],
       },
       {
-        item: "pumpkin",
-        amount: [12, 64],
-      },
-      {
         item: "palm:berry_seeds",
         amount: [2, 4],
       },
       {
         item: "palm:berry_seeds",
         amount: [2, 4],
+      },
+      {
+        item: "minecraft:melon_block",
+        amount: [32, 64],
+      },
+      {
+        item: "minecraft:pumpkin",
+        amount: [32, 64],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
@@ -408,37 +412,37 @@ export const RELICS: Relic[] = [
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveXP(player, RELIC_INFO, 400, 1500);
+          giveXP(player, RELIC_INFO, 400, 1600);
         },
         amount: [1, 1],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveXP(player, RELIC_INFO, 400, 1500);
+          giveXP(player, RELIC_INFO, 400, 1600);
         },
         amount: [1, 1],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveMoney(player, RELIC_INFO, 4000, 35000);
+          giveMoney(player, RELIC_INFO, 15000, 60000);
         },
         amount: [1, 1],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveMoney(player, RELIC_INFO, 4000, 35000);
+          giveMoney(player, RELIC_INFO, 15000, 60000);
         },
         amount: [1, 1],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveMoney(player, RELIC_INFO, 4000, 35000);
+          giveMoney(player, RELIC_INFO, 15000, 60000);
         },
         amount: [1, 1],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveMoney(player, RELIC_INFO, 4000, 35000);
+          giveMoney(player, RELIC_INFO, 15000, 60000);
         },
         amount: [1, 1],
       },
@@ -456,6 +460,10 @@ export const RELICS: Relic[] = [
       {
         item: "palm:berry_seeds",
         amount: [2, 6],
+      },
+      {
+        item: "minecraft:melon_block",
+        amount: [32, 64],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
@@ -558,37 +566,25 @@ export const RELICS: Relic[] = [
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveXP(player, RELIC_INFO, 1000, 3000);
+          giveXP(player, RELIC_INFO, 2000, 3500);
         },
         amount: [1, 1],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveXP(player, RELIC_INFO, 1000, 3000);
+          giveXP(player, RELIC_INFO, 2000, 3500);
         },
         amount: [1, 1],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveMoney(player, RELIC_INFO, 10000, 50000);
+          giveMoney(player, RELIC_INFO, 75000, 150000);
         },
         amount: [1, 1],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveMoney(player, RELIC_INFO, 10000, 50000);
-        },
-        amount: [1, 1],
-      },
-      {
-        function: function (player: Player, RELIC_INFO: Relic) {
-          giveMoney(player, RELIC_INFO, 10000, 50000);
-        },
-        amount: [1, 1],
-      },
-      {
-        function: function (player: Player, RELIC_INFO: Relic) {
-          giveMoney(player, RELIC_INFO, 10000, 50000);
+          giveMoney(player, RELIC_INFO, 75000, 150000);
         },
         amount: [1, 1],
       },
@@ -602,10 +598,6 @@ export const RELICS: Relic[] = [
       {
         item: "palm:berry_seeds",
         amount: [2, 12],
-      },
-      {
-        item: "palm:berry_seeds",
-        amount: [2, 8],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
@@ -675,37 +667,31 @@ export const RELICS: Relic[] = [
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveXP(player, RELIC_INFO, 2000, 5000);
+          giveXP(player, RELIC_INFO, 3000, 7000);
         },
         amount: [1, 1],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveXP(player, RELIC_INFO, 2000, 5000);
+          giveXP(player, RELIC_INFO, 3000, 7000);
         },
         amount: [1, 1],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveXP(player, RELIC_INFO, 2000, 5000);
+          giveXP(player, RELIC_INFO, 3000, 7000);
         },
         amount: [1, 1],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveMoney(player, RELIC_INFO, 20000, 80000);
+          giveMoney(player, RELIC_INFO, 80000, 200000);
         },
         amount: [1, 1],
       },
       {
         function: function (player: Player, RELIC_INFO: Relic) {
-          giveMoney(player, RELIC_INFO, 20000, 80000);
-        },
-        amount: [1, 1],
-      },
-      {
-        function: function (player: Player, RELIC_INFO: Relic) {
-          giveMoney(player, RELIC_INFO, 20000, 80000);
+          giveMoney(player, RELIC_INFO, 80000, 200000);
         },
         amount: [1, 1],
       },
@@ -741,6 +727,11 @@ export function giveRelic(
   item.nameTag = `§r${RELIC_INFO.name} ${RELIC_DISPLAY}`;
   item.setLore([`§r§d§lCLICK TO OPEN§r`]);
   player.getComponent("inventory")?.container?.addItem(item);
+  sendAlert(
+    player,
+    `§bYou found a ${RELIC_INFO.name} ${RELIC_DISPLAY}§b!`,
+    PREFIX.relic
+  );
   return item;
 }
 

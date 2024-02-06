@@ -21,28 +21,23 @@
       "minecraft:rideable_sheared": {
         "minecraft:rideable": {
           "seat_count": 1,
-          "family_types": [
-            "zombie"
-          ],
+          "family_types": ["zombie"],
           "seats": {
-            "position": [ 0.0, 0.9, 0.0 ]
+            "position": [0.0, 0.9, 0.0]
           }
         }
       },
       "minecraft:rideable_wooly": {
         "minecraft:rideable": {
           "seat_count": 1,
-          "family_types": [
-            "zombie"
-          ],
+          "family_types": ["zombie"],
           "seats": {
-            "position": [ 0.0, 0.975, 0.0 ]
+            "position": [0.0, 0.975, 0.0]
           }
         }
       },
       "minecraft:sheep_baby": {
-        "minecraft:is_baby": {
-        },
+        "minecraft:is_baby": {},
         "minecraft:scale": {
           "value": 0.5
         },
@@ -84,8 +79,7 @@
         }
       },
       "minecraft:sheep_sheared": {
-        "minecraft:is_sheared": {
-        }
+        "minecraft:is_sheared": {}
       },
       "minecraft:sheep_white": {
         "minecraft:color": {
@@ -124,12 +118,10 @@
       }
     },
 
-
     "components": {
-      "minecraft:is_hidden_when_invisible": {
-      },
+      "minecraft:is_hidden_when_invisible": {},
       "minecraft:type_family": {
-        "family": [ "sheep", "mob" ]
+        "family": ["sheep", "mob"]
       },
       "minecraft:breathable": {
         "total_supply": 15,
@@ -160,19 +152,15 @@
       "minecraft:movement": {
         "value": 0.0
       },
-            "minecraft:nameable": {
-                "allow_name_tag_renaming": false,
-                "always_show": true
-            },
-            "minecraft:navigation.walk": {
-                "can_walk": false
-            },
-            "minecraft:movement.basic": {
-                "max_turn": 0
-            },
-      "minecraft:jump.static": {
+      "minecraft:nameable": {
+        "allow_name_tag_renaming": false,
+        "always_show": true
       },
-      "minecraft:can_climb": {
+      "minecraft:navigation.walk": {
+        "can_walk": false
+      },
+      "minecraft:movement.basic": {
+        "max_turn": 0
       },
       "minecraft:interact": {
         "interactions": [
@@ -242,9 +230,7 @@
       "minecraft:behavior.tempt": {
         "priority": 4,
         "speed_multiplier": 1.25,
-        "items": [
-          "wheat"
-        ]
+        "items": ["wheat"]
       },
       "minecraft:behavior.follow_parent": {
         "priority": 5,
@@ -281,14 +267,12 @@
       "minecraft:behavior.random_look_around": {
         "priority": 9
       },
-      "minecraft:physics": {
-      },
+      "minecraft:physics": {},
       "minecraft:pushable": {
         "is_pushable": true,
         "is_pushable_by_piston": true
       },
-      "minecraft:conditional_bandwidth_optimization": {
-      }
+      "minecraft:conditional_bandwidth_optimization": {}
     },
     "events": {
       "minecraft:entity_spawned": {
@@ -297,14 +281,12 @@
             "randomize": [
               {
                 "weight": 95,
-                "remove": {
-                },
+                "remove": {},
                 "trigger": "spawn_adult"
               },
               {
                 "weight": 5,
-                "remove": {
-                },
+                "remove": {},
                 "trigger": "spawn_baby"
               }
             ]
@@ -314,49 +296,37 @@
               {
                 "weight": 81836,
                 "add": {
-                  "component_groups": [
-                    "minecraft:sheep_white"
-                  ]
+                  "component_groups": ["minecraft:sheep_white"]
                 }
               },
               {
                 "weight": 5000,
                 "add": {
-                  "component_groups": [
-                    "minecraft:sheep_black"
-                  ]
+                  "component_groups": ["minecraft:sheep_black"]
                 }
               },
               {
                 "weight": 5000,
                 "add": {
-                  "component_groups": [
-                    "minecraft:sheep_light_gray"
-                  ]
+                  "component_groups": ["minecraft:sheep_light_gray"]
                 }
               },
               {
                 "weight": 5000,
                 "add": {
-                  "component_groups": [
-                    "minecraft:sheep_gray"
-                  ]
+                  "component_groups": ["minecraft:sheep_gray"]
                 }
               },
               {
                 "weight": 3000,
                 "add": {
-                  "component_groups": [
-                    "minecraft:sheep_brown"
-                  ]
+                  "component_groups": ["minecraft:sheep_brown"]
                 }
               },
               {
                 "weight": 164,
                 "add": {
-                  "component_groups": [
-                    "minecraft:sheep_pink"
-                  ]
+                  "component_groups": ["minecraft:sheep_pink"]
                 }
               }
             ]
@@ -383,8 +353,7 @@
         }
       },
       "minecraft:entity_born": {
-        "remove": {
-        },
+        "remove": {},
         "add": {
           "component_groups": [
             "minecraft:sheep_baby",
@@ -396,9 +365,7 @@
 
       "minecraft:ageable_grow_up": {
         "remove": {
-          "component_groups": [
-            "minecraft:sheep_baby"
-          ]
+          "component_groups": ["minecraft:sheep_baby"]
         },
         "add": {
           "component_groups": [
@@ -427,14 +394,10 @@
         "sequence": [
           {
             "remove": {
-              "component_groups": [
-                "minecraft:sheep_sheared"
-              ]
+              "component_groups": ["minecraft:sheep_sheared"]
             },
             "add": {
-              "component_groups": [
-                "minecraft:sheep_dyeable"
-              ]
+              "component_groups": ["minecraft:sheep_dyeable"]
             }
           },
           {
@@ -451,18 +414,14 @@
               ]
             },
             "remove": {
-              "component_groups": [
-                "minecraft:loot_sheared"
-              ]
+              "component_groups": ["minecraft:loot_sheared"]
             }
           }
         ]
       },
       "wololo": {
         "add": {
-          "component_groups": [
-            "minecraft:sheep_red"
-          ]
+          "component_groups": ["minecraft:sheep_red"]
         }
       }
     }

@@ -1,0 +1,67 @@
+{
+  "format_version": "1.16.100",
+  "minecraft:block": {
+    "description": {
+      "identifier": "palm:vending_machine",
+      "properties": {
+        "palm:facing_direction": [0, 1, 2, 3]
+      }
+    },
+    "permutations": [
+      {
+        "condition": "query.block_property('palm:facing_direction') == 0",
+        "components": {
+          "minecraft:rotation": [0, 180, 0]
+        }
+      },
+      {
+        "condition": "query.block_property('palm:facing_direction') == 1",
+        "components": {
+          "minecraft:rotation": [0, 0, 0]
+        }
+      },
+      {
+        "condition": "query.block_property('palm:facing_direction') == 2",
+        "components": {
+          "minecraft:rotation": [0, 270, 0]
+        }
+      },
+      {
+        "condition": "query.block_property('palm:facing_direction') == 3",
+        "components": {
+          "minecraft:rotation": [0, 90, 0]
+        }
+      }
+    ],
+    "components": {
+      "minecraft:collision_box": true,
+      "minecraft:geometry": "geometry.vend",
+      "minecraft:light_dampening": 0,
+      "minecraft:light_emission": 10,
+      "minecraft:destructible_by_mining": false,
+      "minecraft:destructible_by_explosion": false,
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "vending_machine",
+          "render_method": "alpha_test",
+          "face_dimming": false,
+          "ambient_occlusion": false
+        }
+      },
+      "minecraft:selection_box": {
+        "origin": [-8, 0, -4],
+        "size": [16, 16, 10]
+      },
+      "minecraft:on_player_placing": {
+        "event": "set_placing_rotation"
+      }
+    },
+    "events": {
+      "set_placing_rotation": {
+        "set_block_property": {
+          "palm:facing_direction": "query.cardinal_facing_2d - 2"
+        }
+      }
+    }
+  }
+}

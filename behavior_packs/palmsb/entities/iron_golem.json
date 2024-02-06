@@ -13,11 +13,21 @@
         "minecraft:behavior.hurt_by_target": {
           "priority": 2,
           "entity_types": {
-            "filters": { 
-                "all_of": [
-                  { "test" :  "is_family", "subject" : "other", "operator": "!=", "value" :  "player"},
-                  { "test" :  "is_family", "subject" : "other", "operator": "!=", "value" :  "creeper"}
-                ] 
+            "filters": {
+              "all_of": [
+                {
+                  "test": "is_family",
+                  "subject": "other",
+                  "operator": "!=",
+                  "value": "player"
+                },
+                {
+                  "test": "is_family",
+                  "subject": "other",
+                  "operator": "!=",
+                  "value": "creeper"
+                }
+              ]
             }
           }
         }
@@ -32,7 +42,7 @@
               "any_of": [
                 { "test": "is_family", "subject": "other", "value": "mob" },
                 { "test": "is_family", "subject": "other", "value": "player" }
-              ] 
+              ]
             }
           }
         },
@@ -49,10 +59,9 @@
     },
 
     "components": {
-      "minecraft:is_hidden_when_invisible": {
-      },
+      "minecraft:is_hidden_when_invisible": {},
       "minecraft:type_family": {
-        "family": [ "irongolem", "mob" ]
+        "family": ["irongolem", "mob"]
       },
       "minecraft:collision_box": {
         "width": 1.4,
@@ -68,7 +77,12 @@
       "minecraft:hurt_on_condition": {
         "damage_conditions": [
           {
-            "filters": { "test": "in_lava", "subject": "self", "operator": "==", "value": true },
+            "filters": {
+              "test": "in_lava",
+              "subject": "self",
+              "operator": "==",
+              "value": true
+            },
             "cause": "lava",
             "damage_per_tick": 4
           }
@@ -77,19 +91,15 @@
       "minecraft:movement": {
         "value": 0.0
       },
-            "minecraft:nameable": {
-                "allow_name_tag_renaming": false,
-                "always_show": true
-            },
-            "minecraft:navigation.walk": {
-                "can_walk": false
-            },
-            "minecraft:movement.basic": {
-                "max_turn": 0
-            },
-      "minecraft:jump.static": {
+      "minecraft:nameable": {
+        "allow_name_tag_renaming": false,
+        "always_show": true
       },
-      "minecraft:can_climb": {
+      "minecraft:navigation.walk": {
+        "can_walk": false
+      },
+      "minecraft:movement.basic": {
+        "max_turn": 0
       },
       "minecraft:interact": {
         "interactions": [
@@ -139,104 +149,6 @@
       "minecraft:balloonable": {
         "mass": 2.0
       },
-      "minecraft:preferred_path": {
-        "max_fall_blocks": 1,
-        "jump_cost": 5,
-        "default_block_cost": 1.5,
-        "preferred_path_blocks": [
-          {
-            "cost": 0,
-            "blocks": [
-              "grass_path"
-            ]
-          },
-          {
-            "cost": 1,
-            "blocks": [
-              "cobblestone",
-              "stone",
-              "stonebrick",
-              "sandstone",
-              "mossy_cobblestone",
-              "stone_slab",
-              "stone_slab2",
-              "stone_slab3",
-              "stone_slab4",
-              "double_stone_slab",
-              "double_stone_slab2",
-              "double_stone_slab3",
-              "double_stone_slab4",
-              "wooden_slab",
-              "double_wooden_slab",
-              "planks",
-              "brick_block",
-              "nether_brick",
-              "red_nether_brick",
-              "end_bricks",
-              "red_sandstone",
-              "white_stained_glass",
-              "orange_stained_glass",
-              "magenta_stained_glass",
-              "light_blue_stained_glass",
-              "yellow_stained_glass",
-              "lime_stained_glass",
-              "pink_stained_glass",
-              "gray_stained_glass",
-              "light_gray_stained_glass",
-              "cyan_stained_glass",
-              "purple_stained_glass",
-              "blue_stained_glass",
-              "brown_stained_glass",
-              "green_stained_glass",
-              "red_stained_glass",
-              "black_stained_glass",
-              "glass",
-              "glowstone",
-              "prismarine",
-              "emerald_block",
-              "diamond_block",
-              "lapis_block",
-              "gold_block",
-              "redstone_block",
-              "purple_glazed_terracotta",
-              "white_glazed_terracotta",
-              "orange_glazed_terracotta",
-              "magenta_glazed_terracotta",
-              "light_blue_glazed_terracotta",
-              "yellow_glazed_terracotta",
-              "lime_glazed_terracotta",
-              "pink_glazed_terracotta",
-              "gray_glazed_terracotta",
-              "silver_glazed_terracotta",
-              "cyan_glazed_terracotta",
-              "blue_glazed_terracotta",
-              "brown_glazed_terracotta",
-              "green_glazed_terracotta",
-              "red_glazed_terracotta",
-              "black_glazed_terracotta"
-            ]
-          },
-          {
-            "cost": 50,
-            "blocks": [
-              "bed",
-              "lectern",
-              "composter",
-              "grindstone",
-              "blast_furnace",
-              "smoker",
-              "fletching_table",
-              "cartography_table",
-              "brewing_stand",
-              "smithing_table",
-              "cauldron",
-              "barrel",
-              "loom",
-              "stonecutter"
-            ]
-          }
-        ]
-      },
       "minecraft:behavior.target_when_pushed": {
         "priority": 1,
         "percent_chance": 5.0,
@@ -244,9 +156,14 @@
           {
             "filters": {
               "all_of": [
-                { "test" :  "is_family", "subject" : "other", "value" :  "monster" },
-                { "test" :  "is_family", "subject" : "other", "operator": "!=", "value" :  "creeper" }
-              ] 
+                { "test": "is_family", "subject": "other", "value": "monster" },
+                {
+                  "test": "is_family",
+                  "subject": "other",
+                  "operator": "!=",
+                  "value": "creeper"
+                }
+              ]
             }
           }
         ]
@@ -268,9 +185,7 @@
       "minecraft:behavior.offer_flower": {
         "priority": 5,
         "filters": {
-          "all_of": [
-            { "test": "is_daytime", "value" : true }
-          ]
+          "all_of": [{ "test": "is_daytime", "value": true }]
         }
       },
       "minecraft:behavior.random_stroll": {
@@ -349,13 +264,16 @@
       "minecraft:behavior.hurt_by_target": {
         "priority": 2,
         "entity_types": {
-          "filters": { "test": "is_family", "subject": "other", "operator": "!=", "value": "creeper" }
+          "filters": {
+            "test": "is_family",
+            "subject": "other",
+            "operator": "!=",
+            "value": "creeper"
+          }
         }
       },
-      "minecraft:persistent": {
-      },
-      "minecraft:physics": {
-      },
+      "minecraft:persistent": {},
+      "minecraft:physics": {},
       "minecraft:pushable": {
         "is_pushable": true,
         "is_pushable_by_piston": true
@@ -363,23 +281,18 @@
       "minecraft:follow_range": {
         "value": 64
       },
-      "minecraft:conditional_bandwidth_optimization": {
-      }
+      "minecraft:conditional_bandwidth_optimization": {}
     },
 
     "events": {
       "minecraft:from_player": {
         "add": {
-          "component_groups": [
-            "minecraft:player_created"
-          ]
+          "component_groups": ["minecraft:player_created"]
         }
       },
       "minecraft:from_village": {
         "add": {
-          "component_groups": [
-            "minecraft:village_created"
-          ]
+          "component_groups": ["minecraft:village_created"]
         }
       }
     }

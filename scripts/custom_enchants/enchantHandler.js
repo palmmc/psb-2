@@ -1,4 +1,5 @@
 import { EquipmentSlot, system, world } from "@minecraft/server";
+import { toRomanNumeral, fromRomanNumeral } from "./../main";
 
 export const EnchantSlot = {
   Head: [
@@ -84,7 +85,7 @@ export class Enchant {
     system.run(() => {
       this.updating = false;
       Enchant.enchants[this.id] = this.info;
-      Enchant.displayToId[this.info.display] = this.id;
+      Enchant.displayToId[this.info.display.slice(2)] = this.id;
     });
   }
   static alterEnch(item, enchantId, callback) {
@@ -93,20 +94,24 @@ export class Enchant {
     if (!enchantData) return item;
     const enchantsId = lore.filter((v) => v.startsWith("§e§n§c§h"));
     if (!enchantsId && callback) {
-      const newLore = callback({ info: enchantData, id: enchantId, level: 1 });
+      const newLore = callback({
+        info: enchantData,
+        id: enchantId,
+        level: "I",
+      });
       if (!newLore) return item;
       lore.push(`§e§n§c§h§r${newLore}`);
       item.setLore(lore);
       return item;
     }
-    const id = lore.findIndex((v) => v.startsWith(`§r${enchantData.display}`));
+    const id = lore.findIndex((v) => v.includes(`${enchantData.display}`));
     const newLore = callback({
       info: enchantData,
       id: enchantId,
-      level: id === -1 ? 1 : Number(lore[id].split(" ")[1]),
+      level: id === -1 ? "I" : lore[id].split(" ")[1],
     });
     if (id === -1 && newLore) lore.push("§e§n§c§h§r" + newLore);
-    else if (newLore) lore[id] = "§r" + newLore;
+    else if (newLore) lore[id] = "§e§n§c§h§r" + newLore;
     else {
       lore.splice(id, 1);
     }
@@ -119,20 +124,22 @@ export class Enchant {
     return this.alterEnch(
       item,
       enchantId,
-      (data) => `${data.info.display} ${level ?? 1}`
+      (data) => `${data.info.display} ${toRomanNumeral(level ?? 1)}`
     );
   }
   static removeEnchant(item, enchantId) {
     return this.alterEnch(item, enchantId, (data) => undefined);
   }
   static getEnchant(item, enchantId) {
-    const lore = item.getLore().find((v) => v.startsWith("§e§n§c§h"));
-    if (!lore) return undefined;
-    const split = lore.split(" ");
-    const id = this.displayToId[split[0].slice(2)];
-    if (!id) return undefined;
-    const info = this.enchants[id];
-    return { info, level: Number(split[1]), id };
+    const lore = item.getLore().filter((v) => v.startsWith("§e§n§c§h"));
+    if (lore.length == 0) return [];
+    for (let l of lore) {
+      const split = l.slice(10).split(" ");
+      const id = this.displayToId[split[0].slice(2)];
+      if (id != enchantId) continue;
+      const info = this.enchants[id];
+      return { info, level: Number(fromRomanNumeral(split[1])), id };
+    }
   }
 
   static getEnchants(item) {
@@ -140,15 +147,11 @@ export class Enchant {
     if (lore.length == 0) return [];
     let enchants = [];
     for (let l of lore) {
-      l.slice(8)
-        .split("\n")
-        .map((v) => {
-          const split = v.split(" ");
-          const id = this.displayToId[split[0].slice(2)];
-          if (!id) return;
-          const info = this.enchants[id];
-          enchants.push({ info, level: Number(split[1]), id });
-        });
+      const split = l.slice(10).split(" ");
+      const id = this.displayToId[split[0].slice(2)];
+      if (!id) return;
+      const info = this.enchants[id];
+      enchants.push({ info, level: Number(fromRomanNumeral(split[1])), id });
     }
     return enchants;
   }

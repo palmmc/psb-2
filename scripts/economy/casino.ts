@@ -17,6 +17,7 @@ import {
   giveCharm,
 } from "../custom_enchants/customEnchants";
 import { formatItemName } from "./itemcloud";
+import { checkItemAmount, findItem } from "./shop";
 
 // Initialize Databases
 var playerDB: any = undefined;
@@ -71,6 +72,11 @@ export function blackJackGame(player: Player) {
       }, 60);
     }, 40);
   } else {
+    if (findItem(player, "palm:lotus_token")) {
+      player.runCommandAsync(`clear @s palm:lotus_token 0 1`);
+      nextBlackJack(player);
+      return;
+    }
     let cost =
       20000 +
       Math.ceil((player.getItemCooldown("blockjack") ?? 0) / 2400) * 1000;
