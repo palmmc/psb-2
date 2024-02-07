@@ -1,5 +1,4 @@
 import {
-  EnchantmentSlot,
   Entity,
   EntityDamageCause,
   EntityEquippableComponent,
@@ -26,6 +25,7 @@ import { getIslandOn, islandManage } from "../island/manage";
 import { Enchant } from "../custom_enchants/enchantHandler";
 import {
   CHARMS,
+  CombinerItems,
   EnchantSlot,
   animateBlacksmith,
   useCharm,
@@ -240,7 +240,7 @@ const NPC_LIST: NPC[] = [
             for (const key of Object.keys(EnchantSlot)) {
               //@ts-ignore
               if (EnchantSlot[key].includes(item?.typeId)) {
-                return key as keyof EnchantmentSlot;
+                return key;
               }
             }
           }
@@ -313,7 +313,12 @@ const NPC_LIST: NPC[] = [
           if (ench.tier == "Gold") accuracy = randomIntFromInterval(60, 80);
           if (ench.tier == "Diamond") accuracy = randomIntFromInterval(80, 100);
           if (ench.tier == "Emerald") accuracy = 100;
-          animateBlacksmith(player, type, ench?.ench, accuracy);
+          animateBlacksmith(
+            player,
+            type as CombinerItems,
+            ench?.ench,
+            accuracy
+          );
         } else if (result.selection == 14) {
           const gui = new ChestFormData("magenta");
           gui.title("§d§lCharms");

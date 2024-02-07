@@ -48,7 +48,10 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
   const idata = getIslandOn(player);
   const loc = data.block.location;
   if (player.hasTag("admin:bypass")) return;
-  if (idata && !itemsBanned.includes(data.itemStack.typeId.slice(10))) {
+  if (
+    idata &&
+    !itemsBanned.includes(data.permutationBeingPlaced.type.id.slice(10))
+  ) {
     if (IslandMethods.isInBounds(idata, player.location) == true) {
       if (
         IslandMethods.getPermission(idata, player, "place") == true ||
@@ -57,12 +60,12 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
         return;
       else if (
         IslandMethods.getPermission(idata, player, "farm") == true &&
-        DEF_CROPS_PLACE.includes(data.itemStack.typeId)
+        DEF_CROPS_PLACE.includes(data.permutationBeingPlaced.type.id)
       )
         return;
       else if (
         IslandMethods.getPermission(idata, player, "build") == true &&
-        DEF_XP_BLOCKS.includes(data.itemStack.typeId)
+        DEF_XP_BLOCKS.includes(data.permutationBeingPlaced.type.id)
       )
         return;
     }

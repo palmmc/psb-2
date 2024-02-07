@@ -7,7 +7,6 @@ import {
   EntityEquippableComponent,
   EntityInventoryComponent,
   EquipmentSlot,
-  ItemEnchantsComponent,
   ItemStack,
   ItemTypes,
   Player,
@@ -34,7 +33,6 @@ import "./systems/events";
 import { formatItemName } from "./economy/itemcloud";
 import "./economy/vending";
 import "./economy/shop";
-import "./systems/enchantments";
 import "./systems/npc";
 import "./economy/casino";
 import "./systems/generators";
@@ -43,14 +41,7 @@ import "./systems/spawner";
 import "./systems/relic";
 import "./custom_enchants/enchantHandler";
 import "./custom_enchants/customEnchants";
-import {
-  CATEGORY,
-  OpenShopBeta,
-  ShopItems,
-  ShopTabBeta,
-  ShopTabEnchantmentsBeta,
-} from "./economy/shop";
-import { EnchantEntries, VanillaEnchItem } from "./systems/enchantments";
+import { CATEGORY, OpenShopBeta, ShopItems, ShopTabBeta } from "./economy/shop";
 import {
   MAX_SIZE,
   UPGRADE_SIZE,

@@ -6,7 +6,6 @@ import {
   EquipmentSlot,
   GameMode,
   ItemDurabilityComponent,
-  ItemEnchantsComponent,
   ItemStack,
   ItemTypes,
   Player,
@@ -228,7 +227,7 @@ world.afterEvents.entityHitBlock.subscribe((data) => {
         item
       )}§&\n§eAmount: §7x§c§^64§^`
     );
-    sign.setWaxed();
+    sign.setWaxed(true);
   } else if (sign && sign.getText()?.startsWith("§.§.")) {
     let player = <Player>data.damagingEntity;
     let signText = sign.getText() ?? "";

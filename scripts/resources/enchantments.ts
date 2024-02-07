@@ -1,10 +1,10 @@
+//@ts-nocheck
 import {
   BlockInventoryComponent,
   Enchantment,
   EnchantmentTypes,
   EntityEquippableComponent,
   EquipmentSlot,
-  ItemEnchantsComponent,
   Player,
   Vector,
   system,
@@ -70,7 +70,11 @@ export function VanillaEnchItem(player: Player, e: string, level: number) {
   let holdInv = <EntityEquippableComponent>player.getComponent("equippable");
   let item = holdInv.getEquipment(EquipmentSlot.Mainhand);
   if (!item) {
-    sendError(player, `You must hold the item you want to enchant.`, PREFIX.server);
+    sendError(
+      player,
+      `You must hold the item you want to enchant.`,
+      PREFIX.server
+    );
     return;
   }
   if (!(level > 0)) {
@@ -85,28 +89,46 @@ export function VanillaEnchItem(player: Player, e: string, level: number) {
     return x.id == e;
   });
   if (!EnchantmentTypes.get(e) || !edata) {
-    sendError(player, `Invalid format: Enchantment is not available.`, PREFIX.server);
+    sendError(
+      player,
+      `Invalid format: Enchantment is not available.`,
+      PREFIX.server
+    );
     return;
   }
   let ench = new Enchantment(e, 1);
-  let enchants = (<ItemEnchantsComponent>item.getComponent("enchantments")).enchantments;
+  let enchants = (<ItemEnchantsComponent>item.getComponent("enchantments"))
+    .enchantments;
   if (enchants.hasEnchantment(ench.type)) {
-    sendError(player, `This item already has enchant '§e${ench.type.id}§c'.`, PREFIX.server);
+    sendError(
+      player,
+      `This item already has enchant '§e${ench.type.id}§c'.`,
+      PREFIX.server
+    );
     return;
   }
   if (!enchants.canAddEnchantment(ench)) {
-    sendError(player, `This item cannot be enchanted with '§e${ench.type.id}§c'.`, PREFIX.server);
+    sendError(
+      player,
+      `This item cannot be enchanted with '§e${ench.type.id}§c'.`,
+      PREFIX.server
+    );
     return;
   }
   if (level <= 3 && level > 0) {
     player.runCommandAsync(`enchant @s ${ench.type.id} ${level}`);
   } else if (level > 3 && level <= edata.max) {
-    const binv = (<BlockInventoryComponent>overworld.getBlock(edata.location)?.getComponent("inventory")).container;
+    const binv = (<BlockInventoryComponent>(
+      overworld.getBlock(edata.location)?.getComponent("inventory")
+    )).container;
     let it = binv?.getItem(edata.startSlot + (level - 4))?.clone();
     if (it) {
-      let getEnch = (<ItemEnchantsComponent>it.getComponent("enchantments")).enchantments.getEnchantment(ench.type.id);
+      let getEnch = (<ItemEnchantsComponent>(
+        it.getComponent("enchantments")
+      )).enchantments.getEnchantment(ench.type.id);
       if (getEnch) enchants.addEnchantment(getEnch);
-      (<ItemEnchantsComponent>item.getComponent("enchantments")).enchantments = enchants;
+      (<ItemEnchantsComponent>item.getComponent("enchantments")).enchantments =
+        enchants;
       holdInv.setEquipment(EquipmentSlot.Mainhand, item);
     }
   } else {

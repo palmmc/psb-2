@@ -760,21 +760,25 @@ export function openRelic(player: Player, type: keyof typeof RELIC_CHANCE.ORE) {
 }
 
 world.beforeEvents.playerPlaceBlock.subscribe((data) => {
-  if (!data.itemStack.getLore()) return;
+  let itemStack = data.player
+    .getComponent("equippable")
+    ?.getEquipment(EquipmentSlot.Mainhand);
+  if (!itemStack || !itemStack.getLore()) return;
   let RELIC_INFO = RELICS.find(
-    (x) => x.name == (data.itemStack.nameTag?.split(" ")[0].slice(2) ?? "")
+    (x) => x.name == (itemStack?.nameTag?.split(" ")[0].slice(2) ?? "")
   );
   if (!RELIC_INFO) return;
   data.cancel = true;
   system.run(() => {
+    if (!itemStack) return;
     if (data.player.getItemCooldown("relic") > 0) return;
     data.player.startItemCooldown("relic", 15);
     let item = data.player
       .getComponent("equippable")
       ?.getEquipment(EquipmentSlot.Mainhand);
-    if (item?.nameTag != data.itemStack.nameTag) return;
-    if (data.itemStack.amount > 1) {
-      let item = data.itemStack;
+    if (item?.nameTag != itemStack.nameTag) return;
+    if (itemStack.amount > 1) {
+      let item = itemStack;
       item.amount--;
       data.player
         .getComponent("equippable")

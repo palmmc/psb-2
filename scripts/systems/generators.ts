@@ -729,14 +729,18 @@ giveGen(
 
 // Place Generator
 world.beforeEvents.playerPlaceBlock.subscribe((data) => {
-  let item = data.itemStack;
-  if (item.getLore().length < 3) return;
+  let item = data.player
+    .getComponent("equippable")
+    ?.getEquipment(EquipmentSlot.Mainhand);
+  if (!item || item.getLore().length < 3) return;
   let player = data.player;
   // Check if placement is allowed.
   if (
     data.face != Direction.Up ||
     player.getItemCooldown("genPlacement") != 0 ||
-    Object.values(genItems).includes(data.block?.typeId.slice(10) ?? "")
+    !Object.values(genItems).includes(
+      data.permutationBeingPlaced.type.id.slice(10) ?? ""
+    )
   ) {
     data.cancel = true;
     return;
@@ -754,7 +758,7 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
     return;
   }
   let type = Object.keys(genItems).find(
-    (x) => genItems[x as keyof typeof genItems] == item.typeId.slice(10)
+    (x) => genItems[x as keyof typeof genItems] == item?.typeId.slice(10)
   ) as genType;
   let limit = island.limits[type as keyof IslandLimits];
   if (limit.amount >= limit.max) {
@@ -771,14 +775,7 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
     return;
   }
   system.run(() => {
-    if (data.block.above(1)?.typeId != `minecraft:${genItems[type]}`) {
-      data.block.setType("air");
-      data.player
-        .getComponent("equippable")
-        ?.setEquipment(EquipmentSlot.Mainhand, item);
-      return;
-    }
-    if (!island) return;
+    if (!item || !island) return;
     // Retrieve data.
     let lore = item.getLore();
     let identifier = undefined;
@@ -796,11 +793,7 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
         fortune:
           fromRomanNumeral(lore[2].slice(FORTUNE_DISPLAY.length + 6)) - 1,
       },
-      {
-        x: data.block.location.x,
-        y: data.block.location.y + 1,
-        z: data.block.location.z,
-      },
+      data.block.location,
       island.operator.id,
       identifier
     );

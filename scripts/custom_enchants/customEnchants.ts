@@ -1,6 +1,5 @@
 import {
   Block,
-  EnchantmentSlot,
   Entity,
   EntityEquippableComponent,
   EntityInventoryComponent,
@@ -1065,18 +1064,20 @@ world.beforeEvents.itemUseOn.subscribe((data) => {
 
 // COMBINER TEST ANIMATION
 
+export type CombinerItems =
+  | "pickaxe"
+  | "axe"
+  | "hoe"
+  | "sword"
+  | "shovel"
+  | "helmet"
+  | "chestplate"
+  | "leggings"
+  | "boots";
+
 export function animateBlacksmith(
   player: Player,
-  type:
-    | "pickaxe"
-    | "axe"
-    | "hoe"
-    | "sword"
-    | "shovel"
-    | "helmet"
-    | "chestplate"
-    | "leggings"
-    | "boots",
+  type: CombinerItems,
   enchant: EnchantData,
   accuracy: number
 ) {
