@@ -1048,7 +1048,7 @@ const commands = [
         },
       },
       {
-        alias: ["setperms", "setperm", "editperms", "editperm"],
+        alias: ["edituser", "edit", "setperms", "editperms"],
         info: "Opens the permissions editor.",
         function: function (player: Player, message: string) {
           system.runTimeout(() => islandEditPerms(player), 2);
@@ -1753,6 +1753,44 @@ const commands = [
           );
         });
       }, 2);
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
+    alias: ["sign", "signature"],
+    info: "Signs an item with your name.",
+    function: function (player: Player, message: string) {
+      let holdInv = <EntityEquippableComponent>(
+        player.getComponent("equippable")
+      );
+      let item = holdInv.getEquipment(EquipmentSlot.Mainhand);
+      if (
+        !item ||
+        item.isStackable == true ||
+        !item.getComponent("durability")
+      ) {
+        sendError(player, `You can only sign equipment items.`);
+        return;
+      }
+      if (item.nameTag) {
+        sendError(player, `This item has already been signed.`);
+        return;
+      }
+      if (item.typeId.includes("_"))
+        item.nameTag = `§r§c${player.name}§f's ${
+          formatItemName(item.typeId).split(" ")[1]
+        }`;
+      else
+        item.nameTag = `§r§c${player.name}§f's ${formatItemName(item.typeId)}`;
+      holdInv.setEquipment(EquipmentSlot.Mainhand, item);
+      sendAlert(
+        player,
+        `§cSigned §b${formatItemName(item.typeId.slice(10))}§c.`,
+        PREFIX.server,
+        `item.book.page_turn`
+      );
     },
     arguments: [],
     allowSigns: true,

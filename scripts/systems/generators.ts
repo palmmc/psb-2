@@ -370,14 +370,14 @@ const upgradeLists = {
     fortune: {
       name: "§bFortune §8(§3Level §f$d§8)",
       description:
-        "§6Cost: $$e\nIncreases chance for more entities by $a%\n§9Spawn Chance:\n§o§8$b% §r§b=> §6$c%",
+        "§6Cost: $$e\nIncreases entity spawn rates by $a%\n§9Spawn Chance:\n§o§8$b% §r§b=> §6$c%",
       icon: "prismarine_crystals",
       baseCost: 35000,
       upgrades: [
         {
           // Base Upgrade
           amount: 25,
-          cost: 0.5,
+          cost: 0.75,
         },
         {
           // Level II
@@ -402,12 +402,12 @@ const upgradeLists = {
         {
           // Level VI
           amount: 160,
-          cost: 11,
+          cost: 10,
         },
         {
           // Level VII
           amount: 190,
-          cost: 14,
+          cost: 13,
         },
         {
           // Level VIII
@@ -417,12 +417,12 @@ const upgradeLists = {
         {
           // Level IX
           amount: 260,
-          cost: 23,
+          cost: 22,
         },
         {
           // Level X
           amount: 300,
-          cost: 30,
+          cost: 26,
         },
       ],
     },
@@ -997,8 +997,8 @@ const genBehavior = {
     let c = overworld.getEntities({
       location: gen.location,
       type: gen.identifier,
-      maxDistance: 16,
-      scoreOptions: [{ objective: "mobCount", minScore: 1 }],
+      maxDistance: 32,
+      scoreOptions: [{ objective: "mobCount", minScore: 0 }],
     })[0];
     if (!c) {
       c = overworld.spawnEntity(
@@ -1014,16 +1014,15 @@ const genBehavior = {
       count =
         obj?.addScore(
           c,
-          1 +
-            randomIntFromInterval(
-              1,
-              Math.round(
-                (upgradeLists.spawner.fortune.upgrades[gen.upgrades.fortune]
-                  .amount +
-                  100) /
-                  100
-              )
+          randomIntFromInterval(
+            1,
+            Math.ceil(
+              (upgradeLists.spawner.fortune.upgrades[gen.upgrades.fortune]
+                .amount +
+                100) /
+                100
             )
+          )
         ) ?? 0;
     else count = obj?.getScore(c) ?? 1;
     world.scoreboard
@@ -1056,7 +1055,7 @@ for (let s of SPEEDS) {
       else if (
         g.type == "spawner" &&
         SPEEDS[g.upgrades.speed] == s &&
-        randomIntFromInterval(1, 2) == 1
+        randomIntFromInterval(1, 4) == 1
       )
         genBehavior[g.type](g);
     }

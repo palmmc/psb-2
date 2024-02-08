@@ -229,6 +229,9 @@ export const BREAK_XP = [
   ["palm:carrots", 2, 6, true],
   ["palm:potatoes", 2, 6, true],
   ["palm:sweet_berry_bush", 1, 4, true],
+  ["palm:pumpkin_stem", 0, 0, true],
+  ["palm:melon_stem", 0, 0, true],
+  ["palm:farmland", 0, 0],
   //["minecraft:reeds", 0, 0],
   //["minecraft:cactus", 0, 0],
   ["minecraft:pumpkin", 3, 6],
@@ -251,8 +254,8 @@ const PLACE_XP = [
 ];
 
 // LEVEL EVENTS
-world.afterEvents.playerBreakBlock.subscribe((data) => {
-  let block = data.brokenBlockPermutation;
+world.beforeEvents.playerBreakBlock.subscribe((data) => {
+  let block = data.block;
   let id = block.type.id;
   let ldata = BREAK_XP.find((x) => x[0] == id);
   // Copper additions
@@ -265,10 +268,11 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
   if (id.includes("ore") && randomIntFromInterval(1, 5) != 1) return;
   if (ldata[3] && (ldata[3] as boolean) == true) {
     IslandMethods.removeLimit(island, "crop", 1);
-    if (block.getState("palm:growth_stage") != 7) return;
+    if (block.permutation.getState("palm:growth_stage") != 7) return;
     giveRelic(data.player, rollRelic("FARM"));
   } else if (id == "palm:farmland") {
     let f = data.block.above(1);
+    console.warn(f?.typeId);
     if (f?.typeId.includes("palm") && !f.typeId.includes("farmland")) {
       IslandMethods.removeLimit(island, "crop", 1);
     }

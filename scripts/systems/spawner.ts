@@ -40,7 +40,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
       { item: "chicken", smelt: "cooked_chicken", amount: [1, 1] },
       { item: "feather", amount: [1, 2] },
     ],
-    price: 1000000,
+    price: 500000,
   },
   {
     name: "§l§dPig",
@@ -48,7 +48,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     health: 10,
     xp: [4, 6],
     loot: [{ item: "porkchop", smelt: "cooked_porkchop", amount: [1, 3] }],
-    price: 2000000,
+    price: 750000,
   },
   {
     name: "§l§fSheep",
@@ -59,7 +59,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
       { item: "mutton", smelt: "mutton", amount: [1, 2] },
       { item: "white_wool", amount: [1, 1] },
     ],
-    price: 2500000,
+    price: 1000000,
   },
   {
     name: "§l§6Cow",
@@ -68,9 +68,9 @@ export const SpawnerEntities: SpawnerEntity[] = [
     xp: [5, 8],
     loot: [
       { item: "beef", smelt: "cooked_beef", amount: [1, 3] },
-      { item: "leather", amount: [1, 2] },
+      { item: "leather", amount: [1, 3] },
     ],
-    price: 3000000,
+    price: 1500000,
   },
   {
     name: "§l§cMooshroom",
@@ -81,26 +81,26 @@ export const SpawnerEntities: SpawnerEntity[] = [
       { item: "beef", smelt: "cooked_beef", amount: [2, 5] },
       { item: "leather", amount: [1, 4] },
     ],
-    price: 3500000,
+    price: 2000000,
   },
   {
     name: "§l§2Zombie",
     id: "zombie",
     health: 20,
-    xp: [7, 10],
+    xp: [7, 9],
     loot: [{ item: "rotten_flesh", amount: [1, 6] }],
-    price: 4000000,
+    price: 2500000,
   },
   {
     name: "§l§4Spider",
     id: "spider",
     health: 16,
-    xp: [7, 11],
+    xp: [7, 10],
     loot: [
       { item: "string", amount: [1, 4] },
       { item: "spider_eye", amount: [1, 2] },
     ],
-    price: 4250000,
+    price: 3000000,
   },
   {
     name: "§l§aCreeper",
@@ -108,23 +108,15 @@ export const SpawnerEntities: SpawnerEntity[] = [
     health: 20,
     xp: [8, 10],
     loot: [{ item: "gunpowder", amount: [1, 5] }],
-    price: 4500000,
+    price: 3250000,
   },
   {
     name: "§l§7Skeleton",
     id: "skeleton",
     health: 20,
-    xp: [8, 12],
-    loot: [{ item: "bone", amount: [1, 4] }],
-    price: 5000000,
-  },
-  {
-    name: "§l§eBlaze",
-    id: "blaze",
-    health: 30,
-    xp: [9, 10],
-    loot: [{ item: "blaze_rod", amount: [1, 6] }],
-    price: 5500000,
+    xp: [8, 11],
+    loot: [{ item: "bone", amount: [1, 3] }],
+    price: 4000000,
   },
   {
     name: "§l§8Wither Skeleton",
@@ -132,10 +124,18 @@ export const SpawnerEntities: SpawnerEntity[] = [
     health: 40,
     xp: [8, 12],
     loot: [
-      { item: "coal", amount: [1, 12] },
-      { item: "bone", amount: [1, 6] },
+      { item: "coal", amount: [1, 6] },
+      { item: "bone", amount: [1, 4] },
     ],
-    price: 6250000,
+    price: 4500000,
+  },
+  {
+    name: "§l§eBlaze",
+    id: "blaze",
+    health: 30,
+    xp: [9, 10],
+    loot: [{ item: "blaze_rod", amount: [1, 6] }],
+    price: 5000000,
   },
   {
     name: "§l§fIron Golem",
@@ -143,10 +143,10 @@ export const SpawnerEntities: SpawnerEntity[] = [
     health: 90,
     xp: [11, 14],
     loot: [
-      { item: "iron_ingot", amount: [1, 22] },
-      { item: "red_flower", amount: [1, 5] },
+      { item: "iron_ingot", amount: [1, 20] },
+      { item: "red_flower", amount: [1, 4] },
     ],
-    price: 7500000,
+    price: 5500000,
   },
   {
     name: "§l§cZombie Pigman",
@@ -155,9 +155,9 @@ export const SpawnerEntities: SpawnerEntity[] = [
     xp: [12, 16],
     loot: [
       { item: "gold_ingot", amount: [1, 22] },
-      { item: "gold_nugget", amount: [1, 18] },
+      { item: "gold_nugget", amount: [1, 16] },
     ],
-    price: 8000000,
+    price: 6000000,
   },
 ];
 
