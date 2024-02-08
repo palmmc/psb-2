@@ -11,7 +11,7 @@
  - Prest.3
  - Prest.4
  - Prest.5
- - Pink !
+ - [PSB] Heart
  - Yellow !
  - Confetti
  - ??

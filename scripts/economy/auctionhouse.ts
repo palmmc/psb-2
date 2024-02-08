@@ -31,6 +31,7 @@ const itemTextures: itemTexture = new Map([
   ["palm:small_gem", ["textures/items/smallgem", false]],
   ["palm:medium_gem", ["textures/items/mediumgem", false]],
   ["palm:large_gem", ["textures/items/largegem", false]],
+  ["palm:vending_machine", ["textures/ui/vendorrender", false]],
   //Repeat the above as many times as is needed
 ]);
 const fakeItemNames = new Map([

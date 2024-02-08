@@ -1000,6 +1000,9 @@ const genBehavior = {
       maxDistance: 32,
       scoreOptions: [{ objective: "mobCount", minScore: 0 }],
     })[0];
+    let healthObj = world.scoreboard.getObjective("mobHealth");
+    let health =
+      SpawnerEntities.find((x) => x.id == gen.identifier)?.health ?? -1;
     if (!c) {
       c = overworld.spawnEntity(
         gen.identifier ?? "",
@@ -1009,6 +1012,7 @@ const genBehavior = {
           gen.location.z + randomIntFromInterval(0, 3)
         )
       );
+      healthObj?.setScore(c, health);
       obj?.setScore(c, 1);
     } else if ((obj?.getScore(c) ?? -1) < 129)
       count =
@@ -1025,13 +1029,11 @@ const genBehavior = {
           )
         ) ?? 0;
     else count = obj?.getScore(c) ?? 1;
-    world.scoreboard
-      .getObjective("mobHealth")
-      ?.setScore(
-        c,
-        SpawnerEntities.find((x) => x.id == gen.identifier)?.health ?? -1
-      );
-    c.nameTag = `§l§c${formatItemName(gen.identifier ?? "")} §r§ex${count}`;
+    c.nameTag = `§l§c${formatItemName(
+      gen.identifier ?? ""
+    )} §r§ex${count}\n §8§l[§r §d${healthObj?.getScore(
+      c
+    )}§8/§c${health} §8§l]`;
     //console.warn(`Generated MOB`);
   },
 };

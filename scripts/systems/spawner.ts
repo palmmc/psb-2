@@ -217,10 +217,12 @@ world.afterEvents.entityHurt.subscribe((data) => {
     data.hurtEntity.kill();
     return;
   }
+  let damage = data.damage;
+  if (data.damageSource.cause == EntityDamageCause.freezing) damage *= 5;
   let obj = world.scoreboard.getObjective("mobCount");
   let ent = data.hurtEntity;
   let healthObj = world.scoreboard.getObjective("mobHealth");
-  healthObj?.addScore(ent, -data.damage);
+  healthObj?.addScore(ent, -damage);
   if ((healthObj?.getScore(data.hurtEntity) ?? 0) <= 0) {
     let fire = ent.getComponent("onfire") ? true : false;
     if (obj && getScoreEnt(obj, data.hurtEntity) <= 1) {
@@ -257,7 +259,9 @@ world.afterEvents.entityHurt.subscribe((data) => {
     obj?.setScore(ent, score - amount);
     ent.nameTag = `§l§c${formatItemName(
       ent.typeId.slice(10) ?? ""
-    )} §r§ex${score}`;
+    )} §r§ex${score}\n §8§l[§r §d${healthObj?.getScore(ent)}§8/§c${
+      entInfo.health
+    } §8§l]`;
     if (!ent.location) return;
     lootTheRoom(
       ent.typeId,
