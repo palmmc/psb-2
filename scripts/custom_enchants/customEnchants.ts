@@ -1094,6 +1094,7 @@ export function animateBlacksmith(
     );
     player.runCommandAsync(`inputpermission set @s movement disabled`);
     player.runCommandAsync(`inputpermission set @s camera disabled`);
+    player.runCommandAsync(`hud @s hide all`);
     let loc = new Vector(
       blacksmith.location.x,
       blacksmith.location.y,
@@ -1155,6 +1156,7 @@ export function animateBlacksmith(
               player.runCommandAsync(`camera @s clear`);
               player.runCommandAsync(`inputpermission set @s movement enabled`);
               player.runCommandAsync(`inputpermission set @s camera enabled`);
+              player.runCommandAsync(`hud @s reset all`);
             }, 40);
           }, 40);
         }, 25);
@@ -1198,6 +1200,7 @@ function refinementSequence(player: Player, enchant: EnchantData) {
     );
     player.runCommandAsync(`inputpermission set @s movement disabled`);
     player.runCommandAsync(`inputpermission set @s camera disabled`);
+    player.runCommandAsync(`hud @s hide all`);
     let loc = new Vector(orb.location.x + 2, orb.location.y, orb.location.z);
     player.teleport(loc, { facingLocation: orb.location });
   }, 10);
@@ -1238,6 +1241,7 @@ function refinementSequence(player: Player, enchant: EnchantData) {
             player.runCommandAsync(`camera @s clear`);
             player.runCommandAsync(`inputpermission set @s movement enabled`);
             player.runCommandAsync(`inputpermission set @s camera enabled`);
+            player.runCommandAsync(`hud @s reset all`);
             player.runCommandAsync(`event entity @e[type=palm:orb] npcdespawn`);
           }, 40);
         }, 40);

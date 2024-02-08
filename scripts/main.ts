@@ -368,6 +368,7 @@ export class Island {
   public banned: Array<string>;
   public size: number;
   public points: number;
+  public notifyLevel: number;
   public funds: number;
   public limits: IslandLimits;
   public homes: Array<IslandHome>;
@@ -387,6 +388,7 @@ export class Island {
     this.banned = new Array();
     this.size = 16;
     this.points = 0;
+    this.notifyLevel = 0;
     this.funds = 0;
     this.limits = {
       oregen: { amount: 0, max: 5 },
@@ -1009,6 +1011,33 @@ const commands = [
               `The island owner must be online to visit it.`,
               PREFIX.server
             );
+            return;
+          }
+          visitIsland(
+            player,
+            island,
+            world.getPlayers({ name: island.operator.name })[0]
+          );
+        },
+      },
+      {
+        alias: ["randomvisit", "rvisit", "randomtp", "rtp"],
+        info: "Teleports you to a random player's island.",
+        function: function (player: Player, message: string, fails?: number) {
+          let visitPlayer =
+            world.getPlayers()[
+              randomIntFromInterval(0, world.getPlayers().length - 1)
+            ];
+          let island: Island = islandDB.get(
+            playerDB.get(visitPlayer.id).island
+          );
+          if (!island) {
+            if ((fails ?? 0) > 2) warpIsland(player);
+            this.function(player, message, (fails ?? 0) + 1);
+            return;
+          }
+          if (island.owners.find((x) => x.id == player.id)) {
+            warpIsland(player);
             return;
           }
           visitIsland(
@@ -1730,6 +1759,151 @@ const commands = [
     closeChat: true,
   },
   {
+    alias: ["piggybank", "pb", "enderchest", "ec"],
+    info: "Opens your piggy bank.",
+    function: function (player: Player, message: string) {
+      type PiggySlot = {
+        typeId: string;
+        amount: number;
+        nameTag?: string;
+        lore?: string[];
+      };
+      function getSlotCost(slot: number) {
+        return (slot - 3) * 5;
+      }
+      system.runTimeout(() => {
+        let gui = new ChestFormData("pink");
+        gui.title("§uPiggy§5§lBank");
+        let pdata = playerDB.get(player.id);
+        //pdata.piggyslots = 5;
+        //playerDB.set(player.id, pdata);
+        //return;
+        if (pdata.piggybank) {
+          for (let i = 0; i < 27; i++) {
+            let slot: PiggySlot = pdata.piggybank[i];
+            let cost = getSlotCost(pdata.piggyslots);
+            if (!slot) {
+              if (i >= pdata.piggyslots) {
+                gui.button(
+                  i,
+                  "§4Locked Slot",
+                  [`§6§lUnlock:§r  §e${cost}`],
+                  "textures/blocks/glass_red.png"
+                );
+              } else
+                gui.button(
+                  i,
+                  "§cEmpty Slot",
+                  [`§d§lCLICK TO ADD`],
+                  "textures/blocks/glass_pink.png"
+                );
+              continue;
+            }
+            gui.button(
+              i,
+              slot.nameTag ?? formatItemName(slot.typeId),
+              slot.lore?.concat([`§c§lCLICK TO REMOVE`]),
+              slot.typeId,
+              slot.amount
+            );
+          }
+        } else {
+          pdata.piggybank = [];
+          pdata.piggyslots = 5;
+          for (let i = 0; i < 27; i++) {
+            let cost = getSlotCost(pdata.piggyslots);
+            if (i >= pdata.piggyslots) {
+              gui.button(
+                i,
+                "§4Locked Slot",
+                [`§6§lUnlock:§r  §e${cost}`],
+                "textures/blocks/glass_red.png"
+              );
+            } else
+              gui.button(
+                i,
+                "§cEmpty Slot",
+                [`§d§lCLICK TO ADD`],
+                "textures/blocks/glass_pink.png"
+              );
+          }
+        }
+        gui.show(player).then((result) => {
+          if (result.canceled) return;
+          if ((result.selection ?? 0) >= pdata.piggyslots) {
+            let cost = getSlotCost(result.selection ?? 0);
+            if (pdata.gems < cost) {
+              sendError(player, `Insufficient gems.`);
+              return;
+            }
+            pdata.gems = pdata.gems - cost;
+            pdata.piggyslots = pdata.piggyslots + 1;
+            playerDB.set(player.id, pdata);
+            sendAlert(
+              player,
+              `§l§6Upgraded§r §uPiggy§l§5Bank§e§r §8(§c${
+                pdata.piggyslots - 1
+              } §f-> §a${pdata.piggyslots}§8)`
+            );
+            return;
+          }
+          let item: PiggySlot = pdata.piggybank[result.selection ?? 0];
+          let inv = player.getComponent("inventory")?.container;
+          if (item) {
+            let itemStack = new ItemStack(item.typeId, item.amount);
+            itemStack.nameTag = item.nameTag;
+            itemStack.setLore(item.lore);
+            pdata.piggybank.splice(result.selection ?? 0, 1);
+            playerDB.set(player.id, pdata);
+            inv?.addItem(itemStack);
+            sendAlert(
+              player,
+              `§cRemoved §b${
+                item.nameTag ?? formatItemName(item.typeId)
+              } §8x§7${item.amount} §efrom §uPiggy§l§5Bank§e§r.`
+            );
+          } else {
+            let gui = new ChestFormData("large");
+            gui.title("Select an Item");
+            for (let i = 0; i < 36; i++) {
+              let item = inv?.getItem(i);
+              if (!item) continue;
+              gui.button(
+                i,
+                item.nameTag ?? formatItemName(item.typeId),
+                item.getLore().concat([`§d§lCLICK TO ADD`]),
+                item.typeId,
+                item.amount
+              );
+            }
+            gui.show(player).then((result) => {
+              if (result.canceled) return;
+              let item = inv?.getItem(result.selection ?? 0);
+              if (!item) return;
+              pdata.piggybank.push({
+                typeId: item.typeId,
+                amount: item.amount,
+                nameTag: item.nameTag,
+                lore: item.getLore(),
+              } as PiggySlot);
+              playerDB.set(player.id, pdata);
+              inv?.setItem(result.selection ?? 0);
+              sendAlert(
+                player,
+                `§aAdded §b${
+                  item.nameTag ?? formatItemName(item.typeId)
+                } §8x§7${item.amount} §eto §uPiggy§l§5Bank§e§r.`
+              );
+            });
+          }
+        });
+      }, 2);
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
     alias: ["celist"],
     info: "Displays a list of Custom Enchants.",
     function: function (player: Player) {
@@ -1995,16 +2169,21 @@ const commands = [
         alias: ["spawn", "lobby", "hub"],
         info: "Warps you to the server lobby.",
         function: function (player: Player, message: string) {
-          player.teleport(new Vector(0.5, 91, 0.5));
-          sendAlert(player, `§aWarped to §eSpawn§a.`, PREFIX.server);
+          warpLobby(player);
         },
       },
       {
         alias: ["blacksmith"],
         info: "Warps you to the blacksmith.",
         function: function (player: Player, message: string) {
-          player.teleport(new Vector(-45.5, 91, -19.5));
-          sendAlert(player, `§aWarped to §dBlacksmith§a.`, PREFIX.server);
+          player.camera.fade({
+            fadeTime: { fadeInTime: 0.7, holdTime: 1, fadeOutTime: 1 },
+          });
+          system.runTimeout(() => {
+            player.teleport(new Vector(-45.5, 91, -19.5));
+            sendAlert(player, `§aWarped to §dBlacksmith§a.`, PREFIX.server);
+            player.playSound("note.bell");
+          }, 15);
         },
       },
     ],
@@ -2372,8 +2551,14 @@ const commands = [
 ];
 
 export function warpLobby(player: Player) {
-  player.teleport(new Vector(0.5, 91, 0.5));
-  sendAlert(player, `§aWarped to §eSpawn§a.`, PREFIX.server);
+  player.camera.fade({
+    fadeTime: { fadeInTime: 0.7, holdTime: 1, fadeOutTime: 1 },
+  });
+  system.runTimeout(() => {
+    player.teleport(new Vector(0.5, 91, 0.5));
+    sendAlert(player, `§aWarped to §eSpawn§a.`, PREFIX.server);
+    player.playSound("note.bell");
+  }, 15);
 }
 
 export function warpList(player: Player, message: string) {

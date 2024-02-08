@@ -398,7 +398,7 @@ world.afterEvents.effectAdd.subscribe((data) => {
     data.entity.playAnimation("animation.nomad.joy");
     system.runTimeout(() => {
       data.entity.triggerEvent("nomad:kill");
-    }, 70);
+    }, 25);
   }
 });
 

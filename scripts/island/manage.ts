@@ -82,6 +82,38 @@ export function warpIsland(player: Player) {
     );
     return;
   }
+  player.camera.fade({
+    fadeTime: { fadeInTime: 1, holdTime: 1, fadeOutTime: 1 },
+  });
+  system.runTimeout(() => {
+    player.teleport(
+      {
+        x: idata.spawn.x + 0.5,
+        y: idata.spawn.y + 1,
+        z: idata.spawn.z + 0.5,
+      },
+      { facingLocation: new Vector(0, 65, idata.spawn.z) }
+    );
+    sendAlert(
+      player,
+      `§aYou have been teleported to your §e${island} §aisland.`,
+      PREFIX.server
+    );
+    player.playSound("note.bell");
+  }, 20);
+}
+
+export function instantWarpIsland(player: Player) {
+  let island = playerDB.get(player.id).island;
+  let idata: Island = islandDB.get(island);
+  if (!island) {
+    sendError(
+      player,
+      `§cYou do not currently own a skyblock island.\nUse §e-is create§c to create one.`,
+      PREFIX.server
+    );
+    return;
+  }
   player.teleport(
     {
       x: idata.spawn.x + 0.5,
@@ -111,26 +143,31 @@ export function visitIsland(player: Player, island: Island, owner?: Player) {
       return;
     }
   }
-  player.teleport(
-    {
-      x: island.spawn.x + 0.5,
-      y: island.spawn.y + 1,
-      z: island.spawn.z + 0.5,
-    },
-    { facingLocation: new Vector(0, 65, island.spawn.z) }
-  );
-  sendAlert(
-    player,
-    `§aYou have been teleported to the §e${island.name} §aisland.`,
-    PREFIX.server
-  );
-  if (owner)
+  player.camera.fade({
+    fadeTime: { fadeInTime: 1, holdTime: 1, fadeOutTime: 1 },
+  });
+  system.runTimeout(() => {
+    player.teleport(
+      {
+        x: island.spawn.x + 0.5,
+        y: island.spawn.y + 1,
+        z: island.spawn.z + 0.5,
+      },
+      { facingLocation: new Vector(0, 65, island.spawn.z) }
+    );
     sendAlert(
-      owner,
-      `§a${player.name} §eteleported to your island.`,
+      player,
+      `§aYou have been teleported to the §e${island.name} §aisland.`,
       PREFIX.server
     );
-  player.playSound("note.bell");
+    if (owner)
+      sendAlert(
+        owner,
+        `§a${player.name} §eteleported to your island.`,
+        PREFIX.server
+      );
+    player.playSound("note.bell");
+  }, 20);
 }
 
 // Old Info
@@ -365,7 +402,7 @@ system.runInterval(() => {
     const loc = player.location;
     const idata = getIslandOn(player);
     if (loc.y <= -32) {
-      if (idata) warpIsland(player);
+      if (idata) instantWarpIsland(player);
       else warpLobby(player);
       sendAlert(player, `§bYou have been saved from the void.\n§7Be careful!`);
     }
@@ -716,7 +753,6 @@ export function islandUserUI(user: Player, player: Player) {
 }
 
 export function visitIslandUI(player: Player) {
-  let idata = islandDB.get(playerDB.get(player.id).island);
   const gui = new ChestFormData("light_blue");
   gui.title("Select a Player:");
   gui.pattern([0, 0], ["xxxxxxxxx", "x_______x", "xxxxxxxxx"], {
@@ -728,24 +764,27 @@ export function visitIslandUI(player: Player) {
   let e = 10;
   let i = e;
   let islands = new Array();
+  let players = new Array();
   for (let x of world.getPlayers()) {
     if (x.name == "PalmSkyblock") continue;
-    let xi = playerDB.get(x.id).island;
-    if (!xi) continue;
+    let xi: Island = islandDB.get(playerDB.get(x.id).island);
+    if (!xi || islands.includes(xi)) continue;
     gui.button(
       i++,
-      `§d${xi}`,
-      [`§6Owner: §e${x.name}`, "§l§aCLICK TO VISIT"],
+      `§d${xi.name}`,
+      [`§6Owner: §e${xi.operator.name}`, "§l§aCLICK TO VISIT"],
       "grass",
       0,
       true
     );
-    islands.push([islandDB.get(xi), x]);
+    islands.push(xi);
+    players.push(x);
   }
   gui.show(player).then((result) => {
     if (result.canceled) return;
-    let arr = islands[(result.selection ?? i) - e];
-    visitIsland(player, arr[0], arr[1]);
+    let island = islands[(result.selection ?? i) - e];
+    let vplayer = players[(result.selection ?? i) - e];
+    visitIsland(player, island, vplayer);
   });
 }
 

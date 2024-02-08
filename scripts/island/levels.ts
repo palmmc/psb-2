@@ -20,6 +20,7 @@ import {
   IslandMethods,
   PREFIX,
   randomIntFromInterval,
+  sendAlert,
   sendError,
 } from "../main";
 import {
@@ -98,26 +99,29 @@ world.afterEvents.worldInitialize.subscribe((data) => {
     system.runInterval(() => {
       for (let player of world.getPlayers()) {
         let pdata = playerDB.get(player.id);
+        if (!pdata) continue;
         if (!pdata.island) continue;
         let idata: Island = islandDB.get(pdata.island);
         let level = xpToLevel(idata.points);
-        let lastLevel =
-          world.scoreboard.getObjective("lastLevel")?.getScore(player) ?? -1;
-        if (lastLevel == -1) {
-          player.runCommandAsync(`scoreboard players add @s lastLevel 0`);
-          continue;
-        } else if (level > lastLevel) {
+        if (!idata.notifyLevel) {
+          idata.notifyLevel =
+            world.scoreboard.getObjective("lastLevel")?.getScore(player) ?? 0;
+          IslandMethods.updateData(idata);
+        }
+        if (level > idata.notifyLevel) {
+          let lastLevel = idata.notifyLevel;
           let l = Math.min(5, level - lastLevel);
-          player.runCommandAsync(`scoreboard players add @s lastLevel ${l}`);
+          idata.notifyLevel = idata.notifyLevel + l;
+          IslandMethods.updateData(idata);
           player.onScreenDisplay.setActionBar(
             `§f[§eIsland§f] >> §e${lastLevel} §a-> §e${lastLevel + l}`
           );
-          player.sendMessage(
-            `${
-              PREFIX.island
-            } §kaa§r §l§6Level Up!§r §kaa§r §l[§r§e${lastLevel} §a-> §e${
+          sendAlert(
+            player,
+            `§kaa§r §l§6Level Up!§r §kaa§r §l[§r§e${lastLevel} §a-> §e${
               lastLevel + l
-            }§f§l]§r`
+            }§f§l]§r`,
+            PREFIX.island
           );
           let reward = islandRewards.find(
             (x) => x.level <= lastLevel && x.level > lastLevel - 5
