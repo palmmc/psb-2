@@ -32,11 +32,15 @@ const itemTextures: itemTexture = new Map([
   ["palm:medium_gem", ["textures/items/mediumgem", false]],
   ["palm:large_gem", ["textures/items/largegem", false]],
   ["palm:vending_machine", ["textures/ui/vendorrender", false]],
+  ["palm:silverboi", ["textures/items/silverboi", false]],
+  ["palm:goldenboi", ["textures/items/goldenboi", false]],
   //Repeat the above as many times as is needed
 ]);
 const fakeItemNames = new Map([
   //Used for items that only have a lang file definition for their nametag. Vanilla items work without this, but feel free to add whatever format to whatever item typeIds you want here
-  ["minecraft:example", "§r§l§2Ye Olde Dirte Blocke"],
+  ["minecraft:cod", "Mackerel"],
+  ["minecraft:salmon", "Sea Bass"],
+  ["minecraft:tropical_fish", "Red Snapper"],
 ]);
 //Used for quick money formatting for players
 const prefixMulti = new Map([

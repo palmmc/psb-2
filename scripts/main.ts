@@ -50,6 +50,7 @@ import {
   islandInfo,
   islandManage,
   islandUserUI,
+  kickPlayerIsland,
   lockIsland,
   visitIsland,
   visitIslandUI,
@@ -715,7 +716,7 @@ system.runInterval(() => {
         pdata.gems ?? 0
       )} §7|\n\n§g §aUser §7» §f${
         player.name.length > 15 ? player.name.slice(0, 15) + "..." : player.name
-      }\n §eBal. §7»  §f$${formatNumber(coins)}  §a${shortFormatNumber(
+      }\n §eP$ §7»  §f$${formatNumber(coins)}  §a${shortFormatNumber(
         player.getTotalXp()
       )}\n§g §6Time Played §7» §f${formatTime(getScore("time", player))}`;
       let owner = island?.operator.name;
@@ -725,13 +726,18 @@ system.runInterval(() => {
         let pointsNeeded = levelToXp(level - 1);
         let pointsBefore = levelToXp(level - 2);
         pointsBefore = level > 1 ? pointsBefore : 0;
+        let pointsDisplay = `§2(§f${shortFormatNumber(
+          points - pointsBefore
+        )}§2/§f${shortFormatNumber(pointsNeeded - pointsBefore)}§2)`;
         sidebarText += `\n §l§6│§r §eIsland §7» §f${
           (island.name.length > 11
             ? island.name.slice(0, 11) + "..."
             : island.name) ?? "-is create"
-        }\n §l§6│§r §2Level §7» §f${level} §2(§f${shortFormatNumber(
-          points - pointsBefore
-        )}§2/§f${shortFormatNumber(pointsNeeded - pointsBefore)}§2)\n`;
+        }\n §l§6│§r §2Lvl. §7» §f${level} ${
+          pointsDisplay.length > 19
+            ? pointsDisplay.slice(0, 19) + ".."
+            : pointsDisplay
+        }\n`;
       }
     } else if (player.hasTag("pref:mining_mode")) {
       sidebarText = `\n\n §7|§f ${
@@ -740,7 +746,7 @@ system.runInterval(() => {
         pdata.gems ?? 0
       )} §7|\n\n§g §aUser §7» §f${
         player.name.length > 15 ? player.name.slice(0, 15) + "..." : player.name
-      }\n §eBal. §7»  §f$${formatNumber(coins)}  §a${shortFormatNumber(
+      }\n §eP$ §7»  §f$${formatNumber(coins)}  §a${shortFormatNumber(
         player.getTotalXp()
       )}\n§g §6Time Played §7» §f${formatTime(getScore("time", player))}\n`;
       let item = player
@@ -783,7 +789,7 @@ system.runInterval(() => {
         pdata.gems ?? 0
       )} §7|\n\n§g §aUser §7» §f${
         player.name.length > 15 ? player.name.slice(0, 15) + "..." : player.name
-      }\n §eBal. §7»  §f$${formatNumber(coins)}  §a${shortFormatNumber(
+      }\n §eP$ §7»  §f$${formatNumber(coins)}  §a${shortFormatNumber(
         player.getTotalXp()
       )}\n§g §6Time Played §7» §f${formatTime(getScore("time", player))}`;
       let owner = island?.operator.name;
@@ -793,17 +799,20 @@ system.runInterval(() => {
         let pointsNeeded = levelToXp(level - 1);
         let pointsBefore = levelToXp(level - 2);
         pointsBefore = level > 1 ? pointsBefore : 0;
+        let pointsDisplay = `§2(§f${shortFormatNumber(
+          points - pointsBefore
+        )}§2/§f${shortFormatNumber(pointsNeeded - pointsBefore)}§2)`;
         sidebarText += `\n\n §e§l[ §r§bIsland §9Info §l§e]§r\n §l§6│§r §eIsland §7» §f${
           (island.name.length > 11
             ? island.name.slice(0, 11) + "..."
             : island.name) ?? "-is create"
         }\n §l§6│§r §6Owner §7» §f${
           owner.length > 11 ? owner.slice(0, 11) + "..." : owner
-        }\n §l§6│§r §2Level §7» §f${level} §2(§f${shortFormatNumber(
-          points - pointsBefore
-        )}§2/§f${shortFormatNumber(
-          pointsNeeded - pointsBefore
-        )}§2)\n §l§6│§r §eSize §7» §d(§f${island.size} §dx §f${
+        }\n §l§6│§r §2Lvl. §7» §f${level} ${
+          pointsDisplay.length > 19
+            ? pointsDisplay.slice(0, 19) + ".."
+            : pointsDisplay
+        }\n §l§6│§r §eSize §7» §d(§f${island.size} §dx §f${
           island.size
         }§d)\n §l§6│§r §6Funds §7» §f$${formatNumber(island.funds)}`;
       }
@@ -1131,6 +1140,41 @@ const commands = [
         function: lockIsland,
       },
       {
+        alias: ["chat"],
+        info: "Toggles island chat.",
+        function: function (player: Player, message: string) {
+          let island = message.split(" ")[2];
+          if (!island) island = playerDB.get(player.id).island;
+          let idata: Island | undefined = islandDB.get(island);
+          if (!idata) {
+            sendError(
+              player,
+              `Island is offline or doesn't exist.`,
+              PREFIX.island
+            );
+            return;
+          }
+          if (
+            !idata.owners.find((x) => x.id == player.id) &&
+            !idata.members.find((x) => x.id == player.id)
+          ) {
+            sendError(
+              player,
+              `You must be a member of an island to use their chat.`,
+              PREFIX.island
+            );
+            return;
+          }
+          if (player.hasTag(`island:chat:${idata.name}`)) {
+            player.removeTag(`island:chat:${idata.name}`);
+            sendAlert(player, `§eIsland §dChat §f>> §c§lOFF`, PREFIX.island);
+          } else {
+            player.addTag(`island:chat:${idata.name}`);
+            sendAlert(player, `§eIsland §dChat §f>> §a§lON`, PREFIX.island);
+          }
+        },
+      },
+      {
         alias: ["expand"],
         info: "Increases your island's size.",
         function: function (player: Player, message: string) {
@@ -1185,11 +1229,21 @@ const commands = [
           if (!oldBedrock) return;
           oldBedrock.setType("air");
           player.runCommandAsync(`setblock ~ ~-1 ~ bedrock`);
-          IslandMethods.setSpawn(island, {
+          let oldNomads = overworld.getEntities({
+            type: "palm:nomad",
+            location: island.spawn,
+            maxDistance: 128,
+          });
+          let newLoc = {
             x: Math.floor(player.location.x),
             y: Math.floor(player.location.y),
             z: Math.floor(player.location.z),
-          });
+          };
+          if (oldNomads.length > 0) {
+            for (let nomad of oldNomads)
+              nomad.teleport(Vector.add(newLoc, new Vector(0.5, 0, 0.5)));
+          }
+          IslandMethods.setSpawn(island, newLoc);
           sendAlert(
             player,
             `§aIsland §bspawn§a has been set at your location.`,
@@ -1487,6 +1541,60 @@ const commands = [
       system.runTimeout(() => {
         OpenShopBeta(player);
       }, 2);
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
+    alias: ["tpa", "tpask", "tpaccept"],
+    info: "Sends a teleport request.",
+    function: function (player: Player, message: string) {
+      let tpUser = message.split(" ")[1];
+      if (message.includes('"')) tpUser = message.split('"')[1];
+      if (!tpUser) {
+        let tag = player.getTags().find((x) => x.includes("tpa:"));
+        if (!tag) {
+          sendError(player, `Found no requests to accept.`);
+          return;
+        }
+        let user = tag.split(":")[1];
+        let userPlayer = world.getPlayers({ name: user })[0];
+        if (userPlayer) {
+          userPlayer.teleport(player.location);
+          sendAlert(userPlayer, `§aYour request has been accepted!`);
+          sendAlert(player, `§aTeleport request was accepted.`);
+        }
+        player.removeTag(tag);
+        return;
+      }
+      if (player.getItemCooldown("tpa") > 0) {
+        sendError(player, `This action is on cooldown.`);
+        return;
+      }
+      let tpPlayer = world.getPlayers({ name: tpUser })[0];
+      if (!tpPlayer) {
+        sendError(player, `Player is offline or does not exist.`);
+        return;
+      }
+      if (tpPlayer.hasTag("pref:noTPA")) {
+        sendError(player, `Player is not accepting requests at this time.`);
+        return;
+      }
+      player.startItemCooldown("tpa", 1300);
+      tpPlayer.addTag(`tpa:${player.name}`);
+      sendAlert(player, `§aSent §dteleport §arequest to §e${tpPlayer.name}§a.`);
+      sendAlert(
+        tpPlayer,
+        `§e${player.name} §awould like to §dteleport §ato you.\n§cUse §a-tpaccept §cto accept.`
+      );
+      system.runTimeout(() => {
+        if (!tpPlayer) return;
+        if (tpPlayer.hasTag(`tpa:${player.name}`)) {
+          tpPlayer.removeTag(`tpa:${player.name}`);
+          sendAlert(player, `§cTeleport request has expired.`);
+        }
+      }, 1200);
     },
     arguments: [],
     allowSigns: true,
@@ -1946,40 +2054,92 @@ const commands = [
     info: "Displays a list of Custom Enchants.",
     function: function (player: Player) {
       system.runTimeout(() => {
-        let gui = new ChestFormData("magenta");
-        gui.title("§l§eCustom §6Enchants");
-        let i = 0;
-        for (const key of Object.keys(Enchant.enchants)) {
-          //@ts-ignore
-          let enchant = Enchant.enchants[key];
-          if (!enchant || !enchant.description) continue;
-          gui.button(
-            i,
-            `${enchant.display}`,
-            [
-              `§8${enchant.description}`,
-              `§dRarity: ${
-                CE_RARITY[enchant.rarity as keyof typeof CE_RARITY]
-              }`,
-              `§9Level: §bI§3-§b${toRomanNumeral(enchant.maxLevel)}`,
-              `§eSlot: §6${formatItemName(enchant.type[0].split("_")[1])}`,
-            ],
-            "enchanted_book",
-            1,
-            true
-          );
-          i++;
+        function CEList(player: Player) {
+          let gui = new ChestFormData("magenta");
+          gui.title("§l§eCustom §6Enchants");
+          gui.pattern([0, 0], ["xxxxxxxxx", "x_______x", "xxxxxxxxx"], {
+            x: {
+              data: {
+                itemName: "",
+                itemDesc: [],
+                enchanted: false,
+                stackSize: 1,
+              },
+              iconPath: "textures/blocks/glass_white.png",
+            },
+          });
+          let i = 10;
+          let slots = [
+            EnchantSlot.sword,
+            EnchantSlot.pickaxe,
+            EnchantSlot.tool,
+            EnchantSlot.helmet,
+            EnchantSlot.armor,
+            EnchantSlot.leggings,
+            EnchantSlot.boots,
+            EnchantSlot.rod,
+          ];
+          for (let slot of slots) {
+            if (i == 17) i += 5;
+            let sitem = slot[slot.length - 1];
+            gui.button(
+              i++,
+              `§9${formatItemName(slot[0].split("_")[1])}`,
+              [],
+              sitem,
+              1,
+              true
+            );
+          }
+          gui.show(player).then((result) => {
+            if (result.canceled || !result.selection) return;
+            let selection = result.selection;
+            let slot =
+              slots[
+                (result.selection > 16 ? (selection -= 5) : selection) - 10
+              ];
+            if (!slot) return;
+            let gui = new ChestFormData("magenta");
+            gui.title("§l§eCustom §6Enchants");
+            let i = 0;
+            for (const key of Object.keys(Enchant.enchants)) {
+              //@ts-ignore
+              let enchant = Enchant.enchants[key];
+              if (!enchant || !enchant.description || enchant.type != slot)
+                continue;
+              gui.button(
+                i,
+                `${enchant.display}`,
+                [
+                  `§8${enchant.description}`,
+                  `§dRarity: ${
+                    CE_RARITY[enchant.rarity as keyof typeof CE_RARITY]
+                  }`,
+                  `§9Level: §bI§3-§b${toRomanNumeral(enchant.maxLevel)}`,
+                  `§eSlot: §6${formatItemName(enchant.type[0].split("_")[1])}`,
+                ],
+                "enchanted_book",
+                1,
+                true
+              );
+              i++;
+            }
+            gui.show(player).then((result) => {
+              if (result.canceled) {
+                CEList(player);
+                return;
+              }
+              ShopTabBeta(
+                `Custom Enchantments`,
+                `item.book.page_turn`,
+                CATEGORY.cebooks,
+                player,
+                true
+              );
+            });
+          });
         }
-        gui.show(player).then((result) => {
-          if (result.canceled) return;
-          ShopTabBeta(
-            `Custom Enchantments`,
-            `item.book.page_turn`,
-            CATEGORY.cebooks,
-            player,
-            true
-          );
-        });
+        CEList(player);
       }, 2);
     },
     arguments: [],
@@ -2005,6 +2165,16 @@ const commands = [
           name: "Mining Mode",
           description: "Activates the mining sidebar.",
           tag: "pref:mining_mode",
+        },
+        {
+          name: "Request Denier",
+          description: "Disables teleport requests.",
+          tag: "pref:noTPA",
+        },
+        {
+          name: "Noise Cancelling",
+          description: "Disables incoming player messages.",
+          tag: "pref:peace",
         },
       ];
       system.runTimeout(() => {
@@ -2526,23 +2696,44 @@ const commands = [
   },
   {
     alias: ["forcerename"],
-    permission: COMMAND_PERMS.ADMIN,
+    permission: COMMAND_PERMS.MOD,
     info: "Sets a player's island name.",
     function: function (player: Player, msg: string) {
-      let is = msg.split(" ")[1];
-      if (!is) return;
-      let island: Island | undefined = islandDB.get(is);
-      if (!island) return;
-      let name = msg.split(" ")[2];
-      if (!name) return;
-      for (let owner of island.owners) {
-        let odata = playerDB.get(owner.id);
-        odata.island = name;
-        playerDB.set(owner.id, odata);
-      }
-      islandDB.delete(island.name);
-      IslandMethods.setName(island, name);
-      sendAlert(player, `§dIsland has been force renamed.`);
+      let gui = new ModalFormData();
+      gui.title("Force Rename");
+      gui.textField("Old Name", "Noob");
+      gui.textField("New Name", "nubhub");
+      gui.show(player).then((result) => {
+        if (result.canceled || !result.formValues) return;
+        let is = result.formValues[0] as string;
+        if (!is) return;
+        let island: Island | undefined = islandDB.get(is);
+        if (!island) {
+          sendError(player, `Island does not exist.`);
+          return;
+        }
+        let name = result.formValues[1] as string;
+        if (!name) return;
+        for (let owner of island.owners) {
+          let odata = playerDB.get(owner.id);
+          odata.island = name;
+          playerDB.set(owner.id, odata);
+        }
+        islandDB.delete(island.name);
+        IslandMethods.setName(island, name);
+        sendAlert(player, `§dIsland has been force renamed.`);
+      });
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
+    alias: ["personalpool"],
+    permission: COMMAND_PERMS.ADMIN,
+    info: "Creates a personal pool.",
+    function: function (player: Player, msg: string) {
+      player.runCommandAsync(`structure load fishing:pool ~-3 ~-7 ~-6`);
     },
     arguments: [],
     allowSigns: true,
@@ -2647,31 +2838,64 @@ world.beforeEvents.chatSend.subscribe((data) => {
   const player = data.sender;
   let msg = data.message;
   data.cancel = true;
+  if (msg.includes("§")) return;
   if (msg.startsWith("-")) {
     parseCommand(player, msg, "chat");
   } else {
     system.run(() => {
-      let rank = `§7Guest`;
-      let color = `§f`;
-      if (player.hasTag("role:owner")) {
-        rank = "§6Owner";
-        color = "§e";
-      } else if (player.hasTag("role:manager")) {
-        rank = "§9Manager";
-      } else if (player.hasTag("role:helper")) {
-        rank = "§aHelper";
-      } else if (player.hasTag("role:creator")) {
-        rank = "§cCC";
-      } else if (player.hasTag("role:supporter")) {
-        rank = "§dSupporter";
+      let tag = player.getTags().find((x) => x.startsWith("island:chat"));
+      if (!tag) {
+        let rank = `§7Guest`;
+        let color = `§f`;
+        if (player.hasTag("role:owner")) {
+          rank = "§6Owner";
+          color = "§e";
+        } else if (player.hasTag("role:manager")) {
+          rank = "§9Manager";
+        } else if (player.hasTag("role:helper")) {
+          rank = "§aHelper";
+        } else if (player.hasTag("role:creator")) {
+          rank = "§cCC";
+        } else if (player.hasTag("role:supporter")) {
+          rank = "§dSupporter";
+        }
+        let idata = islandDB.get(playerDB.get(player.id).island);
+        if (!idata) idata = { points: 0, name: "--" };
+        overworld.runCommandAsync(
+          `tellraw @a[tag=!pref:peace] {"rawtext": [{"text": "${`§7 - §f[§e${xpToLevel(
+            Number(idata.points)
+          )}§f] §g${idata.name} §7[${rank}§7] §f${
+            player.nameTag
+          } §p>> ${color}${msg}`}"}]}`
+        );
+      } else {
+        let island = tag.split(":")[2];
+        let idata: Island | undefined = islandDB.get(island);
+        if (!idata) return;
+        let rank = `§8Member`;
+        if (idata.operator.id == player.id) rank = "§eOwner";
+        else if (idata.owners.find((x) => x.id == player.id))
+          rank = "§9Co-Owner";
+        else {
+          let member = idata.members.find(
+            (x: IslandMember) => x.id == player.id
+          );
+          if (member)
+            rank =
+              Object.values(ISLAND_ROLES).find(
+                (x) =>
+                  JSON.stringify(x.permissions) ==
+                  JSON.stringify(member?.permissions)
+              )?.name ?? "§8Member";
+        }
+        for (let p of world.getPlayers({ tags: [tag] })) {
+          p.sendMessage(
+            `§e - §f[§e${xpToLevel(Number(idata.points))}§f] §d${
+              idata.name
+            } §7[${rank}§7] §b${player.nameTag} §p>> §f${msg}`
+          );
+        }
       }
-      let idata = islandDB.get(playerDB.get(player.id).island);
-      if (!idata) idata = { points: 0, name: "--" };
-      world.sendMessage(
-        `§7 - §f[§e${xpToLevel(Number(idata.points))}§f] §g${
-          idata.name
-        } §7[${rank}§7] §f${player.nameTag} §p>> ${color}${msg}`
-      );
     });
   }
 });

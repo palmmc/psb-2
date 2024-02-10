@@ -7,11 +7,13 @@ import {
   ScoreboardObjective,
   Vector,
   Vector3,
+  system,
   world,
 } from "@minecraft/server";
-import { randomIntFromInterval } from "../main";
+import { IslandMethods, PREFIX, randomIntFromInterval } from "../main";
 import { formatItemName } from "../economy/itemcloud";
 import { Enchant } from "../custom_enchants/enchantHandler";
+import { getIslandOn } from "../island/manage";
 
 const overworld = world.getDimension("overworld");
 
@@ -35,7 +37,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     name: "§l§fChicken",
     id: "chicken",
     health: 4,
-    xp: [3, 5],
+    xp: [1, 2],
     loot: [
       { item: "chicken", smelt: "cooked_chicken", amount: [1, 1] },
       { item: "feather", amount: [1, 2] },
@@ -46,7 +48,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     name: "§l§dPig",
     id: "pig",
     health: 10,
-    xp: [4, 6],
+    xp: [1, 2],
     loot: [{ item: "porkchop", smelt: "cooked_porkchop", amount: [1, 3] }],
     price: 750000,
   },
@@ -54,7 +56,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     name: "§l§fSheep",
     id: "sheep",
     health: 10,
-    xp: [4, 7],
+    xp: [1, 2],
     loot: [
       { item: "mutton", smelt: "mutton", amount: [1, 2] },
       { item: "white_wool", amount: [1, 1] },
@@ -65,7 +67,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     name: "§l§6Cow",
     id: "cow",
     health: 10,
-    xp: [5, 8],
+    xp: [1, 3],
     loot: [
       { item: "beef", smelt: "cooked_beef", amount: [1, 3] },
       { item: "leather", amount: [1, 3] },
@@ -76,7 +78,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     name: "§l§cMooshroom",
     id: "mooshroom",
     health: 10,
-    xp: [6, 10],
+    xp: [2, 3],
     loot: [
       { item: "beef", smelt: "cooked_beef", amount: [2, 5] },
       { item: "leather", amount: [1, 4] },
@@ -87,7 +89,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     name: "§l§2Zombie",
     id: "zombie",
     health: 20,
-    xp: [7, 9],
+    xp: [3, 4],
     loot: [{ item: "rotten_flesh", amount: [1, 6] }],
     price: 2500000,
   },
@@ -95,7 +97,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     name: "§l§4Spider",
     id: "spider",
     health: 16,
-    xp: [7, 10],
+    xp: [3, 4],
     loot: [
       { item: "string", amount: [1, 4] },
       { item: "spider_eye", amount: [1, 2] },
@@ -106,7 +108,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     name: "§l§aCreeper",
     id: "creeper",
     health: 20,
-    xp: [8, 10],
+    xp: [3, 5],
     loot: [{ item: "gunpowder", amount: [1, 5] }],
     price: 3250000,
   },
@@ -114,7 +116,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     name: "§l§7Skeleton",
     id: "skeleton",
     health: 20,
-    xp: [8, 11],
+    xp: [4, 6],
     loot: [{ item: "bone", amount: [1, 3] }],
     price: 4000000,
   },
@@ -122,7 +124,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     name: "§l§8Wither Skeleton",
     id: "wither_skeleton",
     health: 40,
-    xp: [8, 12],
+    xp: [4, 7],
     loot: [
       { item: "coal", amount: [1, 6] },
       { item: "bone", amount: [1, 4] },
@@ -133,7 +135,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     name: "§l§eBlaze",
     id: "blaze",
     health: 30,
-    xp: [9, 10],
+    xp: [5, 7],
     loot: [{ item: "blaze_rod", amount: [1, 6] }],
     price: 5000000,
   },
@@ -141,7 +143,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     name: "§l§fIron Golem",
     id: "iron_golem",
     health: 90,
-    xp: [11, 14],
+    xp: [6, 7],
     loot: [
       { item: "iron_ingot", amount: [1, 20] },
       { item: "red_flower", amount: [1, 4] },
@@ -152,7 +154,7 @@ export const SpawnerEntities: SpawnerEntity[] = [
     name: "§l§cZombie Pigman",
     id: "zombie_pigman",
     health: 50,
-    xp: [12, 16],
+    xp: [6, 8],
     loot: [
       { item: "gold_ingot", amount: [1, 22] },
       { item: "gold_nugget", amount: [1, 16] },
@@ -217,6 +219,34 @@ world.afterEvents.entityHurt.subscribe((data) => {
     data.hurtEntity.kill();
     return;
   }
+
+  // ISLAND PERMS
+  if (data.damageSource.cause == EntityDamageCause.entityAttack) {
+    let player = <Player>data.damageSource.damagingEntity;
+    if (!player) return;
+    const idata = getIslandOn(player);
+    if (player.hasTag("admin:bypass")) return;
+    if (idata) {
+      if (IslandMethods.isInBounds(idata, player.location) == true) {
+        if (
+          IslandMethods.getPermission(idata, player, "attack") == true ||
+          idata.owners.find((x) => x.id == player.id)
+        )
+          return;
+      }
+    }
+    data.hurtEntity.getComponent("health")?.resetToMaxValue();
+    data.hurtEntity.clearVelocity();
+    system.run(() => {
+      if (player.getItemCooldown("hit") != 0) return;
+      player.playSound(`item.trident.riptide_1`, { volume: 0.6 });
+      player.sendMessage(`${PREFIX.island} §cYou cannot hit entities here.`);
+      player.startItemCooldown("hit", 15);
+    });
+    return;
+  }
+  //
+
   let damage = data.damage;
   if (data.damageSource.cause == EntityDamageCause.freezing) damage *= 5;
   let obj = world.scoreboard.getObjective("mobCount");
@@ -243,7 +273,7 @@ world.afterEvents.entityHurt.subscribe((data) => {
     let score = obj?.getScore(ent) ?? 0;
     let amount = 1;
     if (data.damageSource.damagingEntity) {
-      let player = data.damageSource.damagingEntity;
+      let player = <Player>data.damageSource.damagingEntity;
       let mh = player
         .getComponent("equippable")
         ?.getEquipment(EquipmentSlot.Mainhand);

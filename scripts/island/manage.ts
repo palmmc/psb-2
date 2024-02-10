@@ -103,17 +103,20 @@ export function warpIsland(player: Player) {
   }, 20);
 }
 
-export function instantWarpIsland(player: Player) {
-  let island = playerDB.get(player.id).island;
-  let idata: Island = islandDB.get(island);
-  if (!island) {
-    sendError(
-      player,
-      `§cYou do not currently own a skyblock island.\nUse §e-is create§c to create one.`,
-      PREFIX.server
-    );
-    return;
+export function instantWarpIsland(player: Player, idata?: Island) {
+  if (!idata) {
+    let island = playerDB.get(player.id).island;
+    idata = islandDB.get(island);
+    if (!island) {
+      sendError(
+        player,
+        `§cYou do not currently own a skyblock island.\nUse §e-is create§c to create one.`,
+        PREFIX.server
+      );
+      return;
+    }
   }
+  if (!idata) return;
   player.teleport(
     {
       x: idata.spawn.x + 0.5,
@@ -124,7 +127,7 @@ export function instantWarpIsland(player: Player) {
   );
   sendAlert(
     player,
-    `§aYou have been teleported to your §e${island} §aisland.`,
+    `§aYou have been teleported to the §e${idata.name} §aisland.`,
     PREFIX.server
   );
   player.playSound("note.bell");
@@ -402,7 +405,7 @@ system.runInterval(() => {
     const loc = player.location;
     const idata = getIslandOn(player);
     if (loc.y <= -32) {
-      if (idata) instantWarpIsland(player);
+      if (idata) instantWarpIsland(player, idata);
       else warpLobby(player);
       sendAlert(player, `§bYou have been saved from the void.\n§7Be careful!`);
     }
@@ -458,7 +461,7 @@ system.runInterval(() => {
 //
 
 // ISLAND EXPANSION
-export const MAX_SIZE = 184; // Max island size.
+export const MAX_SIZE = 128; // Max island size.
 export const UPGRADE_SIZE = 8; // Size increase per upgrade.
 const UPGRADE_LEVEL = 10; // Level requirement increase per upgrade.
 
@@ -466,8 +469,8 @@ const UPGRADE_LEVEL = 10; // Level requirement increase per upgrade.
 // [amount, interval, max]
 const LIMIT_INCREMENTS = {
   oregen: [5, 8, 40],
-  autominer: [2, 8, 40],
-  spawner: [1, 16, 6],
+  autominer: [2, 8, 20],
+  spawner: [1, 16, 5],
   crop: [125, 8, -1],
   homes: [2, 16, 8],
   members: [1, 8, 8],
@@ -768,7 +771,7 @@ export function visitIslandUI(player: Player) {
   for (let x of world.getPlayers()) {
     if (x.name == "PalmSkyblock") continue;
     let xi: Island = islandDB.get(playerDB.get(x.id).island);
-    if (!xi || islands.includes(xi)) continue;
+    if (!xi || islands.includes(xi) || islands.length > 8) continue;
     gui.button(
       i++,
       `§d${xi.name}`,
@@ -970,6 +973,7 @@ export function islandManage(player: Player) {
             return;
           });
         } else if (result.selection == 14) {
+          sendAlert(player, `§aThis feature is coming soon!`, PREFIX.island);
           return;
           let gui = new ChestFormData("blue");
           gui.pattern([0, 0], ["xxxxxxxxx", "x_______x", "xxxxxxxxx"], {

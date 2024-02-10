@@ -17,6 +17,9 @@ export const itemsBanned = [
   "tnt",
   "hopper_minecart",
   "campfire",
+  "tripwire_hook",
+  "beehive",
+  "bee_nest",
 ];
 export const itemsSuperBanned = ["command_block"];
 

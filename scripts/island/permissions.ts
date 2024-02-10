@@ -112,33 +112,6 @@ world.beforeEvents.playerBreakBlock.subscribe((data) => {
   });
 });
 
-world.afterEvents.entityHurt.subscribe((data) => {
-  const player = <Player>data.damageSource.damagingEntity;
-  if (!player) return;
-  let ent = data.hurtEntity;
-  const idata = getIslandOn(player);
-  if (player.hasTag("admin:bypass")) return;
-  if (idata) {
-    if (IslandMethods.isInBounds(idata, player.location) == true) {
-      if (
-        IslandMethods.getPermission(idata, player, "attack") == true ||
-        idata.owners.find((x) => x.id == player.id)
-      )
-        return;
-    }
-  }
-  let health = <EntityHealthComponent>ent.getComponent("health");
-  if (health.currentValue == 0)
-    ent.runCommandAsync(`summon ${ent.typeId} ~ ~ ~ minecraft:as_adult`);
-  else health.setCurrentValue(health.currentValue + data.damage);
-  system.run(() => {
-    if (player.getItemCooldown("hit") != 0) return;
-    player.playSound(`item.trident.riptide_1`, { volume: 0.6 });
-    player.sendMessage(`${PREFIX.island} §cYou cannot hit entities here.`);
-    player.startItemCooldown("hit", 15);
-  });
-});
-
 world.beforeEvents.itemUse.subscribe((data) => {
   const player = data.source;
   const idata = getIslandOn(player);
@@ -247,7 +220,7 @@ export const ISLAND_ROLES = {
   },
   builder: {
     id: 1,
-    name: "§bBuilder",
+    name: "§3Builder",
     info: "Permission to progress island through building.",
     permissions: {
       break: false,
@@ -277,7 +250,7 @@ export const ISLAND_ROLES = {
   },
   miner: {
     id: 3,
-    name: "§bMiner",
+    name: "§mMiner",
     info: "Permission to progress island through mining.",
     permissions: {
       break: false,

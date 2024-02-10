@@ -63,7 +63,12 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
 world.afterEvents.entityHitBlock.subscribe((data) => {
   let player = <Player>data.damagingEntity;
   if (!player) return;
-  if (data.hitBlock.typeId != "palm:vending_machine") return;
+  if (
+    data.hitBlock.typeId != "palm:vending_machine" ||
+    player.getComponent("equippable")?.getEquipment(EquipmentSlot.Mainhand)
+      ?.typeId != "minecraft:diamond_pickaxe"
+  )
+    return;
   let key = JSON.stringify({
     x: data.hitBlock.x,
     y: data.hitBlock.y,

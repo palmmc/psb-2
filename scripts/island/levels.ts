@@ -262,7 +262,8 @@ world.beforeEvents.playerBreakBlock.subscribe((data) => {
   if (id.includes("copper") && id.includes("block"))
     ldata = ["minecraft:copper", -28];
   const player = data.player;
-  let island = islandDB.get(playerDB.get(player.id).island);
+  let island = getIslandOn(player);
+  if (!island) return;
   if (id == "minecraft:hopper") IslandMethods.removeLimit(island, "hoppers", 1);
   if (!ldata) return;
   if (id.includes("ore") && randomIntFromInterval(1, 5) != 1) return;
@@ -272,7 +273,6 @@ world.beforeEvents.playerBreakBlock.subscribe((data) => {
     giveRelic(data.player, rollRelic("FARM"));
   } else if (id == "palm:farmland") {
     let f = data.block.above(1);
-    console.warn(f?.typeId);
     if (f?.typeId.includes("palm") && !f.typeId.includes("farmland")) {
       IslandMethods.removeLimit(island, "crop", 1);
     }
@@ -326,8 +326,7 @@ world.beforeEvents.itemUseOn.subscribe((data) => {
 
 world.afterEvents.playerPlaceBlock.subscribe((data) => {
   if (
-    (!data.block.typeId.startsWith("palm:") ||
-      data.block.typeId.includes("farmland")) &&
+    !DEF_SEEDS_BREAK.includes(data.block.typeId) &&
     data.block.typeId != "minecraft:hopper"
   )
     return;

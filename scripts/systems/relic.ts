@@ -69,6 +69,14 @@ export const RELIC_CHANCE = {
     diamond: 5,
     emerald: 3,
   },
+  FISHING: {
+    relic: 105,
+    coal: 32,
+    iron: 28,
+    gold: 26,
+    diamond: 10,
+    emerald: 4,
+  },
 };
 
 interface Relic {
@@ -703,7 +711,7 @@ const RELIC_DISPLAY = "§c§lRelic§r";
 
 export function rollRelic(type: keyof typeof RELIC_CHANCE, odds?: number) {
   let RELIC = RELIC_CHANCE[type];
-  if (randomIntFromInterval(1, RELIC.relic) - (odds ?? 0) != 1)
+  if (randomIntFromInterval(1, RELIC.relic - (odds ?? 0)) != 1)
     return undefined;
   let roll = randomIntFromInterval(1, 100);
   let choice = 100;
@@ -764,6 +772,14 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
     .getComponent("equippable")
     ?.getEquipment(EquipmentSlot.Mainhand);
   if (!itemStack || !itemStack.getLore()) return;
+  if (itemStack.typeId == "minecraft:coral_block") {
+    system.run(() => {
+      data.block.setType("air");
+      data.player.runCommandAsync(`structure load fishing:pool ~-3 ~-7 ~-6`);
+      sendAlert(data.player, `§bPool §dhas been placed.\n§aEnjoy your pool!`);
+    });
+    return;
+  }
   let RELIC_INFO = RELICS.find(
     (x) => x.name == (itemStack?.nameTag?.split(" ")[0].slice(2) ?? "")
   );

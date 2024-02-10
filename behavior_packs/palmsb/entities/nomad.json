@@ -1,276 +1,243 @@
 {
-    "format_version": "1.13.0",
-    "minecraft:entity": {
-        "description": {
-            "identifier": "palm:nomad",
-            "is_spawnable": true,
-            "is_summonable": true,
-            "is_experimental": false
-        },
-        "component_groups": {
-            "trigger": {
-                "minecraft:is_charged": {}
-            },
-            "kill": {
-                "minecraft:despawn": {
-                    "remove_child_entities": true
-                }
-            },
-            "steve": {
-                "minecraft:variant": {
-                    "value": 0
-                }
-            },
-            "alex": {
-                "minecraft:variant": {
-                    "value": 1
-                }
-            },
-            "steve_tuxedo": {
-                "minecraft:variant": {
-                    "value": 2
-                }
-            },
-            "steve_tennis": {
-                "minecraft:variant": {
-                    "value": 3
-                }
-            },
-            "efe": {
-                "minecraft:variant": {
-                    "value": 4
-                }
-            },
-            "makena": {
-                "minecraft:variant": {
-                    "value": 5
-                }
-            },
-            "noor": {
-                "minecraft:variant": {
-                    "value": 6
-                }
-            },
-            "ari": {
-                "minecraft:variant": {
-                    "value": 7
-                }
-            },
-            "zuri": {
-                "minecraft:variant": {
-                    "value": 8
-                }
-            },
-            "sunny": {
-                "minecraft:variant": {
-                    "value": 9
-                }
-            },
-            "kai": {
-                "minecraft:variant": {
-                    "value": 10
-                }
-            },
-            "meat_boy": {
-                "minecraft:variant": {
-                    "value": 11
-                }
-            },
-            "palm": {
-                "minecraft:variant": {
-                    "value": 12
-                }
-            }
-        },
-        "components": {
-            "minecraft:type_family": {
-                "family": [
-                    "nomad",
-                    "mob"
-                ]
-            },
-            "minecraft:trade_table": {
-                "convert_trades_economy": false,
-                "display_name": "Nomadic Visitor",
-                "new_screen": false,
-                "persist_trades": true,
-                "table": "trading/nomad_trades.json"
-            },
-            "minecraft:nameable": {
-                "always_show": true,
-                "allow_name_tag_renaming": false
-            },
-            "minecraft:behavior.look_at_player": {
-                "priority": 7,
-                "look_distance": 6,
-                "probability": 0.02
-            },
-            "minecraft:breathable": {
-                "total_supply": 15,
-                "suffocate_time": 0,
-                "breathes_water": true
-            },
-            "minecraft:health": {
-                "value": 20,
-                "max": 20
-            },
-            "minecraft:damage_sensor": {
-                "triggers": {
-                    "cause": "all",
-                    "deals_damage": false
-                }
-            },
-            "minecraft:collision_box": {
-                "width": 0.6,
-                "height": 1.8
-            },
-            "minecraft:movement": {
-                "value": 0.43,
-                "max": 0.43
-            },
-            "minecraft:navigation.walk": {
-                "can_path_over_water": false,
-                "avoid_water": true,
-                "avoid_damage_blocks": true
-            },
-            "minecraft:movement.basic": {},
-            "minecraft:jump.static": {},
-            "minecraft:scale": {
-                "value": 1
-            },
-            "minecraft:knockback_resistance": {
-                "value": 1
-            },
-            "minecraft:persistent": {},
-            "minecraft:physics": {}
-        },
-        "events": {
-            "nomad:kill": {
-                "add": {
-                    "component_groups": [
-                        "kill"
-                    ]
-                }
-            },
-            "nomad:meatboy": {
-                "add": {
-                    "component_groups": [
-                        "meat_boy"
-                    ]
-                }
-            },
-            "minecraft:entity_spawned": {
-                "sequence": [
-                    {
-                        "randomize": [
-                            {
-                                "weight": 10,
-                                "add": {
-                                    "component_groups": [
-                                        "steve"
-                                    ]
-                                }
-                            },
-                            {
-                                "weight": 10,
-                                "add": {
-                                    "component_groups": [
-                                        "alex"
-                                    ]
-                                }
-                            },
-                            {
-                                "weight": 10,
-                                "add": {
-                                    "component_groups": [
-                                        "steve_tuxedo"
-                                    ]
-                                }
-                            },
-                            {
-                                "weight": 10,
-                                "add": {
-                                    "component_groups": [
-                                        "steve_tennis"
-                                    ]
-                                }
-                            },
-                            {
-                                "weight": 10,
-                                "add": {
-                                    "component_groups": [
-                                        "efe"
-                                    ]
-                                }
-                            },
-                            {
-                                "weight": 10,
-                                "add": {
-                                    "component_groups": [
-                                        "makena"
-                                    ]
-                                }
-                            },
-                            {
-                                "weight": 10,
-                                "add": {
-                                    "component_groups": [
-                                        "noor"
-                                    ]
-                                }
-                            },
-                            {
-                                "weight": 10,
-                                "add": {
-                                    "component_groups": [
-                                        "ari"
-                                    ]
-                                }
-                            },
-                            {
-                                "weight": 10,
-                                "add": {
-                                    "component_groups": [
-                                        "zuri"
-                                    ]
-                                }
-                            },
-                            {
-                                "weight": 10,
-                                "add": {
-                                    "component_groups": [
-                                        "sunny"
-                                    ]
-                                }
-                            },
-                            {
-                                "weight": 10,
-                                "add": {
-                                    "component_groups": [
-                                        "kai"
-                                    ]
-                                }
-                            },
-                            {
-                                "weight": 10,
-                                "add": {
-                                    "component_groups": [
-                                        "meat_boy"
-                                    ]
-                                }
-                            },
-                            {
-                                "weight": 10,
-                                "add": {
-                                    "component_groups": [
-                                        "palm"
-                                    ]
-                                }
-                            }
-                        ]
-                    }
-                ]
-            }
+  "format_version": "1.13.0",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "palm:nomad",
+      "is_spawnable": true,
+      "is_summonable": true,
+      "is_experimental": false
+    },
+    "component_groups": {
+      "trigger": {
+        "minecraft:is_charged": {}
+      },
+      "kill": {
+        "minecraft:despawn": {
+          "remove_child_entities": true
         }
+      },
+      "steve": {
+        "minecraft:variant": {
+          "value": 0
+        }
+      },
+      "alex": {
+        "minecraft:variant": {
+          "value": 1
+        }
+      },
+      "steve_tuxedo": {
+        "minecraft:variant": {
+          "value": 2
+        }
+      },
+      "steve_tennis": {
+        "minecraft:variant": {
+          "value": 3
+        }
+      },
+      "efe": {
+        "minecraft:variant": {
+          "value": 4
+        }
+      },
+      "makena": {
+        "minecraft:variant": {
+          "value": 5
+        }
+      },
+      "noor": {
+        "minecraft:variant": {
+          "value": 6
+        }
+      },
+      "ari": {
+        "minecraft:variant": {
+          "value": 7
+        }
+      },
+      "zuri": {
+        "minecraft:variant": {
+          "value": 8
+        }
+      },
+      "sunny": {
+        "minecraft:variant": {
+          "value": 9
+        }
+      },
+      "kai": {
+        "minecraft:variant": {
+          "value": 10
+        }
+      },
+      "meat_boy": {
+        "minecraft:variant": {
+          "value": 11
+        }
+      },
+      "palm": {
+        "minecraft:variant": {
+          "value": 12
+        }
+      }
+    },
+    "components": {
+      "minecraft:type_family": {
+        "family": ["nomad", "mob"]
+      },
+      "minecraft:trade_table": {
+        "convert_trades_economy": false,
+        "display_name": "Nomadic Visitor",
+        "new_screen": false,
+        "persist_trades": true,
+        "table": "trading/nomad_trades.json"
+      },
+      "minecraft:nameable": {
+        "always_show": true,
+        "allow_name_tag_renaming": false
+      },
+      "minecraft:behavior.look_at_player": {
+        "priority": 7,
+        "look_distance": 6,
+        "probability": 0.02
+      },
+      "minecraft:breathable": {
+        "total_supply": 15,
+        "suffocate_time": 0,
+        "breathes_water": true
+      },
+      "minecraft:health": {
+        "value": 20,
+        "max": 20
+      },
+      "minecraft:damage_sensor": {
+        "triggers": {
+          "cause": "all",
+          "deals_damage": false
+        }
+      },
+      "minecraft:collision_box": {
+        "width": 0.6,
+        "height": 1.8
+      },
+      "minecraft:movement": {
+        "value": 0.43,
+        "max": 0.43
+      },
+      "minecraft:navigation.walk": {
+        "can_path_over_water": false,
+        "avoid_water": true,
+        "avoid_damage_blocks": true
+      },
+      "minecraft:movement.basic": {},
+      "minecraft:jump.static": {},
+      "minecraft:scale": {
+        "value": 1
+      },
+      "minecraft:knockback_resistance": {
+        "value": 1
+      },
+      "minecraft:persistent": {},
+      "minecraft:physics": {}
+    },
+    "events": {
+      "nomad:kill": {
+        "add": {
+          "component_groups": ["kill"]
+        }
+      },
+      "nomad:meatboy": {
+        "add": {
+          "component_groups": ["meat_boy"]
+        }
+      },
+      "minecraft:entity_spawned": {
+        "sequence": [
+          {
+            "randomize": [
+              {
+                "weight": 10,
+                "add": {
+                  "component_groups": ["steve"]
+                }
+              },
+              {
+                "weight": 10,
+                "add": {
+                  "component_groups": ["alex"]
+                }
+              },
+              {
+                "weight": 10,
+                "add": {
+                  "component_groups": ["steve_tuxedo"]
+                }
+              },
+              {
+                "weight": 10,
+                "add": {
+                  "component_groups": ["steve_tennis"]
+                }
+              },
+              {
+                "weight": 10,
+                "add": {
+                  "component_groups": ["efe"]
+                }
+              },
+              {
+                "weight": 10,
+                "add": {
+                  "component_groups": ["makena"]
+                }
+              },
+              {
+                "weight": 10,
+                "add": {
+                  "component_groups": ["noor"]
+                }
+              },
+              {
+                "weight": 10,
+                "add": {
+                  "component_groups": ["ari"]
+                }
+              },
+              {
+                "weight": 10,
+                "add": {
+                  "component_groups": ["zuri"]
+                }
+              },
+              {
+                "weight": 10,
+                "add": {
+                  "component_groups": ["sunny"]
+                }
+              },
+              {
+                "weight": 10,
+                "add": {
+                  "component_groups": ["kai"]
+                }
+              },
+              {
+                "weight": 10,
+                "add": {
+                  "component_groups": ["meat_boy"]
+                }
+              },
+              {
+                "weight": 10,
+                "add": {
+                  "component_groups": ["palm"]
+                }
+              }
+            ]
+          }
+        ]
+      }
     }
+  }
 }

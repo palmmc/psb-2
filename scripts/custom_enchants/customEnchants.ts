@@ -39,7 +39,6 @@ export const EnchantSlot = {
     "minecraft:golden_sword",
     "minecraft:diamond_sword",
   ],
-  bow: ["minecraft:bow"],
   pickaxe: [
     "minecraft:wooden_pickaxe",
     "minecraft:stone_pickaxe",
@@ -86,6 +85,7 @@ export const EnchantSlot = {
     "minecraft:golden_shovel",
     "minecraft:diamond_shovel",
   ],
+  rod: ["minecraft:f_Fishing Rod", "minecraft:fishing_rod"],
   helmet: [
     "minecraft:leather_helmet",
     "minecraft:chainmail_helmet",
@@ -121,11 +121,6 @@ export const EnchantSlot = {
     "minecraft:golden_helmet",
     "minecraft:iron_helmet",
     "minecraft:diamond_helmet",
-    "minecraft:leather_chestplate",
-    "minecraft:chainmail_chestplate",
-    "minecraft:golden_chestplate",
-    "minecraft:iron_chestplate",
-    "minecraft:diamond_chestplate",
     "minecraft:leather_leggings",
     "minecraft:chainmail_leggings",
     "minecraft:golden_leggings",
@@ -136,6 +131,11 @@ export const EnchantSlot = {
     "minecraft:golden_boots",
     "minecraft:iron_boots",
     "minecraft:diamond_boots",
+    "minecraft:leather_chestplate",
+    "minecraft:chainmail_chestplate",
+    "minecraft:golden_chestplate",
+    "minecraft:iron_chestplate",
+    "minecraft:diamond_chestplate",
   ],
 };
 
@@ -176,6 +176,7 @@ new Enchant("bobble", {
   display: "§7Bobble",
   type: EnchantSlot.helmet,
   maxLevel: 1,
+  incompatible: ["flunk"],
   description: "Increases the size of your head while worn.",
   hold: (data) => {
     data.player.playAnimation(`animation.humanoid.big_head`, {
@@ -198,6 +199,22 @@ new Enchant("bobble", {
       return;
     }, 39);
   },
+});
+
+new Enchant("chum", {
+  rarity: "common",
+  display: "§7Chum",
+  type: EnchantSlot.rod,
+  maxLevel: 5,
+  description: "Increases catch speed while fishing.",
+});
+
+new Enchant("wire", {
+  rarity: "common",
+  display: "§7Wire",
+  type: EnchantSlot.rod,
+  maxLevel: 5,
+  description: "Increases reeling speed while fishing.",
 });
 
 new Enchant("brisk", {
@@ -313,11 +330,12 @@ new Enchant("quake", {
   maxLevel: 10,
   description: "Increases speed and agility while worn.",
   hold: (data) => {
-    data.player.addEffect("speed", 60, {
+    if (data.player.hasTag("palm:fishing")) return;
+    data.player.addEffect("speed", 50, {
       amplifier: Math.ceil(data.level / 3) - 1,
       showParticles: false,
     });
-    data.player.addEffect("jump_boost", 60, {
+    data.player.addEffect("jump_boost", 50, {
       amplifier: Math.ceil(data.level / 3) - 1,
       showParticles: false,
     });
@@ -378,6 +396,22 @@ new Enchant("glimmer", {
       } ${data.block.y} ${data.block.z + 1} emerald_ore replace coal_ore`
     );
   },
+});
+
+new Enchant("angler", {
+  rarity: "rare",
+  display: "§2Angler",
+  type: EnchantSlot.rod,
+  maxLevel: 10,
+  description: "Increases XP gain from fishing.",
+});
+
+new Enchant("twindle", {
+  rarity: "rare",
+  display: "§2Twindle",
+  type: EnchantSlot.rod,
+  maxLevel: 5,
+  description: "Grants a chance to double your catch.",
 });
 
 // EPIC ENCHANTS
@@ -441,6 +475,14 @@ new Enchant("procure", {
   type: EnchantSlot.sword,
   maxLevel: 10,
   description: "Grants a chance to receive extra drops from entities.",
+});
+
+new Enchant("privateer", {
+  rarity: "rare",
+  display: "§9Privateer",
+  type: EnchantSlot.rod,
+  maxLevel: 10,
+  description: "Grants a chance to obtain relics from fishing.",
 });
 
 // UNIQUE ENCHANTS
@@ -569,36 +611,38 @@ new Enchant("flex", {
   maxLevel: 5,
   description: "Changes the size of the player while worn.",
   hold: (data) => {
-    if (data.player.isSneaking == true) {
-      if (
-        (data.player.getProperty(`property:size`) as number) >=
-        1.25 + 0.25 * data.level
-      ) {
-        data.player.triggerEvent(`palm:min_size`);
-      } else {
-        data.player.triggerEvent(`palm:increase_size_small`);
+    if (data.player.location.x > 1000 && data.player.location.z > 1000) {
+      if (data.player.isSneaking == true) {
+        if (
+          (data.player.getProperty(`property:size`) as number) >=
+          1.25 + 0.25 * data.level
+        ) {
+          data.player.triggerEvent(`palm:min_size`);
+        } else {
+          data.player.triggerEvent(`palm:increase_size_small`);
+        }
+        system.run(() =>
+          sendAlert(
+            data.player,
+            `§b§lSize: §r§f${
+              (data.player.getProperty(`property:size`) as number) ?? 1
+            }`
+          )
+        );
       }
-      system.run(() =>
-        sendAlert(
-          data.player,
-          `§b§lSize: §r§f${
-            (data.player.getProperty(`property:size`) as number) ?? 1
-          }`
-        )
-      );
-    }
-    system.runTimeout(() => {
-      let checkHead = data.player
-        .getComponent("equippable")
-        ?.getEquipment(EquipmentSlot.Head);
-      if (checkHead) {
-        let enchants = Enchant.getEnchants(checkHead);
-        if (enchants.find((x) => x.id == "flex")) return;
+      system.runTimeout(() => {
+        let checkHead = data.player
+          .getComponent("equippable")
+          ?.getEquipment(EquipmentSlot.Head);
+        if (checkHead) {
+          let enchants = Enchant.getEnchants(checkHead);
+          if (enchants.find((x) => x.id == "flex")) return;
+          return;
+        }
+        data.player.triggerEvent(`palm:reset_size`);
         return;
-      }
-      data.player.triggerEvent(`palm:reset_size`);
-      return;
-    }, 39);
+      }, 39);
+    } else data.player.triggerEvent(`palm:reset_size`);
   },
 });
 

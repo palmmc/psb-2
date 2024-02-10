@@ -171,7 +171,7 @@ export function testValidName(
   if (testDuplicate(name) == true && noDuplicates != true) {
     sendError(player, `Name is already taken.`);
     return false;
-  } else if (bannedWords.find((x) => x.includes(name))) {
+  } else if (bannedWords.find((x) => name.toLowerCase().includes(x))) {
     sendError(player, `Name contains a banned word.`);
     return false;
   } else if (name.length < 4) {

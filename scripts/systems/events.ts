@@ -49,6 +49,13 @@ function clearEvents() {
 //clearEvents();
 //system.run(() => addEvent(1001, " §cNow in §eAlpha§c!"));
 
+world.afterEvents.playerSpawn.subscribe((data) => {
+  if (!data.initialSpawn) return;
+  let tpaTags = data.player.getTags().filter((x) => x.includes("tpa:"));
+  if (!tpaTags) return;
+  for (let tag of tpaTags) data.player.removeTag(tag);
+});
+
 // Clear Lag
 const CLEAR_INTERVAL = 25; // Interval in minutes.
 system.runInterval(() => {
