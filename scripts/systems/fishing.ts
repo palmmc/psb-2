@@ -11,6 +11,7 @@ import {
 import {
   PREFIX,
   formatNumber,
+  playTutorial,
   randomIntFromInterval,
   sendAlert,
   sendError,
@@ -95,6 +96,17 @@ world.afterEvents.itemUse.subscribe((data) => {
         bobber.kill();
         return;
       }
+      playTutorial(player, {
+        id: "fishing",
+        lines: [
+          "Welcome to §3Fishing§f!",
+          "Here on §dskyblock§f, fishing is a little different, so §cpay attention§f!",
+          "Shortly after §ecasting§f, you should see a §bfish§f in the water.",
+          "Strafe §bleft§r and §aright§r to try and §6catch§f it.",
+          "Once the §6catch §emeter§f reaches §2100%%§f, you've caught the fish!",
+          "§9That's all there is to it!\n§3Good luck out there, §bAngler§3!",
+        ],
+      });
       player.runCommandAsync(`camera @s fade time 1 1.5 1`);
       player.runCommand(`inputpermission set @s movement disabled`);
       player.runCommand(`inputpermission set @s camera disabled`);

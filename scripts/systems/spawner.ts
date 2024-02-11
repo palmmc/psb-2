@@ -223,27 +223,28 @@ world.afterEvents.entityHurt.subscribe((data) => {
   // ISLAND PERMS
   if (data.damageSource.cause == EntityDamageCause.entityAttack) {
     let player = <Player>data.damageSource.damagingEntity;
-    if (!player) return;
     const idata = getIslandOn(player);
-    if (player.hasTag("admin:bypass")) return;
-    if (idata) {
+    if (idata && !player.hasTag("admin:bypass")) {
       if (IslandMethods.isInBounds(idata, player.location) == true) {
         if (
           IslandMethods.getPermission(idata, player, "attack") == true ||
           idata.owners.find((x) => x.id == player.id)
-        )
+        ) {
+        } else {
+          data.hurtEntity.getComponent("health")?.resetToMaxValue();
+          data.hurtEntity.clearVelocity();
+          system.run(() => {
+            if (player.getItemCooldown("hit") != 0) return;
+            player.playSound(`item.trident.riptide_1`, { volume: 0.6 });
+            player.sendMessage(
+              `${PREFIX.island} §cYou cannot hit entities here.`
+            );
+            player.startItemCooldown("hit", 15);
+          });
           return;
+        }
       }
     }
-    data.hurtEntity.getComponent("health")?.resetToMaxValue();
-    data.hurtEntity.clearVelocity();
-    system.run(() => {
-      if (player.getItemCooldown("hit") != 0) return;
-      player.playSound(`item.trident.riptide_1`, { volume: 0.6 });
-      player.sendMessage(`${PREFIX.island} §cYou cannot hit entities here.`);
-      player.startItemCooldown("hit", 15);
-    });
-    return;
   }
   //
 

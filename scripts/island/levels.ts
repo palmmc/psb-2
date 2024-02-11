@@ -113,6 +113,7 @@ world.afterEvents.worldInitialize.subscribe((data) => {
           let l = Math.min(5, level - lastLevel);
           idata.notifyLevel = idata.notifyLevel + l;
           IslandMethods.updateData(idata);
+          if (lastLevel == 0) continue;
           player.onScreenDisplay.setActionBar(
             `§f[§eIsland§f] >> §e${lastLevel} §a-> §e${lastLevel + l}`
           );

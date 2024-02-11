@@ -115,7 +115,11 @@ world.beforeEvents.playerBreakBlock.subscribe((data) => {
 world.beforeEvents.itemUse.subscribe((data) => {
   const player = data.source;
   const idata = getIslandOn(player);
-  if (player.hasTag("admin:bypass")) return;
+  if (
+    player.hasTag("admin:bypass") ||
+    data.itemStack.typeId == "minecraft:fishing_rod"
+  )
+    return;
   if (idata) {
     if (IslandMethods.isInBounds(idata, player.location) == true) {
       if (

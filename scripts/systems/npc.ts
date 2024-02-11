@@ -15,6 +15,7 @@ import {
   PREFIX,
   formatNumber,
   formatTime,
+  playTutorial,
   randomIntFromInterval,
   sendAlert,
   sendError,
@@ -452,12 +453,30 @@ system.runInterval(() => {
     });
     for (let owner of island.owners) {
       let ow = world.getPlayers({ name: owner.name })[0];
-      if (ow)
+      if (ow) {
         sendAlert(
           ow,
           `§eA §dNomadic Visitor §eteleported to your island.`,
           PREFIX.island
         );
+        system.runTimeout(() => {
+          playTutorial(
+            ow,
+            {
+              id: "nomad",
+              lines: [
+                "§6What's this? §fA §dwandering §bsoul§f has found their way to your §eisland§f!",
+                `§cNomads §flike these will occasionally §aappear§f, looking for specific §bgoods§f.`,
+                "In §bexchange§f, they offer §cgems§f, a §5rare§f and §dvaluable§f currency.",
+                "You can then §buse§f the §cgems§f you obtain to §dredeem§f them.",
+                "§cGems§f can be §cspent§f in the §g-§eshop§f under the §4Special§f section.",
+                "§fAlright, §bbest §fof §aluck§f!",
+              ],
+            },
+            2
+          );
+        }, 30);
+      }
     }
   }
 }, 3000);

@@ -14,6 +14,7 @@ import { Enchant, EnchantData, EnchantInfo } from "./enchantHandler";
 import {
   IslandMethods,
   PREFIX,
+  playTutorial,
   randomIntFromInterval,
   sendAlert,
   sendError,
@@ -687,6 +688,22 @@ export function giveBookCE(
     .container;
   if (!equip) return;
   equip.addItem(enchItem);
+  system.runTimeout(() => {
+    playTutorial(
+      player,
+      {
+        id: "cebook",
+        lines: [
+          `§cAha§f, looks like you've §bfound§f your §afirst§f ${enchItem.nameTag}§f!`,
+          "These §dbooks§f can be §eopened§f by §busing§f them on a §ablock§f.",
+          "Once §eopened§f, you will §arecieve§f a §5random§f §dCE§f of the matching §crarity§f.",
+          "The §anext §fstep is §9refinement§f. §dVisit§f the §b§lFountain of §9Refinement§r §fat §aspawn§f.",
+          "There, §duse§f your §6book§f on the §bfountain§f's §eframe§f.",
+        ],
+      },
+      1.5
+    );
+  }, 30);
 }
 
 export const CHARM_DISPLAYS = {
@@ -1163,7 +1180,13 @@ export function animateBlacksmith(
               player.getComponent("equippable")
             );
             let item = equip.getEquipment(EquipmentSlot.Mainhand);
-            if (item && !fail) {
+            let particle = "minecraft:basic_flame_particle";
+            if (
+              item &&
+              (!fail ||
+                (!player.hasTag("tutorial:combiner") &&
+                  !player.hasTag("pref:notutorial")))
+            ) {
               Enchant.addEnchant(item, enchant.id, enchant.level);
               sendAlert(
                 player,
@@ -1171,10 +1194,8 @@ export function animateBlacksmith(
                 PREFIX.ce,
                 "random.break"
               );
-            }
-            equip.setEquipment(EquipmentSlot.Mainhand, item);
-            let particle = "minecraft:basic_flame_particle";
-            if (fail) {
+              equip.setEquipment(EquipmentSlot.Mainhand, item);
+            } else {
               particle = "minecraft:rising_border_dust_particle";
               sendAlert(
                 player,
@@ -1201,6 +1222,22 @@ export function animateBlacksmith(
               player.runCommandAsync(`inputpermission set @s movement enabled`);
               player.runCommandAsync(`inputpermission set @s camera enabled`);
               player.runCommandAsync(`hud @s reset all`);
+              system.runTimeout(() => {
+                playTutorial(
+                  player,
+                  {
+                    id: "combiner",
+                    lines: [
+                      "§6Congratulations§f, you've §ecombined§r your first §dCE§f!",
+                      "If you can §aafford§f it, you can eventually §bbuy §9charms§f from the §g-§eshop§f with §3special §dabilities §fthat can be used on §6enchants§f.",
+                      `§bWhat§f will you do with this §6newfound §cpower§f?`,
+                      "§aIncrease§f your §cmining §befficiency§f? §dManipulate§f your §3fishing §codds§f? §c§lWREAK HAVOC§r§f?",
+                      "§fWell, the §echoice§f is §dyours§f! §aHave fun§f!",
+                    ],
+                  },
+                  2
+                );
+              }, 30);
             }, 40);
           }, 40);
         }, 25);
@@ -1287,6 +1324,20 @@ function refinementSequence(player: Player, enchant: EnchantData) {
             player.runCommandAsync(`inputpermission set @s camera enabled`);
             player.runCommandAsync(`hud @s reset all`);
             player.runCommandAsync(`event entity @e[type=palm:orb] npcdespawn`);
+            system.runTimeout(() => {
+              playTutorial(
+                player,
+                {
+                  id: "refinement",
+                  lines: [
+                    "Alright, you've §9refined§f your first §6CE§f!",
+                    `With your §enew §denchantment §borb§f, go §bspeak§f to the §8§lBlacksmith§r§f.`,
+                    "§bHold§f the §eitem§f you want to §denchant§f on, and §abegin§f the §6§lCombiner§r§f §bsequence§f!",
+                  ],
+                },
+                1.5
+              );
+            }, 30);
           }, 40);
         }, 40);
       }, 38);

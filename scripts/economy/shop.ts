@@ -18,6 +18,7 @@ import {
   PREFIX,
   formatNumber,
   getItemAmount,
+  playTutorial,
   sendAlert,
   sendError,
   toRomanNumeral,
@@ -34,6 +35,7 @@ import {
   giveCharm,
 } from "../custom_enchants/customEnchants";
 import { JsonDatabase } from "../database";
+import { getGlobalMultiplier } from "../systems/events";
 
 // Initialize Databases
 var playerDB: any = undefined;
@@ -1492,6 +1494,13 @@ export const ShopItems = [
   },
   {
     category: CATEGORY.equipment,
+    texture: "",
+    item: "fishing_rod",
+    price: 1250,
+    sell: 0,
+  },
+  {
+    category: CATEGORY.equipment,
     texture: "textures/items/spyglass.png",
     item: "spyglass",
     price: 22000,
@@ -2049,6 +2058,22 @@ export const ShopItems = [
         ),
         amount
       );
+      system.runTimeout(() => {
+        playTutorial(
+          player,
+          {
+            id: "autominer",
+            lines: [
+              "Check it out, your first §c§lAutominer§r§f!",
+              "§cAutominers§f will... well, §dauto-§cmine§f for you when placed §eon top§f of an §bore§f above an §bOre §dGenerator§f.",
+              "To have it §astart §ecollecting§f, add a §6chest§f on top of it as well!",
+              "§fYou should notice §bores§f start §cappearing§f in the §6chest§f if you've done it correctly!",
+              "§fNice work, and §ahappy §2trails§f!",
+            ],
+          },
+          2
+        );
+      }, 40);
     },
     item: "slime",
     price: 360000,
@@ -2778,6 +2803,7 @@ export function openSellPortal(player: Player) {
     },
   });
   let inventory = player.getComponent("inventory");
+  let multi = getGlobalMultiplier();
   let n = 0;
   let ta = 0;
   let tn = 0;
@@ -2797,7 +2823,7 @@ export function openSellPortal(player: Player) {
     gui.button(
       n,
       `${x.rarity ?? ITEMRARITY.common}${x.name ?? formatItemName(x.item)}`,
-      [`§dValue: §7$${formatNumber(x.sell * item.amount)}`],
+      [`§dValue: §7$${formatNumber(Math.floor(x.sell * item.amount * multi))}`],
       x.item,
       item.amount,
       false,
@@ -2831,7 +2857,7 @@ export function openSellPortal(player: Player) {
         let amount = ite[1];
         player.runCommandAsync(`clear @s ${x.item} 0 ${amount}`);
       }
-      pdata.coins = pdata.coins + tn;
+      pdata.coins = pdata.coins + Math.floor(tn * multi);
       playerDB.set(player.id, pdata);
       sendAlert(
         player,
@@ -2849,7 +2875,7 @@ export function openSellPortal(player: Player) {
     let amount = items[result.selection ?? -1][1];
     player.runCommandAsync(`clear @s ${x.item} 0 ${amount}`);
     let pdata = playerDB.get(player.id);
-    let total = amount * x.sell;
+    let total = Math.floor(amount * x.sell * multi);
     pdata.coins = pdata.coins + total;
     playerDB.set(player.id, pdata);
     sendAlert(

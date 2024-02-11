@@ -452,10 +452,14 @@ system.runInterval(() => {
       else if ((afk?.getScore(player) ?? 0) > 15) afk?.addScore(player, -15);
       headRot?.setScore(player, Math.floor(dist));
     }
-    if ((afk?.getScore(player) ?? 0) >= 180) {
+    // AFK score to minutes: ((score*200)/20)/60
+    if ((afk?.getScore(player) ?? 0) >= 90) {
       afk?.setScore(player, 0);
       overworld.runCommandAsync(`kick "${player.name}" §cKicked for AFK.`);
-    }
+    } else if ((afk?.getScore(player) ?? 0) == 40)
+      world.sendMessage(
+        `§l§f[§r§l§7AFK§r§f§l]§r >>§r ${player.name} §7has gone AFK.`
+      );
   }
 }, 200);
 //

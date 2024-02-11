@@ -13,7 +13,7 @@ import {
   ModalFormResponse,
 } from "@minecraft/server-ui";
 import { bannedWords } from "../resources/bannedwords";
-import { PREFIX, sendError, sendAlert, Island } from "../main";
+import { PREFIX, sendError, sendAlert, Island, playTutorial } from "../main";
 import { ISLAND_ROLES } from "./permissions";
 import { JsonDatabase } from "../database";
 
@@ -149,10 +149,42 @@ export function islandCreator(player: Player) {
           player.runCommandAsync("gamemode survival @s");
           sendAlert(player, `§aIsland generation is complete!`, PREFIX.island);
           system.runTimeout(() => {
-            sendAlert(
-              player,
+            let lines = [
               `§eWelcome to §a${nameInput}§e, your new island!`,
-              PREFIX.island
+              `Hello, §d${player.name}§f! It's nice to meet you!`,
+              "§aAllow§f me to §eshow§f you the §cropes§f to your §disland§f.",
+              "The §atree§f and §6chest§f are to help you get started.",
+              "You don't start with much, but in due §gtime§f, you'll §ctransform§f this §disland§f into something truly §5amazing§f.",
+              "§fYou may have noticed the §esigns§f on the §atree§f.",
+              "§fBy §chitting§f them, you can §drun§f the §bcommand§f written on them.",
+              "Hopefully, you're §aready§f to §estart§f your §dskyblock§f journey now!",
+              "However, if you do need any §ahelp§f, try §casking§f one of the other §bplayers§f online!",
+              "§2Good luck§f, and §ahappy §dSkyblock§5ing§f!",
+              "§cTutorials are enabled.\n§7You can §cdisable§7 them any time using the §g§e-pref§7 command.",
+            ];
+            if (generator == "shattered") {
+              lines = lines.slice(0, 3);
+              lines.push(
+                "Or... not! You picked the §cshattered§f island §btype§f, so you clearly §dknow§f what you're doing!"
+              );
+              lines.push(
+                "If you do need any §ahelp§f, try §casking§f one of the other §bplayers§f online!"
+              );
+              lines.push("§2Good luck§f, and §ahappy §dSkyblock§5ing§f!");
+              lines.push(
+                "§cTutorials have been disabled.\n§7You can §aenable§7 them any time using the §g§e-pref§7 command."
+              );
+              system.runTimeout(() => {
+                player.addTag("pref:notutorial");
+              }, 40);
+            }
+            playTutorial(
+              player,
+              {
+                id: "newIsland",
+                lines: lines,
+              },
+              2
             );
             player.playSound(`beacon.ambient`);
           }, 25);

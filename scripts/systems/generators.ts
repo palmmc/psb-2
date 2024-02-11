@@ -17,6 +17,7 @@ import {
   PREFIX,
   formatNumber,
   fromRomanNumeral,
+  playTutorial,
   randomIntFromInterval,
   sendAlert,
   sendError,
@@ -711,10 +712,26 @@ export function giveGen(player: Player, gen: Generator, amount: number) {
     `§r${FORTUNE_DISPLAY}: §d${toRomanNumeral(gen.upgrades.fortune)}`,
   ]);
   item.nameTag = genDisplays[type];
-  if (type == "spawner")
-    item.nameTag = `§r${
-      SpawnerEntities.find((x) => x.id == gen.identifier)?.name
-    } ${item.nameTag}`;
+  if (type == "spawner") {
+    let entname = SpawnerEntities.find((x) => x.id == gen.identifier)?.name;
+    item.nameTag = `§r${entname} ${item.nameTag}`;
+    system.runTimeout(() => {
+      playTutorial(
+        player,
+        {
+          id: "spawner",
+          lines: [
+            "§b§oWoah§r§f, you're really §dmoving§f up now!",
+            `Once §cplaced§f, the §9spawner§f will begin §dproducing§f some ${entname}§r§fs.`,
+            "Each §aadditional§f §bentity§f spawned will §dstack§f upon the first, indicated by the §ecounter§f.",
+            "If you'd like, you can even §dauto-§cfarm §fthese §bentities§f using §6lava§f or §7powder snow§f.",
+            "§eCongratulations, §gseriously, §fand §2good luck§f with your §disland§f!",
+          ],
+        },
+        2
+      );
+    }, 30);
+  }
   player.getComponent("inventory")?.container?.addItem(item);
 }
 
@@ -817,6 +834,23 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
       "block.lantern.break",
       0.75
     );
+    if (type == "oregen")
+      playTutorial(
+        player,
+        {
+          id: "oregen",
+          lines: [
+            "So, you've placed your first §l§bOre §dGenerator§r§f!",
+            "These§f are one of the most §eimportant§f parts of §dskyblock§f.",
+            "Each one produces an §5§kll§r §dinfinite §5§kll§r §bsupply§f of §aores§r. Handy, right?",
+            "Go ahead! Try §cmining§f one!",
+            "Using the §g-§eshop§f, you can then §asell§f the §bores§f you get for §dprofit§f.",
+            "§fThrough the §g-§eshop§f, you'll also be able to §abuy§f things to §bhelp§f you on your §djourney§f.",
+            "§fI think you've got it from here. §2Good luck§f!",
+          ],
+        },
+        2
+      );
     player.startItemCooldown("genPlacement", 30);
     // Debug
     /*

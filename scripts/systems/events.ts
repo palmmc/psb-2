@@ -11,25 +11,45 @@ import { JsonDatabase } from "../database";
 import { PREFIX } from "../main";
 import { SpawnerEntities } from "./spawner";
 
-const eventDB = new JsonDatabase("eventDB", world);
+// INITALIZE DATABASES
+var eventDB: any = undefined;
+world.afterEvents.worldInitialize.subscribe((data) => {
+  system.runTimeout(() => {
+    eventDB = new JsonDatabase("eventDB", world);
+    clearEvents();
+    system.runTimeout(() => {
+      addEvent("1", " §cNow in §eAlpha§c!");
+      addEvent("2", " §l§a1.25x", 1.25);
+    }, 10);
+  }, 180);
+});
 const overworld = world.getDimension("overworld");
 
 function getEvents() {
   return eventDB.values();
 }
 
-function getEvent(id: number) {
+export function getGlobalMultiplier() {
+  let multi = 1;
+  for (let e of eventDB.values())
+    if (e.multiplier && e.multiplier > multi) multi = e.multiplier;
+  return multi;
+}
+
+function getEvent(id: string) {
   return eventDB.get(id);
 }
 
-function addEvent(id: number, name: string) {
-  world.scoreboard.getObjective("events")?.addScore(name, id);
-  eventDB.set(id, { id: id, name: name });
+function addEvent(id: string, name: string, multiplier?: number) {
+  eventDB.set(id, { id: id, name: name, multiplier: multiplier });
+  world.scoreboard.getObjective("events")?.addScore(name, Number(id));
 }
 
-function removeEvent(id: number) {
-  let eventData = eventDB.get(id);
-  world.scoreboard.getObjective("events")?.removeParticipant(eventData.name);
+function removeEvent(id: string) {
+  let ev = world.scoreboard.getObjective("events");
+  let p = ev?.getScores().find((x) => x.score == Number(id))?.participant;
+  if (!p) return;
+  ev?.removeParticipant(p);
   eventDB.delete(id);
 }
 
@@ -45,12 +65,9 @@ function clearEvents() {
   });
 }
 
-// Example
-//clearEvents();
-//system.run(() => addEvent(1001, " §cNow in §eAlpha§c!"));
-
 world.afterEvents.playerSpawn.subscribe((data) => {
   if (!data.initialSpawn) return;
+  if (data.player.hasTag("inTutorial")) data.player.removeTag("inTutorial");
   let tpaTags = data.player.getTags().filter((x) => x.includes("tpa:"));
   if (!tpaTags) return;
   for (let tag of tpaTags) data.player.removeTag(tag);

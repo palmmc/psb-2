@@ -117,6 +117,46 @@ export function sendError(
   else player.playSound(`note.bassattack`, { volume: 0.25, pitch: 0.75 });
 }
 
+export type Tutorial = {
+  id: string;
+  lines: string[];
+};
+export function playTutorial(
+  player: Player,
+  tutorial: Tutorial,
+  timer?: number,
+  color?: string,
+  color2?: string,
+  sound?: string
+) {
+  if (
+    player.hasTag("pref:notutorial") ||
+    player.hasTag("tutorial:" + tutorial.id)
+  )
+    return;
+  let i = 0;
+  let time = 10;
+  if (!player.hasTag("inTutorial")) player.addTag("inTutorial");
+  else return;
+  for (let line of tutorial.lines) {
+    system.runTimeout(() => {
+      i++;
+      player.sendMessage(
+        `§l${color ?? "§6"}[§e!${color ?? "§6"}]§r ${color2 ?? "§f"}${line}`
+      );
+      if (sound) player.playSound(sound);
+      else {
+        if (randomIntFromInterval(1, 3) == 1)
+          player.playSound(`note.hat`, { volume: 0.25 });
+        else player.playSound(`note.snare`, { volume: 0.25 });
+      }
+      if (i == tutorial.lines.length) player.removeTag("inTutorial");
+    }, time);
+    time += line.length * 1.5 * (timer ?? 1);
+  }
+  player.addTag("tutorial:" + tutorial.id);
+}
+
 export function randomIntFromInterval(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
@@ -2176,6 +2216,11 @@ const commands = [
           description: "Disables incoming player messages.",
           tag: "pref:peace",
         },
+        {
+          name: "Master Gamer",
+          description: "Disables tutorials.",
+          tag: "pref:notutorial",
+        },
       ];
       system.runTimeout(() => {
         let gui = new ChestFormData("small");
@@ -2349,6 +2394,43 @@ const commands = [
     arguments: [],
     allowSigns: true,
     closeChat: false,
+  },
+  {
+    alias: ["balance", "bal"],
+    info: "Shows a player's balance.",
+    function: function (player: Player, message: string) {
+      let balp = message.split(" ")[1];
+      if (!balp) balp = player.name;
+      let balPlayer = world.getPlayers({ name: balp })[0];
+      if (!balPlayer) {
+        sendError(player, `Player is offline or does not exist.`);
+        return;
+      }
+      let bdata = playerDB.get(balPlayer.id);
+      player.sendMessage(`§b============ §l§3Balance§r §b============`);
+      player.sendMessage(`§f - §aPlayer: §2${balPlayer.name}`);
+      player.sendMessage(
+        `§f   - §eCoins§f:  §6$§f${formatNumber(bdata.coins)}`
+      );
+      player.sendMessage(
+        `§f   - §a§lXP§r§f:  §a${formatNumber(balPlayer.getTotalXp())}`
+      );
+      player.sendMessage(`§f   - §cGems§f:  §e${formatNumber(bdata.gems)}`);
+      player.sendMessage(`§b============ §3-- -- --§r §b============`);
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
+    alias: ["discord", "disc"],
+    info: "Invites your to our discord.",
+    function: function (player: Player, message: string) {
+      sendAlert(player, `§dJoin our discord!\n§9discord.gg/y39XTT9zwE`);
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
   },
   {
     alias: ["warp", "warps"],
@@ -2834,6 +2916,8 @@ export function warpList(player: Player, message: string) {
 
 // CHAT COMMAND HANDLER
 
+let lastMessage: any = {};
+
 world.beforeEvents.chatSend.subscribe((data) => {
   const player = data.sender;
   let msg = data.message;
@@ -2843,6 +2927,15 @@ world.beforeEvents.chatSend.subscribe((data) => {
     parseCommand(player, msg, "chat");
   } else {
     system.run(() => {
+      if (player.getItemCooldown("chat") > 0) {
+        sendError(player, `Chat is on cooldown.`);
+        player.startItemCooldown("chat", 25);
+        return;
+      } else player.startItemCooldown("chat", 25);
+      if (data.message.includes(lastMessage[player.id])) {
+        sendError(player, `Refrain from sending the same message twice.`);
+        return;
+      } else lastMessage[player.id] = data.message;
       let tag = player.getTags().find((x) => x.startsWith("island:chat"));
       if (!tag) {
         let rank = `§7Guest`;
