@@ -16,7 +16,7 @@ export const itemsBanned = [
   "ender_chest",
   "tnt",
   "hopper_minecart",
-  "campfire",
+  "soul_campfire",
   "tripwire_hook",
   "beehive",
   "bee_nest",
@@ -105,6 +105,5 @@ export const DEF_XP_BLOCKS = [
   "minecraft:gold_block",
   "minecraft:diamond_block",
   "minecraft:emerald_block",
-  "minecraft:quartz_block",
   "minecraft:copper_block",
 ];

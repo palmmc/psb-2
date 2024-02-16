@@ -17,6 +17,7 @@ import {
   IslandLimits,
   IslandOwner,
   IslandMember,
+  instantWarpLobby,
 } from "../main";
 import { ISLAND_GENERATOR, islandCreator, testValidName } from "./create";
 import {
@@ -35,6 +36,7 @@ import {
 import { clearIslandGenerators } from "../systems/generators";
 import { formatItemName } from "../economy/itemcloud";
 import { JsonDatabase } from "../database";
+import { banPlayer, warnPlayer } from "../systems/moderation";
 
 // Initialize Databases
 var playerDB: any = undefined;
@@ -319,7 +321,7 @@ export function islandInfo(player: Player, idata: Island) {
         return;
       }
       for (let x of idata.members) {
-        if (x.name == player.name || x.name == "PalmSkyblock") continue;
+        if (x.name == player.name || x.name == "RB Relay") continue;
         let role =
           Object.values(ISLAND_ROLES).find(
             (p) =>
@@ -337,7 +339,7 @@ export function islandInfo(player: Player, idata: Island) {
       gui.show(player).then((result) => {
         if (result.canceled || idata.operator.id != player.id) return;
         let p: IslandMember = idata.members[(result.selection ?? i) - e];
-        inviteDirect(player, p.id);
+        inviteDirect(player, p);
       });
     } else if (result.selection == 12) {
       islandExpand(player);
@@ -360,7 +362,7 @@ export function islandInfo(player: Player, idata: Island) {
       for (let x of idata.owners) {
         if (
           x.name == player.name ||
-          x.name == "PalmSkyblock" ||
+          x.name == "RB Relay" ||
           x.id == idata.operator.id
         )
           continue;
@@ -404,13 +406,22 @@ system.runInterval(() => {
     //
     const loc = player.location;
     const idata = getIslandOn(player);
-    if (loc.y <= -32) {
-      if (idata) instantWarpIsland(player, idata);
-      else warpLobby(player);
+    if (overworld.getBlock(player.location)?.typeId == "minecraft:portal")
+      warpLobby(player);
+    if (loc.y <= -32 && !player.hasTag("admin:bypass")) {
+      if (idata) {
+        if (
+          idata.status == true ||
+          idata.owners.find((x) => x.id == player.id) ||
+          idata.members.find((x) => x.id == player.id)
+        )
+          instantWarpIsland(player, idata);
+        else instantWarpLobby(player);
+      } else instantWarpLobby(player);
       sendAlert(player, `§bYou have been saved from the void.\n§7Be careful!`);
     }
     if (!idata) {
-      if (loc.x < 500 || player.hasTag("perm:allowOffline")) continue;
+      if (loc.x < 500 || player.hasTag("admin:bypass")) continue;
       sendAlert(player, `§cKicked from Island: Island Owner is §4offline§c.`);
       warpLobby(player);
       return;
@@ -439,29 +450,58 @@ system.runInterval(() => {
 
 // AFK DETECTION
 let headRot = world.scoreboard.getObjective("headRot");
+let headRotY = world.scoreboard.getObjective("headRotY");
 let afk = world.scoreboard.getObjective("afkScore");
+let afkKicks: any = {};
 system.runInterval(() => {
   for (let player of world.getPlayers()) {
     let dist = Math.floor(
       Math.abs(player.getRotation().x - player.getRotation().y)
     );
-    let whitelist = ["The Palm Healer", "PalmSkyblock"];
-    if (!whitelist.includes(player.name)) {
-      if (Math.abs((headRot?.getScore(player) ?? 0) - dist) < 15)
+    if (!player.hasTag("afk:bypass") && player.name != "RB Relay") {
+      if (
+        Math.abs((headRot?.getScore(player) ?? 0) - dist) < 10 ||
+        Math.abs((headRotY?.getScore(player) ?? 0) - player.getRotation().x) < 5
+      ) {
         afk?.addScore(player, 1);
-      else if ((afk?.getScore(player) ?? 0) > 15) afk?.addScore(player, -15);
+      } else if ((afk?.getScore(player) ?? 0) > 15) afk?.addScore(player, -15);
+      headRotY?.setScore(player, player.getRotation().x);
       headRot?.setScore(player, Math.floor(dist));
     }
     // AFK score to minutes: ((score*200)/20)/60
     if ((afk?.getScore(player) ?? 0) >= 90) {
       afk?.setScore(player, 0);
+      if (afkKicks[player.id]) afkKicks[player.id].push(Date.now());
+      else afkKicks[player.id] = [];
       overworld.runCommandAsync(`kick "${player.name}" §cKicked for AFK.`);
-    } else if ((afk?.getScore(player) ?? 0) == 40)
+    } else if ((afk?.getScore(player) ?? 0) == 50)
       world.sendMessage(
         `§l§f[§r§l§7AFK§r§f§l]§r >>§r ${player.name} §7has gone AFK.`
       );
   }
 }, 200);
+
+world.afterEvents.playerSpawn.subscribe((data) => {
+  if (!data.initialSpawn) return;
+  system.runTimeout(() => {
+    if (afkKicks[data.player.id]) {
+      let afkP = afkKicks[data.player.id];
+      if (Date.now() - afkP[afkP.length - 1] > 300000)
+        afkKicks[data.player.id].pop();
+      if (afkP.length == 2) {
+        warnPlayer(data.player, `AFK bypassing.`);
+      } else if (afkP.length == 3) {
+        banPlayer(data.player, 30, `AFK bypassing.`, true);
+      } else if (afkP.length == 4) {
+        banPlayer(data.player, 90, `AFK bypassing.`, true);
+      } else if (afkP.length == 5) {
+        banPlayer(data.player, 180, `AFK bypassing.`, true);
+      } else if (afkP.length > 5) {
+        banPlayer(data.player, 720, `AFK bypassing.`, true);
+      }
+    }
+  }, 60);
+});
 //
 
 // ISLAND EXPANSION
@@ -623,7 +663,7 @@ export function kickPlayerIsland(player: Player) {
     if (
       IslandMethods.isInBounds(idata, x.location) == false ||
       x.name == player.name ||
-      x.name == "PalmSkyblock"
+      x.name == "RB Relay"
     )
       continue;
     gui.button(
@@ -663,7 +703,7 @@ export function banPlayerIsland(player: Player) {
   let i = e;
   let islandPlayers = new Array();
   for (let x of world.getPlayers()) {
-    if (x.name == player.name || x.name == "PalmSkyblock") continue;
+    if (x.name == player.name || x.name == "RB Relay") continue;
     gui.button(
       i++,
       `§c${x.name}`,
@@ -716,7 +756,7 @@ export function islandUserUI(user: Player, player: Player) {
   let i = e;
   let islands: Island[] = [];
   for (let x of world.getPlayers()) {
-    if (x.name == "PalmSkyblock") continue;
+    if (x.name == "RB Relay") continue;
     let xi = playerDB.get(x.id).island;
     if (!xi) continue;
     let idata: Island = islandDB.get(xi);
@@ -773,7 +813,7 @@ export function visitIslandUI(player: Player) {
   let islands = new Array();
   let players = new Array();
   for (let x of world.getPlayers()) {
-    if (x.name == "PalmSkyblock") continue;
+    if (x.name == "RB Relay") continue;
     let xi: Island = islandDB.get(playerDB.get(x.id).island);
     if (!xi || islands.includes(xi) || islands.length > 8) continue;
     gui.button(
@@ -888,7 +928,7 @@ export function islandManage(player: Player) {
       });
     }
     if (result.selection == 12) {
-      islandEditPerms(player);
+      islandInvite(player);
     } else if (result.selection == 13) {
       islandExpand(player);
       return;
@@ -1108,7 +1148,7 @@ export function islandManage(player: Player) {
           }
           let getPlayers = new Array();
           for (let x of world.getPlayers()) {
-            if (x.name == player.name || x.name == "PalmSkyblock") continue;
+            if (x.name == player.name || x.name == "RB Relay") continue;
             gui.button(
               i++,
               `§c${x.name}`,

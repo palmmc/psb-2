@@ -547,7 +547,7 @@ export const ShopItems = [
     name: "Water",
     ditem: [new Vector(0, -61, -1), 0],
     item: "water",
-    price: 1000,
+    price: 250,
     sell: 0,
   },
   {
@@ -610,6 +610,13 @@ export const ShopItems = [
     texture: "textures/blocks/redstone_lamp_off.png",
     item: "redstone_lamp",
     price: 1200,
+    sell: 0,
+  },
+  {
+    category: CATEGORY.decoration,
+    texture: "",
+    item: "end_rod",
+    price: 1400,
     sell: 0,
   },
   {
@@ -2103,6 +2110,21 @@ export const ShopItems = [
   },
   {
     category: CATEGORY.special,
+    texture: "textures/blocks/chest.png",
+    rarity: ITEMRARITY.rare,
+    name: "Public Chest",
+    item: "trapped_chest",
+    function: function publicChest(player: Player, amount: number) {
+      let item = new ItemStack("trapped_chest", amount);
+      item.nameTag = `§r§2Public Chest`;
+      player.getComponent("inventory")?.container?.addItem(item);
+    },
+    currency: "gems",
+    price: 10,
+    sell: 0,
+  },
+  {
+    category: CATEGORY.special,
     texture: "textures/items/tube_coral_block.png",
     rarity: ITEMRARITY.legendary,
     name: "§3Personal §bPool",
@@ -2831,7 +2853,7 @@ export function openSellPortal(player: Player) {
     );
     n++;
     ta += item.amount;
-    tn += x.sell * item.amount;
+    tn += x.sell * item.amount * multi;
   }
   gui.button(
     26,

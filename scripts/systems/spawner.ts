@@ -182,13 +182,17 @@ export function lootTheRoom(
       let procure = Enchant.getEnchant(mh, "procure");
       if (procure) {
         if (randomIntFromInterval(1, 23 - procure.level * 2) == 1) {
-          multi = Math.ceil(randomIntFromInterval(1, procure.level));
+          multi = Math.ceil(
+            randomIntFromInterval(1, Math.floor(procure.level / 2.5))
+          );
         }
       }
     }
   }
   for (let l of loot) {
-    let a = randomIntFromInterval(l.amount[0], l.amount[1] * multi) * (am ?? 1);
+    let a =
+      randomIntFromInterval(l.amount[0] * multi, l.amount[1] * multi) *
+      (am ?? 1);
     if (fire == true && l.smelt) {
       if (player) player.runCommandAsync(`give @s ${l.smelt} ${a}`);
       else overworld.spawnItem(new ItemStack(l.smelt, a), loc);
@@ -219,29 +223,34 @@ world.afterEvents.entityHurt.subscribe((data) => {
     data.hurtEntity.kill();
     return;
   }
-
+  if (
+    overworld.getBlock(data.hurtEntity.location)?.typeId == "minecraft:campfire"
+  )
+    return;
   // ISLAND PERMS
   if (data.damageSource.cause == EntityDamageCause.entityAttack) {
     let player = <Player>data.damageSource.damagingEntity;
-    const idata = getIslandOn(player);
-    if (idata && !player.hasTag("admin:bypass")) {
-      if (IslandMethods.isInBounds(idata, player.location) == true) {
-        if (
-          IslandMethods.getPermission(idata, player, "attack") == true ||
-          idata.owners.find((x) => x.id == player.id)
-        ) {
-        } else {
-          data.hurtEntity.getComponent("health")?.resetToMaxValue();
-          data.hurtEntity.clearVelocity();
-          system.run(() => {
-            if (player.getItemCooldown("hit") != 0) return;
-            player.playSound(`item.trident.riptide_1`, { volume: 0.6 });
-            player.sendMessage(
-              `${PREFIX.island} §cYou cannot hit entities here.`
-            );
-            player.startItemCooldown("hit", 15);
-          });
-          return;
+    if (player) {
+      const idata = getIslandOn(player);
+      if (idata && !player.hasTag("admin:bypass")) {
+        if (IslandMethods.isInBounds(idata, player.location) == true) {
+          if (
+            IslandMethods.getPermission(idata, player, "attack") == true ||
+            idata.owners.find((x) => x.id == player.id)
+          ) {
+          } else {
+            data.hurtEntity.getComponent("health")?.resetToMaxValue();
+            data.hurtEntity.clearVelocity();
+            system.run(() => {
+              if (player.getItemCooldown("hit") != 0) return;
+              player.playSound(`item.trident.riptide_1`, { volume: 0.6 });
+              player.sendMessage(
+                `${PREFIX.island} §cYou cannot hit entities here.`
+              );
+              player.startItemCooldown("hit", 15);
+            });
+            return;
+          }
         }
       }
     }

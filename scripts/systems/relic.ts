@@ -162,6 +162,14 @@ export const RELICS: Relic[] = [
         amount: [8, 24],
       },
       {
+        item: "palm:carrot",
+        amount: [6, 12],
+      },
+      {
+        item: "palm:potato",
+        amount: [4, 12],
+      },
+      {
         function: function (player: Player, RELIC_INFO: Relic) {
           giveXP(player, RELIC_INFO, 10, 250);
         },
@@ -531,7 +539,7 @@ export const RELICS: Relic[] = [
       {
         function: function (player: Player, RELIC_INFO: Relic) {
           let charms = ["binding", "precision", "expulsion"];
-          let rarities = ["basic", "basic", "rare"];
+          let rarities = ["basic", "basic", "advanced"];
           giveCharm(
             player,
             charms[
@@ -553,7 +561,7 @@ export const RELICS: Relic[] = [
       {
         function: function (player: Player, RELIC_INFO: Relic) {
           let charms = ["binding", "precision", "expulsion"];
-          let rarities = ["basic", "basic", "rare"];
+          let rarities = ["basic", "basic", "advanced"];
           giveCharm(
             player,
             charms[
@@ -654,7 +662,7 @@ export const RELICS: Relic[] = [
       {
         function: function (player: Player, RELIC_INFO: Relic) {
           let charms = ["binding", "precision", "expulsion"];
-          let rarities = ["basic", "rare", "rare"];
+          let rarities = ["basic", "advanced", "advanced"];
           giveCharm(
             player,
             charms[

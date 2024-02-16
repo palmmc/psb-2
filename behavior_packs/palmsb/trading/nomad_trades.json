@@ -4,7 +4,7 @@
       "num_to_select": 1,
       "trades": [
         {
-          "max_uses": 1,
+          "max_uses": 4,
           "reward_exp": false,
           "trader_exp": 99,
           "wants": [
@@ -67,14 +67,14 @@
                   }
                 },
                 {
-                  "item": "minecraft:carrot",
+                  "item": "palm:carrot",
                   "quantity": {
                     "min": 18,
                     "max": 64
                   }
                 },
                 {
-                  "item": "minecraft:potato",
+                  "item": "palm:potato",
                   "quantity": {
                     "min": 18,
                     "max": 64
@@ -101,7 +101,7 @@
           ]
         },
         {
-          "max_uses": 1,
+          "max_uses": 4,
           "reward_exp": false,
           "trader_exp": 99,
           "wants": [

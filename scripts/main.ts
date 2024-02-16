@@ -34,6 +34,7 @@ import { formatItemName } from "./economy/itemcloud";
 import "./economy/vending";
 import "./economy/shop";
 import "./systems/npc";
+import "./systems/moderation";
 import "./economy/casino";
 import "./systems/generators";
 import "./systems/fishing";
@@ -85,6 +86,18 @@ import {
 } from "./custom_enchants/customEnchants";
 import { auctionMenu } from "./economy/auctionhouse";
 import { Generator, genItems, genType } from "./systems/generators";
+import {
+  banPlayer,
+  clearWarnsPlayer,
+  freezePlayer,
+  getModerationData,
+  getWarnsPlayer,
+  mutePlayer,
+  removeWarnPlayer,
+  unbanPlayer,
+  warnPlayer,
+} from "./systems/moderation";
+import { getGlobalMultiplier } from "./systems/events";
 // TEST CONNECTION
 
 world.sendMessage("hello world");
@@ -255,10 +268,11 @@ export function getItemAmount(
   const inventory = (<EntityInventoryComponent>player.getComponent("inventory"))
     .container;
   let itemAmount = 0;
+  if (!itemId.startsWith("palm:")) itemId = `minecraft:${itemId}`;
   for (let i = 0; i < 36; i++) {
     if (!inventory) return -1;
     let item = inventory.getItem(i);
-    if (item?.typeId !== `minecraft:${itemId}`) continue;
+    if (item?.typeId !== itemId) continue;
     itemAmount += item.amount;
     if (clearItems) inventory.setItem(i);
   }
@@ -331,6 +345,15 @@ world.afterEvents.worldInitialize.subscribe((data) => {
     generatorDB = new JsonDatabase("generatorDB", world);
   }, 180);
 });
+
+// USER PERMS
+export const USER_PERMS = {
+  trainee: ["Nothbeen7008", "EpicRedstone", "The Palm Healer"],
+  helpers: ["The Palm Healer", "EpicRedstone"],
+  mods: ["The Palm Healer", "EpicRedstone"],
+  admins: ["The Palm Healer"],
+};
+//
 
 /*
 let player = world.getPlayers()[0];
@@ -456,7 +479,7 @@ export const IslandMethods = {
     island: Island,
     location: Vector | Vector3
   ): Vector | Vector3 {
-    island.spawn = location;
+    island.spawn = { x: location.x, y: location.y, z: location.z };
     IslandMethods.updateData(island);
     return island.spawn;
   },
@@ -730,6 +753,7 @@ export const PREFIX = {
   relic: "§l§f[§r§c§lRelic§r§f§l]§r >>§r",
   casino: "§l§f[§r§c§lCasino§r§f§l]§r >>§r",
   fish: "§l§f[§r§b§lFishing§r§f§l]§r >>§r",
+  moderation: "§l§f[§r§c§lBig§7Eyes§r§f§l]§r >>§r",
 };
 const ItemIds = ItemTypes.getAll().map((x) => {
   return x.id;
@@ -740,7 +764,7 @@ const overworld = world.getDimension("overworld");
 
 system.runInterval(() => {
   for (let player of world.getPlayers()) {
-    if (player.name == "PalmSkyblock") continue;
+    if (player.name == "RB Relay") continue;
     addScore("time", player, 2);
 
     // Fetch island info.
@@ -860,7 +884,7 @@ system.runInterval(() => {
     }
 
     /*
-    const sidebarText = `\n §f⟩ §ediscord.palmskyblock.fun §f⟨\n§g⦿ §aUser: §f${
+    const sidebarText = `\n §f⟩ §ediscord.RB Relay.fun §f⟨\n§g⦿ §aUser: §f${
       player.name
     }\n§g⦿ §bPlayers: §f${
       world.getPlayers().length
@@ -888,8 +912,9 @@ system.runInterval(() => {
 
 const COMMAND_PERMS = {
   GUEST: 0,
-  MOD: 1,
-  ADMIN: 2,
+  HELPER: 1,
+  MOD: 2,
+  ADMIN: 3,
 };
 
 const commands = [
@@ -951,6 +976,92 @@ const commands = [
       player.sendMessage(`§f============= §l§2Help:§r §f=============`);
       player.sendMessage(list);
       player.sendMessage(`§f============ §a-- ${page} --§r §f============`);
+      player.playSound(`random.pop2`, { pitch: 1.5 });
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
+    alias: ["modhelp", "mhelp"],
+    permission: COMMAND_PERMS.MOD,
+    info: "Shows a list of available commands.",
+    function: function (player: Player, message: string) {
+      let PAGE_LENGTH = 7;
+      let args = commands.filter((x) => x.permission == COMMAND_PERMS.MOD);
+      let page = Number(message.split(" ")[1]);
+      if (!message.split(" ")[1]) page = 1;
+      else if (
+        !(page > 0) ||
+        Math.floor(page - 1) > args?.length / PAGE_LENGTH ||
+        Math.floor(page) < 1
+      ) {
+        sendError(
+          player,
+          `§cInvalid format: Try using §a-modhelp [§2page: 1-${Math.ceil(
+            args.length / PAGE_LENGTH
+          )}§a] §cinstead.`,
+          PREFIX.server
+        );
+        return;
+      }
+      let list = args
+        .sort((a, b) => a.alias[0].localeCompare(b.alias[0]))
+        .slice(
+          page * PAGE_LENGTH - PAGE_LENGTH,
+          Math.min(page * PAGE_LENGTH, args.length)
+        )
+        .map((x) => {
+          return `§f- §a${x.alias[0]} §8// §7${x.info}`;
+        })
+        .toString()
+        .replace(/,/g, "\n");
+      player.sendMessage(`§f============= §l§2Mod Help:§r §f=============`);
+      player.sendMessage(list);
+      player.sendMessage(`§f============== §a-- ${page} --§r §f==============`);
+      player.playSound(`random.pop2`, { pitch: 1.5 });
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
+    alias: ["staffhelp", "shelp"],
+    permission: COMMAND_PERMS.HELPER,
+    info: "Shows a list of available commands.",
+    function: function (player: Player, message: string) {
+      let PAGE_LENGTH = 7;
+      let args = commands.filter((x) => x.permission == COMMAND_PERMS.HELPER);
+      let page = Number(message.split(" ")[1]);
+      if (!message.split(" ")[1]) page = 1;
+      else if (
+        !(page > 0) ||
+        Math.floor(page - 1) > args?.length / PAGE_LENGTH ||
+        Math.floor(page) < 1
+      ) {
+        sendError(
+          player,
+          `§cInvalid format: Try using §a-modhelp [§2page: 1-${Math.ceil(
+            args.length / PAGE_LENGTH
+          )}§a] §cinstead.`,
+          PREFIX.server
+        );
+        return;
+      }
+      let list = args
+        .sort((a, b) => a.alias[0].localeCompare(b.alias[0]))
+        .slice(
+          page * PAGE_LENGTH - PAGE_LENGTH,
+          Math.min(page * PAGE_LENGTH, args.length)
+        )
+        .map((x) => {
+          return `§f- §a${x.alias[0]} §8// §7${x.info}`;
+        })
+        .toString()
+        .replace(/,/g, "\n");
+      player.sendMessage(`§f============= §l§3Staff Help:§r §f=============`);
+      player.sendMessage(list);
+      player.sendMessage(`§f============== §a-- ${page} --§r §f==============`);
       player.playSound(`random.pop2`, { pitch: 1.5 });
     },
     arguments: [],
@@ -1096,6 +1207,7 @@ const commands = [
           );
         },
       },
+      /*
       {
         alias: ["edituser", "edit", "setperms", "editperms"],
         info: "Opens the permissions editor.",
@@ -1103,6 +1215,7 @@ const commands = [
           system.runTimeout(() => islandEditPerms(player), 2);
         },
       },
+      */
       {
         alias: ["invite", "inv"],
         info: "Opens the island inviter.",
@@ -1565,7 +1678,7 @@ const commands = [
     closeChat: true,
   },
   {
-    alias: ["marketplace", "ah", "auction", "auctionhouse", "market"],
+    alias: ["marketplace", "mp", "ah", "auction", "auctionhouse", "market"],
     info: "Auction Market",
     function: function (player: Player, message: string) {
       system.runTimeout(() => auctionMenu(player), 2);
@@ -1749,13 +1862,14 @@ const commands = [
         );
         return;
       }
+      let multiplier = getGlobalMultiplier();
       let amount = item.amount;
       let optionData = ShopItems.find(
         (x) =>
           x.item ==
-          (item?.typeId.includes("palm")
-            ? item?.typeId
-            : item?.typeId.slice(10))
+            (item?.typeId.includes("palm")
+              ? item?.typeId
+              : item?.typeId.slice(10)) && !x.data
       );
       if (!optionData || optionData.sell == 0) {
         sendError(player, `This item cannot be sold.`, PREFIX.shop);
@@ -1763,7 +1877,7 @@ const commands = [
       }
       let pdata = playerDB.get(player.id);
       let name = optionData.name ?? formatItemName(optionData.item);
-      let total = Math.floor(optionData.sell * amount);
+      let total = Math.floor(optionData.sell * amount * multiplier);
       let getItem = getItemAmount(player, optionData.item, false);
       if (getItem <= amount) amount = getItem;
       if (amount == 0) {
@@ -1796,7 +1910,7 @@ const commands = [
         sendError(player, "§cThis action is on cooldown.");
         return;
       }
-      player.startItemCooldown("compress", 600);
+      player.startItemCooldown("compress", 400);
       let blocks = [
         ["coal", "coal_block"],
         ["iron_ingot", "iron_block"],
@@ -1886,6 +2000,8 @@ const commands = [
             );
             return;
           }
+          item = holdInv.getEquipment(EquipmentSlot.Mainhand);
+          dura = item?.getComponent("durability");
           if (!dura || !item) return;
           pdata.coins = pdata.coins - price;
           playerDB.set(player.id, pdata);
@@ -1948,19 +2064,41 @@ const commands = [
     alias: ["piggybank", "pb", "enderchest", "ec"],
     info: "Opens your piggy bank.",
     function: function (player: Player, message: string) {
+      let viewUser = message.split(" ")[1];
+      if (message.includes('"')) viewUser = message.split('"')[1];
+      let pdata: any;
+      let id = player.id;
+      if (viewUser && USER_PERMS.mods.includes(player.name)) {
+        function getPBUser() {
+          for (let vd of playerDB.entries()) {
+            if (vd[1].name == viewUser) {
+              pdata = vd[1];
+              id = vd[0];
+              return;
+            }
+          }
+        }
+        getPBUser();
+        if (!pdata) {
+          sendError(player, `No record found for §4${viewUser}§c.`);
+          return;
+        }
+      } else pdata = playerDB.get(player.id);
       type PiggySlot = {
         typeId: string;
         amount: number;
+        durability: number;
         nameTag?: string;
         lore?: string[];
       };
       function getSlotCost(slot: number) {
-        return (slot - 3) * 5;
+        return (slot - 4) * 5;
       }
       system.runTimeout(() => {
         let gui = new ChestFormData("pink");
-        gui.title("§uPiggy§5§lBank");
-        let pdata = playerDB.get(player.id);
+        gui.title(
+          "§uPiggy§5§lBank" + (id != player.id ? ` §r§5${viewUser}` : "")
+        );
         //pdata.piggyslots = 5;
         //playerDB.set(player.id, pdata);
         //return;
@@ -2024,7 +2162,7 @@ const commands = [
             }
             pdata.gems = pdata.gems - cost;
             pdata.piggyslots = pdata.piggyslots + 1;
-            playerDB.set(player.id, pdata);
+            playerDB.set(id, pdata);
             sendAlert(
               player,
               `§l§6Upgraded§r §uPiggy§l§5Bank§e§r §8(§c${
@@ -2039,8 +2177,10 @@ const commands = [
             let itemStack = new ItemStack(item.typeId, item.amount);
             itemStack.nameTag = item.nameTag;
             itemStack.setLore(item.lore);
+            let dura = itemStack.getComponent("durability");
+            if (dura) dura.damage = item.durability;
             pdata.piggybank.splice(result.selection ?? 0, 1);
-            playerDB.set(player.id, pdata);
+            playerDB.set(id, pdata);
             inv?.addItem(itemStack);
             sendAlert(
               player,
@@ -2066,13 +2206,17 @@ const commands = [
               if (result.canceled) return;
               let item = inv?.getItem(result.selection ?? 0);
               if (!item) return;
+              let damage = 0;
+              let durability = item.getComponent("durability");
+              if (durability) damage = durability.damage;
               pdata.piggybank.push({
                 typeId: item.typeId,
                 amount: item.amount,
+                durability: damage,
                 nameTag: item.nameTag,
                 lore: item.getLore(),
               } as PiggySlot);
-              playerDB.set(player.id, pdata);
+              playerDB.set(id, pdata);
               inv?.setItem(result.selection ?? 0);
               sendAlert(
                 player,
@@ -2084,6 +2228,82 @@ const commands = [
           }
         });
       }, 2);
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
+    alias: ["invview", "viewinv"],
+    info: "Views a player's inventory.",
+    permission: COMMAND_PERMS.MOD,
+    function: function (player: Player, message: string) {
+      let viewUser = message.split(" ")[1];
+      if (message.includes('"')) viewUser = message.split('"')[1];
+      let vP = world.getPlayers({ name: viewUser })[0];
+      if (!vP) {
+        sendError(player, `Player is not online or does not exist.`);
+      }
+      function viewInv(player: Player, viewP: Player) {
+        system.runTimeout(() => {
+          let gui = new ChestFormData("large");
+          gui.title(`Viewing: §9${viewP.name}`);
+          let inv = viewP.getComponent("inventory")?.container;
+          if (!inv) return;
+          for (let i = 0; i < inv.size; i++) {
+            let item = inv.getItem(i);
+            if (!item)
+              gui.button(
+                i,
+                "§cEmpty Slot",
+                ["§d§lCLICK TO ADD"],
+                "textures/blocks/glass_white.png",
+                1
+              );
+            else
+              gui.button(
+                i,
+                item.nameTag ?? formatItemName(item.typeId),
+                item.getLore()?.concat([`§c§lCLICK TO REMOVE`]),
+                item.typeId,
+                item.amount
+              );
+          }
+          gui.show(player).then((result) => {
+            if (result.canceled) return;
+            let item = inv?.getItem(result.selection ?? 0);
+            let pinv = player.getComponent("inventory")?.container;
+            if (item && pinv) {
+              inv?.setItem(result.selection ?? 0);
+              pinv.addItem(item);
+              viewInv(player, viewP);
+            } else if (pinv) {
+              let gui = new ChestFormData("large");
+              gui.title("Select an Item");
+              for (let i = 0; i < pinv.size; i++) {
+                let item = pinv?.getItem(i);
+                if (!item) continue;
+                gui.button(
+                  i,
+                  item.nameTag ?? formatItemName(item.typeId),
+                  item.getLore().concat([`§d§lCLICK TO ADD`]),
+                  item.typeId,
+                  item.amount
+                );
+              }
+              gui.show(player).then((result) => {
+                if (result.canceled) return;
+                let item = pinv?.getItem(result.selection ?? 0);
+                if (!item) return;
+                pinv?.setItem(result.selection ?? 0);
+                inv?.addItem(item);
+                viewInv(player, viewP);
+              });
+            }
+          });
+        }, 2);
+      }
+      viewInv(player, vP);
     },
     arguments: [],
     allowSigns: true,
@@ -2195,37 +2415,43 @@ const commands = [
           name: "Minimal Sidebar",
           description: "Shrinks the sidescreen HUD\nto only essential info.",
           tag: "pref:minimal_sidebar",
+          color: "red",
         },
         {
           name: "Quieter Mining",
           description: "Silences the xp sound when\nmining ores.",
           tag: "pref:quieter_mining",
+          color: "orange",
         },
         {
           name: "Mining Mode",
           description: "Activates the mining sidebar.",
           tag: "pref:mining_mode",
+          color: "yellow",
         },
         {
           name: "Request Denier",
           description: "Disables teleport requests.",
           tag: "pref:noTPA",
-        },
-        {
-          name: "Noise Cancelling",
-          description: "Disables incoming player messages.",
-          tag: "pref:peace",
+          color: "lime",
         },
         {
           name: "Master Gamer",
           description: "Disables tutorials.",
           tag: "pref:notutorial",
+          color: "blue",
+        },
+        {
+          name: "No Tips",
+          description: "Hides tip messages.",
+          tag: "pref:notips",
+          color: "magenta",
         },
       ];
       system.runTimeout(() => {
         let gui = new ChestFormData("small");
         gui.title("User Preferences");
-        gui.pattern([0, 0], ["xxxxxxxxx", "x_______x", "xxxxxxxxx"], {
+        gui.pattern([0, 0], ["x_______x", "x_______x", "x_______x"], {
           x: {
             data: {
               itemName: "",
@@ -2236,16 +2462,20 @@ const commands = [
             iconPath: "textures/blocks/glass_white.png",
           },
         });
-        let i = 10;
+        let slots = [
+          1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23,
+          24, 25,
+        ];
+        let i = 0;
         for (let p of PREFERENCES) {
           gui.button(
-            i,
+            slots[i],
             `${p.name}`,
             [
               `§8${p.description}`,
               `§9Status: ${player.hasTag(p.tag) ? "§a§lON" : "§c§lOFF"}`,
             ],
-            "shulker_box",
+            (p.color ? `${p.color}_` : "") + "shulker_box",
             1,
             player.hasTag(p.tag) ? true : false
           );
@@ -2253,7 +2483,7 @@ const commands = [
         }
         gui.show(player).then((result) => {
           if (result.canceled || !result.selection) return;
-          let pref = PREFERENCES[result.selection - 10];
+          let pref = PREFERENCES[slots.indexOf(result.selection ?? 0)];
           player.hasTag(pref.tag)
             ? player.removeTag(pref.tag)
             : player.addTag(pref.tag);
@@ -2273,7 +2503,7 @@ const commands = [
         let payUI = new ModalFormData();
         let players = world
           .getPlayers()
-          .filter((x) => x.name != "PalmSkyblock" && x.name != player.name)
+          .filter((x) => x.name != "RB Relay" && x.name != player.name)
           .map((x) => x.name);
         if (players.length == 0) {
           sendError(player, `§cThere are no other players online.`);
@@ -2356,6 +2586,35 @@ const commands = [
     closeChat: true,
   },
   {
+    alias: ["block"],
+    info: "Blocks a player's chat messages.",
+    function: function (player: Player, message: string) {
+      let blockPlayer = message.split(" ")[1];
+      if (message.includes('"')) blockPlayer = message.split('"')[1];
+      let bp = world.getPlayers({ name: blockPlayer })[0];
+      if (!bp) {
+        sendError(player, `Player is not online or does not exist.`);
+        return;
+      } else if (bp.name == player.name) {
+        sendError(player, `You cannot block yourself.`);
+        return;
+      } else if (USER_PERMS.helpers.includes(bp.name)) {
+        sendError(player, `You cannot block this player.`);
+        return;
+      }
+      if (player.hasTag(`block:${bp.name}`)) {
+        player.removeTag(`block:${bp.name}`);
+        sendAlert(player, `§6Unblocked §c${bp.name}§6 successfully.`);
+      } else {
+        player.addTag(`block:${bp.name}`);
+        sendAlert(player, `§eBlocked §c${bp.name}§e successfully.`);
+      }
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
     alias: ["spawn", "lobby", "hub"],
     info: "Warps you to the server lobby.",
     function: warpLobby,
@@ -2400,21 +2659,26 @@ const commands = [
     info: "Shows a player's balance.",
     function: function (player: Player, message: string) {
       let balp = message.split(" ")[1];
+      if (message.includes('"')) balp = message.split('"')[1];
       if (!balp) balp = player.name;
-      let balPlayer = world.getPlayers({ name: balp })[0];
-      if (!balPlayer) {
-        sendError(player, `Player is offline or does not exist.`);
+      let bdata: any;
+      for (let bd of playerDB.values()) {
+        if (bd.name == balp) bdata = bd;
+      }
+      if (!bdata) {
+        sendError(player, `No record found for §4${balp}§c.`);
         return;
       }
-      let bdata = playerDB.get(balPlayer.id);
+      let xp =
+        world.scoreboard
+          .getObjective("offline:xp")
+          ?.getScore("o" + bdata.name) ?? 0;
       player.sendMessage(`§b============ §l§3Balance§r §b============`);
-      player.sendMessage(`§f - §aPlayer: §2${balPlayer.name}`);
+      player.sendMessage(`§f - §aPlayer: §2${bdata.name}`);
       player.sendMessage(
         `§f   - §eCoins§f:  §6$§f${formatNumber(bdata.coins)}`
       );
-      player.sendMessage(
-        `§f   - §a§lXP§r§f:  §a${formatNumber(balPlayer.getTotalXp())}`
-      );
+      player.sendMessage(`§f   - §a§lXP§r§f:  §a${formatNumber(xp)}`);
       player.sendMessage(`§f   - §cGems§f:  §e${formatNumber(bdata.gems)}`);
       player.sendMessage(`§b============ §3-- -- --§r §b============`);
     },
@@ -2426,7 +2690,23 @@ const commands = [
     alias: ["discord", "disc"],
     info: "Invites your to our discord.",
     function: function (player: Player, message: string) {
-      sendAlert(player, `§dJoin our discord!\n§9discord.gg/y39XTT9zwE`);
+      sendAlert(
+        player,
+        `§dJoin our discord!\n§e§lInvite:§r §9discord.gg/y39XTT9zwE`
+      );
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
+    alias: ["warnupdate", "update"],
+    permission: COMMAND_PERMS.ADMIN,
+    info: "Warns players of update.",
+    function: function (player: Player, message: string) {
+      world.sendMessage(
+        `${PREFIX.server} §c§lUpdate Warning\n§r§dPalm's §uSkyblock §6is about to §crestart§6 for an §eupdate§c.\n§cPlease wait §41-2§c minutes before rejoining, or you could §4potentially lose progress§c.`
+      );
     },
     arguments: [],
     allowSigns: true,
@@ -2553,7 +2833,397 @@ const commands = [
         sendError(player, "§cInvalid player.");
         return;
       }
-      playerDB.set(setPlayer.id, { coins: 100, island: "" });
+      playerDB.set(setPlayer.id, {
+        name: player.name,
+        coins: 100,
+        gems: 5,
+        island: "",
+      });
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
+    alias: ["modmenu", "moderation"],
+    permission: COMMAND_PERMS.HELPER,
+    info: "Opens the moderation menu.",
+    function: function (player: Player, message: string) {
+      function modMenu(player: Player) {
+        let gui = new ChestFormData("lime");
+        gui.pattern([0, 0], ["xxxxxxxxx", "x_______x", "xxxxxxxxx"], {
+          x: {
+            data: {
+              itemName: "",
+              itemDesc: [],
+              enchanted: false,
+              stackSize: 1,
+            },
+            iconPath: "textures/blocks/glass_white.png",
+          },
+        });
+        gui.title("Moderation Menu");
+        gui.button(
+          11,
+          "§bFreeze Player",
+          ["§c§lCLICK TO ENACT"],
+          "packed_ice",
+          1,
+          true
+        );
+        gui.button(
+          12,
+          "§dMute Player",
+          ["§c§lCLICK TO ENACT"],
+          "noteblock",
+          1,
+          true
+        );
+        gui.button(
+          13,
+          "§6Warn Player",
+          ["§c§lCLICK TO ENACT"],
+          "bookshelf",
+          1,
+          true
+        );
+        gui.button(
+          14,
+          "§cBan Player",
+          ["§c§lCLICK TO ENACT"],
+          "red_wool",
+          1,
+          true
+        );
+        gui.button(
+          15,
+          "§aUnban Player",
+          ["§c§lCLICK TO ENACT"],
+          "lime_wool",
+          1,
+          true
+        );
+        gui.show(player).then((result) => {
+          if (result.canceled) return;
+          system.runTimeout(() => {
+            let players = world
+              .getPlayers()
+              .filter(
+                (x) => x.name != "RB Relay" && !USER_PERMS.mods.includes(x.name)
+              );
+            if (
+              players.length == 0 &&
+              [11, 12].includes(result.selection ?? 0)
+            ) {
+              sendError(
+                player,
+                "There are no other players online.",
+                PREFIX.moderation
+              );
+              return;
+            }
+            if (result.selection == 11) {
+              let gui = new ModalFormData();
+              gui.title("Freeze Player");
+              gui.dropdown(
+                "Select a Player",
+                players.length > 0
+                  ? players.map((x) => {
+                      return x.name;
+                    })
+                  : ["No players online."]
+              );
+              gui.show(player).then((result) => {
+                if (result.canceled || !result.formValues) {
+                  modMenu(player);
+                  return;
+                }
+                let freezeP = players[result.formValues[0] as number];
+                freezePlayer(freezeP) == 2
+                  ? sendAlert(
+                      player,
+                      `§e${freezeP.name} §bhas been frozen.`,
+                      PREFIX.moderation
+                    )
+                  : sendAlert(player, `§e${freezeP.name} §9has been unfrozen.`),
+                  PREFIX.moderation;
+                return;
+              });
+            } else if (result.selection == 12) {
+              let gui = new ModalFormData();
+              gui.title("Mute Player");
+              gui.dropdown(
+                "Select a Player",
+                players.length > 0
+                  ? players.map((x) => {
+                      return x.name;
+                    })
+                  : ["No players online."]
+              );
+              gui.show(player).then((result) => {
+                if (result.canceled || !result.formValues) {
+                  modMenu(player);
+                  return;
+                }
+                let muteP = players[result.formValues[0] as number];
+                mutePlayer(muteP) == 2
+                  ? sendAlert(
+                      player,
+                      `§e${muteP.name} §dhas been muted.`,
+                      PREFIX.moderation
+                    )
+                  : sendAlert(
+                      player,
+                      `§e${muteP.name} §5has been unmuted.`,
+                      PREFIX.moderation
+                    );
+                return;
+              });
+            } else if (result.selection == 13) {
+              let gui = new ModalFormData();
+              gui.title("Warns Menu");
+              gui.dropdown(
+                "Select a Player",
+                players.length > 0
+                  ? players.map((x) => {
+                      return x.name;
+                    })
+                  : ["No players online."]
+              );
+              gui.textField("Enter a Username", "EpicRedstone");
+              gui.show(player).then((result) => {
+                if (result.canceled || !result.formValues) {
+                  modMenu(player);
+                  return;
+                }
+                let warnP = result.formValues[1]
+                  ? (result.formValues[1] as string)
+                  : players[result.formValues[0] as number];
+                let gui = new ChestFormData("lime");
+                gui.pattern([0, 0], ["xxxxxxxxx", "x_______x", "xxxxxxxxx"], {
+                  x: {
+                    data: {
+                      itemName: "",
+                      itemDesc: [],
+                      enchanted: false,
+                      stackSize: 1,
+                    },
+                    iconPath: "textures/blocks/glass_white.png",
+                  },
+                });
+                gui.title("Warns Menu");
+                gui.button(
+                  12,
+                  "§aAdd Warn",
+                  ["§c§lCLICK TO ENACT"],
+                  "lime_dye",
+                  1,
+                  true
+                );
+                gui.button(
+                  13,
+                  "§6View Warns",
+                  ["§c§lCLICK TO ENACT"],
+                  "orange_dye",
+                  1,
+                  true
+                );
+                gui.button(
+                  14,
+                  "§cRemove Warn",
+                  ["§c§lCLICK TO ENACT"],
+                  "red_dye",
+                  1,
+                  true
+                );
+                gui.show(player).then((result) => {
+                  if (result.canceled) {
+                    modMenu(player);
+                    return;
+                  }
+                  let warns = getWarnsPlayer(warnP);
+                  if (result.selection == 12) {
+                    let gui = new ModalFormData();
+                    gui.title("Warn Player");
+                    gui.textField("Reason", "Rule breaking.");
+                    gui.show(player).then((result) => {
+                      if (result.canceled || !result.formValues) {
+                        modMenu(player);
+                        return;
+                      }
+                      let name = warnP instanceof Player ? warnP.name : warnP;
+                      warnPlayer(warnP, result.formValues[0] as string) == 1
+                        ? sendAlert(
+                            player,
+                            `§e${name} §chas been §6warned§c.`,
+                            PREFIX.moderation
+                          )
+                        : sendAlert(
+                            player,
+                            `§cCould not warn §e${name}§c.`,
+                            PREFIX.moderation
+                          );
+                    });
+                  } else if (result.selection == 13) {
+                    let list = warns
+                      .map((x) => {
+                        return `§f- §7[§e${warns.indexOf(x)}§7] §8// §7${
+                          x.reason
+                        }§8 => ${x.date}`;
+                      })
+                      .toString()
+                      .replace(/,/g, "\n");
+                    player.sendMessage(
+                      `§7============= §l§cWarns:§r §7=============`
+                    );
+                    player.sendMessage(list);
+                    player.sendMessage(
+                      `§7============ §c-- --- --§r §7============`
+                    );
+                    player.playSound(`random.pop2`, { pitch: 1.5 });
+                  } else if (result.selection == 14) {
+                    if (!USER_PERMS.mods.includes(player.name)) {
+                      sendError(
+                        player,
+                        `Insufficient permissions.\n§4Required: §2Moderator`,
+                        PREFIX.moderation
+                      );
+                      return;
+                    }
+                    let gui = new ModalFormData();
+                    gui.title("Remove Warning");
+                    gui.dropdown(
+                      "Select Warning",
+                      warns.map((x) => x.reason)
+                    );
+                    gui.toggle("Clear All", false);
+                    gui.show(player).then((result) => {
+                      if (result.canceled || !result.formValues) {
+                        modMenu(player);
+                        return;
+                      }
+                      let name = warnP instanceof Player ? warnP.name : warnP;
+                      if ((result.formValues[1] as boolean) == true) {
+                        clearWarnsPlayer(warnP) == 1
+                          ? sendAlert(
+                              player,
+                              `§6Cleared warnings from §e${name}§6.`,
+                              PREFIX.moderation
+                            )
+                          : sendAlert(
+                              player,
+                              `§cCould not clear warnings for §e${name}§c.`,
+                              PREFIX.moderation
+                            );
+                        return;
+                      }
+                      removeWarnPlayer(warnP, result.formValues[0] as number) ==
+                      1
+                        ? sendAlert(
+                            player,
+                            `§6Removed warning from §e${name}§6.`,
+                            PREFIX.moderation
+                          )
+                        : sendAlert(
+                            player,
+                            `§cCould not remove warning §e${name}§c.`,
+                            PREFIX.moderation
+                          );
+                    });
+                  }
+                });
+              });
+            } else if (result.selection == 14) {
+              if (!USER_PERMS.mods.includes(player.name)) {
+                sendError(
+                  player,
+                  `Insufficient permissions.\n§4Required: §2Moderator`,
+                  PREFIX.moderation
+                );
+                return;
+              }
+              let gui = new ModalFormData();
+              gui.title("Ban Player");
+              gui.dropdown(
+                "Select a Player",
+                players.length > 0
+                  ? players.map((x) => {
+                      return x.name;
+                    })
+                  : ["No players online."]
+              );
+              gui.textField("Enter a Username", "EpicRedstone");
+              gui.textField("Duration (d:h:m)", "0");
+              gui.textField("Reason", "Rule breaking.");
+              gui.toggle("Can Appeal", true);
+              gui.show(player).then((result) => {
+                if (result.canceled || !result.formValues) {
+                  modMenu(player);
+                  return;
+                }
+                let timeStr = result.formValues[2] as string;
+                let time =
+                  Number(timeStr.split(":")[0]) * 1440 +
+                  Number(timeStr.split(":")[1]) * 60 +
+                  Number(timeStr.split(":")[2]);
+                if (Number.isNaN(time)) {
+                  sendError(player, "Invalid timestamp.", PREFIX.moderation);
+                  return;
+                }
+                if (result.formValues[1]) {
+                  banPlayer(
+                    result.formValues[1] as string,
+                    time,
+                    result.formValues[3] as string,
+                    result.formValues[4] as boolean
+                  );
+                  return;
+                } else {
+                  banPlayer(
+                    players[result.formValues[0] as number],
+                    time,
+                    result.formValues[3] as string,
+                    result.formValues[4] as boolean
+                  );
+                  return;
+                }
+              });
+            } else if (result.selection == 15) {
+              if (!USER_PERMS.mods.includes(player.name)) {
+                sendError(
+                  player,
+                  `Insufficient permissions.\n§4Required: §2Moderator`,
+                  PREFIX.moderation
+                );
+                return;
+              }
+              let gui = new ModalFormData();
+              gui.title("Unban Player");
+              gui.textField("Enter a Username", "EpicRedstone");
+              gui.show(player).then((result) => {
+                if (result.canceled || !result.formValues) {
+                  modMenu(player);
+                  return;
+                }
+                let unbanP = result.formValues[0] as string;
+                unbanPlayer(unbanP) == 1
+                  ? sendAlert(
+                      player,
+                      `§e${unbanP} §chas been §6unbanned§c.`,
+                      PREFIX.moderation
+                    )
+                  : sendAlert(
+                      player,
+                      `§cCould not unban §e${unbanP}§c.`,
+                      PREFIX.moderation
+                    );
+                return;
+              });
+            } else return;
+          }, 1);
+        });
+      }
+      system.runTimeout(() => modMenu(player), 2);
     },
     arguments: [],
     allowSigns: true,
@@ -2564,30 +3234,307 @@ const commands = [
     permission: COMMAND_PERMS.ADMIN,
     info: "Executes an island function as admin.",
     function: function (player: Player, message: string) {
-      let island = message.split('"')[1];
+      let island = message.split(" ")[1];
       console.warn(island);
       let idata: Island = islandDB.get(island);
       if (!idata) {
         sendError(
           player,
-          `Island does not exist.\n§cFormat: §e-isadmin <§gisland§e> [§9function§e]`,
+          `Island does not exist.\n§cFormat: §e-isadmin <§gisland§e>`,
           PREFIX.server
         );
         return;
       }
-      console.warn(idata.name);
-      let func = message.split(" ")[2];
-      let arg1: any = message.split(" ")[3] ?? "";
-      let arg2: any = message.split(" ")[4] ?? "";
-      if (!arg2) arg1 = Number(arg1);
-      else arg2 = Number(arg2);
-      if (func == "addPoints") IslandMethods.addPoints(idata, arg1);
-      else if (func == "removePoints") IslandMethods.removePoints(idata, arg1);
-      else if (func == "addLimit") IslandMethods.addLimit(idata, arg1, arg2);
-      else if (func == "removeLimit")
-        IslandMethods.removeLimit(idata, arg1, arg2);
-      else if (func == "expand") IslandMethods.increaseSize(idata);
-      else if (func == "contract") IslandMethods.decreaseSize(idata);
+      system.runTimeout(() => {
+        let gui = new ModalFormData();
+        gui.title("Island Admin Editor");
+        gui.textField("Name", idata.name);
+        gui.textField("Operator", idata.operator.name);
+        gui.textField(
+          "Spawn",
+          idata.spawn.x + ", " + idata.spawn.y + ", " + idata.spawn.z
+        );
+        gui.textField("Owners", "", idata.owners.map((x) => x.name).toString());
+        gui.textField(
+          "Members",
+          "",
+          idata.members.map((x) => x.name).toString()
+        );
+        gui.textField("Banned", "", idata.banned.toString());
+        gui.slider("Size", 16, MAX_SIZE, 8, idata.size);
+        gui.textField("Points", "", idata.points.toString());
+        gui.textField("Level", xpToLevel(idata.points).toString());
+        gui.textField("Funds", idata.funds.toString());
+        gui.dropdown(
+          "Remove Home",
+          ["Click to Select"].concat(idata.homes.map((x) => x.name))
+        );
+        gui.toggle("Unlocked", idata.status);
+        for (let l of Object.keys(idata.limits)) {
+          let limit = idata.limits[l as keyof IslandLimits];
+          gui.slider(`§eAmount §7(§f${l}§7)§f`, 0, limit.max, 1, limit.amount);
+          gui.textField(
+            `§cMax §7(§f${l}§7)§f`,
+            limit.max.toString(),
+            limit.max.toString()
+          );
+        }
+        gui.show(player).then((result) => {
+          if (result.canceled || !result.formValues) return;
+          // Island Name
+          if (result.formValues[0]) {
+            let name = result.formValues[0] as string;
+            for (let owner of idata.owners) {
+              let odata = playerDB.get(owner.id);
+              odata.island = name;
+              playerDB.set(owner.id, odata);
+            }
+            islandDB.delete(idata.name);
+            IslandMethods.setName(idata, name);
+          }
+          // Island Operator
+          if (result.formValues[1]) {
+            function findIdByName() {
+              if (result.formValues)
+                for (let pdata of playerDB.entries()) {
+                  if (pdata[1].name == (result.formValues[1] as string))
+                    return pdata[0];
+                }
+              return undefined;
+            }
+            let id = findIdByName();
+            if (!id) return;
+            IslandMethods.removeOwner(idata, idata.operator.id);
+            let newOp = {
+              id: id,
+              name: result.formValues[1] as string,
+              permissions: ISLAND_ROLES.guest.permissions,
+            };
+            idata.operator = newOp;
+            idata.owners.push(newOp);
+            let pdata = playerDB.get(id);
+            pdata.oldisland = pdata.island;
+            pdata.island = idata.name;
+            playerDB.set(id, pdata);
+            IslandMethods.updateData(idata);
+            sendAlert(
+              player,
+              `§cSet §6data §cfor §e${idata.name}§c.`,
+              PREFIX.moderation
+            );
+            return;
+          }
+          // Set Island Spawn
+          if (result.formValues[2]) {
+            let newL = (result.formValues[2] as string).split(", ");
+            let newLoc = {
+              x: Number(newL[0]),
+              y: Number(newL[1]),
+              z: Number(newL[2]),
+            };
+            let oldBedrock = overworld.getBlock({
+              x: idata.spawn.x,
+              y: idata.spawn.y - 1,
+              z: idata.spawn.z,
+            });
+            if (!oldBedrock) return;
+            oldBedrock.setType("air");
+            overworld
+              .getBlock({ x: newLoc.x, y: newLoc.y - 1, z: newLoc.z })
+              ?.setType("bedrock");
+            let oldNomads = overworld.getEntities({
+              type: "palm:nomad",
+              location: idata.spawn,
+              maxDistance: 128,
+            });
+            if (oldNomads.length > 0) {
+              for (let nomad of oldNomads)
+                nomad.teleport(Vector.add(newLoc, new Vector(0.5, 0, 0.5)));
+            }
+            IslandMethods.setSpawn(idata, newLoc);
+
+            //world.sendMessage(
+            //  idata.spawn.x + ", " + idata.spawn.y + ", " + idata.spawn.z
+            //);
+          }
+          // Island Owners
+          if (
+            result.formValues[3] &&
+            result.formValues[3] != idata.owners.map((x) => x.name).toString()
+          ) {
+            let ownerStr = result.formValues[3] as string;
+            let ownerNames = ownerStr.includes(", ")
+              ? ownerStr.split(", ")
+              : ownerStr.split(",");
+            let currentOwnerNames = idata.owners.map((x) => x.name);
+            for (let ownerName of ownerNames) {
+              if (!idata.owners.find((x) => x.name == ownerName)) {
+                function findIdByName() {
+                  if (result.formValues)
+                    for (let pdata of playerDB.entries()) {
+                      if (pdata[1].name == ownerName) return pdata[0];
+                    }
+                  return undefined;
+                }
+                let id = findIdByName();
+                if (!id) continue;
+                let newOwner = {
+                  id: id,
+                  name: ownerName,
+                  permissions: ISLAND_ROLES.guest.permissions,
+                };
+                idata.owners.push(newOwner);
+                let pdata = playerDB.get(id);
+                pdata.oldisland = pdata.island;
+                pdata.island = idata.name;
+                playerDB.set(id, pdata);
+              }
+            }
+            for (let ownerName of currentOwnerNames) {
+              if (!ownerNames.includes(ownerName)) {
+                let owner = idata.owners.find((x) => x.name == ownerName);
+                if (!owner) return;
+                idata.owners.splice(idata.owners.indexOf(owner), 1);
+                let pdata = playerDB.get(owner.id);
+                pdata.island = pdata.oldisland ?? "";
+                playerDB.set(owner.id, pdata);
+              }
+            }
+
+            //world.sendMessage(idata.owners.map((x) => x.name));
+          }
+          // Island Members
+          if (
+            result.formValues[4] &&
+            result.formValues[4] != idata.members.map((x) => x.name).toString()
+          ) {
+            let memberStr = result.formValues[4] as string;
+            let memberNames = memberStr.includes(", ")
+              ? memberStr.split(", ")
+              : memberStr.split(",");
+            let currentmemberNames = idata.members.map((x) => x.name);
+            for (let memberName of memberNames) {
+              if (!idata.members.find((x) => x.name == memberName)) {
+                let permission = "Initiate";
+                if (memberName.includes(":")) {
+                  permission = memberName.split(":")[1];
+                  memberName = memberName.split(":")[0];
+                }
+                function findIdByName() {
+                  if (result.formValues)
+                    for (let pdata of playerDB.entries()) {
+                      if (pdata[1].name == memberName) return pdata[0];
+                    }
+                  return undefined;
+                }
+                let id = findIdByName();
+                if (!id) continue;
+                let newmember = {
+                  id: id,
+                  name: memberName,
+                  permissions:
+                    ISLAND_ROLES[
+                      permission.toLowerCase() as keyof typeof ISLAND_ROLES
+                    ].permissions,
+                };
+                idata.members.push(newmember);
+              }
+            }
+            for (let memberName of currentmemberNames) {
+              if (!memberNames.includes(memberName)) {
+                let member = idata.members.find((x) => x.name == memberName);
+                if (!member) return;
+                idata.members.splice(idata.members.indexOf(member), 1);
+              }
+            }
+
+            //world.sendMessage(idata.members.map((x) => x.name));
+          }
+          // Banned
+          if (
+            result.formValues[5] &&
+            result.formValues[5] != idata.banned.toString()
+          ) {
+            let bannedStr = result.formValues[5] as string;
+            let bannedNames = bannedStr.includes(", ")
+              ? bannedStr.split(", ")
+              : bannedStr.split(",");
+            let newBanned = [];
+            for (let name of bannedNames) {
+              function findIdByName() {
+                if (result.formValues)
+                  for (let pdata of playerDB.entries()) {
+                    if (pdata[1].name == name) return pdata[0];
+                  }
+                return undefined;
+              }
+              let id = findIdByName();
+              newBanned.push(id);
+            }
+            idata.banned = newBanned;
+
+            //world.sendMessage(idata.banned);
+          }
+          // Size
+          if (result.formValues[6] && result.formValues[6] != idata.size) {
+            let newSize = result.formValues[6] as number;
+            idata.size = newSize;
+
+            //world.sendMessage(idata.size.toString());
+          }
+          // Points
+          if (
+            result.formValues[7] &&
+            Number(result.formValues[7]) != idata.points
+          ) {
+            let newPoints = Number(result.formValues[7] as string);
+            idata.points = newPoints;
+
+            //world.sendMessage(idata.points.toString());
+          }
+          // Level
+          if (result.formValues[8]) {
+            let newLevel = Number(result.formValues[8] as string);
+            idata.points = levelToXp(newLevel - 2) + 1;
+
+            //world.sendMessage(xpToLevel(idata.points).toString());
+          }
+          // Funds
+          if (result.formValues[9]) {
+            let newFunds = Number(result.formValues[9] as string);
+            idata.funds = newFunds;
+
+            //world.sendMessage(idata.funds.toString());
+          }
+          // Remove Homes
+          if (result.formValues[10]) {
+            idata.homes.splice((result.formValues[10] as number) - 1, 1);
+
+            //world.sendMessage(idata.homes.map((x) => x.name).toString());
+          }
+          // Set Locked
+          idata.status = result.formValues[11] as boolean;
+
+          //world.sendMessage(idata.status ? "true" : "false");
+
+          // Limits
+          let i = 12;
+          for (let l of Object.keys(idata.limits)) {
+            let limit = idata.limits[l as keyof IslandLimits];
+            limit.amount = result.formValues[i++] as number;
+            limit.max = Number(result.formValues[i++] as string);
+            //world.sendMessage(
+            //  "Amount: " + limit.amount + " | Max: " + limit.max
+            //);
+          }
+          IslandMethods.updateData(idata);
+          sendAlert(
+            player,
+            `§cSet §6data §cfor §e${idata.name}§c.`,
+            PREFIX.moderation
+          );
+        });
+      }, 2);
     },
     arguments: [],
     allowSigns: true,
@@ -2821,6 +3768,40 @@ const commands = [
     allowSigns: true,
     closeChat: true,
   },
+  {
+    alias: ["spectator", "vanish"],
+    permission: COMMAND_PERMS.MOD,
+    info: "Sets a player to spectator.",
+    function: function (player: Player, msg: string) {
+      if (
+        player.runCommand(`gamemode survival @s[m=spectator]`).successCount == 1
+      )
+        return;
+      else player.runCommand(`gamemode spectator @s[m=survival]`);
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
+  {
+    alias: ["teleport", "tp"],
+    permission: COMMAND_PERMS.MOD,
+    info: "Teleports yourself to another player.",
+    function: function (player: Player, msg: string) {
+      let tpPlayer = world
+        .getPlayers()
+        .find(
+          (x) =>
+            x.name.toLowerCase() ==
+            msg.substring(msg.indexOf(" ") + 1).toLowerCase()
+        );
+      if (tpPlayer)
+        player.teleport(Vector.add(tpPlayer.location, new Vector(0, 3, 0)));
+    },
+    arguments: [],
+    allowSigns: true,
+    closeChat: true,
+  },
   /*
   {
     alias: ["hoppergoblin"],
@@ -2865,11 +3846,24 @@ export function warpLobby(player: Player) {
   player.camera.fade({
     fadeTime: { fadeInTime: 0.7, holdTime: 1, fadeOutTime: 1 },
   });
+  player.runCommandAsync(`inputpermission set @s movement disabled`);
   system.runTimeout(() => {
+    if (
+      Math.floor(player.location.x) == 0 &&
+      Math.floor(player.location.z) == 0
+    )
+      return;
     player.teleport(new Vector(0.5, 91, 0.5));
     sendAlert(player, `§aWarped to §eSpawn§a.`, PREFIX.server);
+    player.runCommandAsync(`inputpermission set @s movement enabled`);
     player.playSound("note.bell");
   }, 15);
+}
+
+export function instantWarpLobby(player: Player) {
+  player.teleport(new Vector(0.5, 91, 0.5));
+  sendAlert(player, `§aWarped to §eSpawn§a.`, PREFIX.server);
+  player.playSound("note.bell");
 }
 
 export function warpList(player: Player, message: string) {
@@ -2925,41 +3919,63 @@ world.beforeEvents.chatSend.subscribe((data) => {
   if (msg.includes("§")) return;
   if (msg.startsWith("-")) {
     parseCommand(player, msg, "chat");
-  } else {
+  } else if (msg.charAt(0) != " " && msg.length > 0) {
     system.run(() => {
       if (player.getItemCooldown("chat") > 0) {
         sendError(player, `Chat is on cooldown.`);
         player.startItemCooldown("chat", 25);
         return;
       } else player.startItemCooldown("chat", 25);
-      if (data.message.includes(lastMessage[player.id])) {
+      if (data.message == lastMessage[player.id]) {
         sendError(player, `Refrain from sending the same message twice.`);
         return;
       } else lastMessage[player.id] = data.message;
       let tag = player.getTags().find((x) => x.startsWith("island:chat"));
       if (!tag) {
+        let staff = "";
+        if (USER_PERMS.helpers.includes(player.name)) {
+          if (player.name == "The Palm Healer") staff = " ";
+          else if (USER_PERMS.admins.includes(player.name)) staff = " ";
+          else if (USER_PERMS.mods.includes(player.name)) staff = " ";
+          else if (USER_PERMS.helpers.includes(player.name)) staff = " ";
+          else if (USER_PERMS.trainee.includes(player.name)) staff = " ";
+        }
         let rank = `§7Guest`;
         let color = `§f`;
         if (player.hasTag("role:owner")) {
           rank = "§6Owner";
           color = "§e";
-        } else if (player.hasTag("role:manager")) {
-          rank = "§9Manager";
-        } else if (player.hasTag("role:helper")) {
-          rank = "§aHelper";
         } else if (player.hasTag("role:creator")) {
           rank = "§cCC";
         } else if (player.hasTag("role:supporter")) {
           rank = "§dSupporter";
+        } else if (player.hasTag("role:admin")) {
+          rank = "§9Admin";
+        } else if (player.hasTag("role:moderator")) {
+          rank = "§2Mod";
+        } else if (player.hasTag("role:helper")) {
+          rank = "§bHelper";
+        } else if (player.hasTag("role:trainee")) {
+          rank = "§aTrainee";
         }
+
         let idata = islandDB.get(playerDB.get(player.id).island);
         if (!idata) idata = { points: 0, name: "--" };
         overworld.runCommandAsync(
-          `tellraw @a[tag=!pref:peace] {"rawtext": [{"text": "${`§7 - §f[§e${xpToLevel(
+          `tellraw @a[tag=!"block:${
+            player.name
+          }",name=!"RB Relay"] {"rawtext": [{"text": "${`§7 - §f[§e${xpToLevel(
             Number(idata.points)
-          )}§f] §g${idata.name} §7[${rank}§7] §f${
+          )}§f] §g${idata.name} ${staff}§7[${rank}§7] §f${
             player.nameTag
-          } §p>> ${color}${msg}`}"}]}`
+          } §p>> ${color}${msg.split('"').join("'")}`}"}]}`
+        );
+        overworld.runCommandAsync(
+          `tellraw "RB Relay" {"rawtext": [{"text": "${`§7 - *[§e${xpToLevel(
+            Number(idata.points)
+          )}§f]* **§g${idata.name}** §7[${rank}§7] **§f${
+            player.nameTag
+          }** \`>>\` ${color}${msg.split('"').join("'")}`}"}]}`
         );
       } else {
         let island = tag.split(":")[2];
@@ -3011,12 +4027,14 @@ function parseCommand(player: Player, msg: string, source: "chat" | "sign") {
     x.alias.includes(msg.slice(1).split(" ")[0].toLowerCase())
   );
   if (cmd?.allowSigns == false && source == "sign") return;
-  let mods = ["The Palm Healer", "EpicRedstone"];
-  let admins = ["The Palm Healer"];
   if (
     !cmd ||
-    (cmd.permission == COMMAND_PERMS.MOD && !mods.includes(player.name)) ||
-    (cmd.permission == COMMAND_PERMS.ADMIN && !admins.includes(player.name))
+    (cmd.permission == COMMAND_PERMS.HELPER &&
+      !USER_PERMS.helpers.includes(player.name)) ||
+    (cmd.permission == COMMAND_PERMS.MOD &&
+      !USER_PERMS.mods.includes(player.name)) ||
+    (cmd.permission == COMMAND_PERMS.ADMIN &&
+      !USER_PERMS.admins.includes(player.name))
   ) {
     system.run(() => {
       sendError(
@@ -3045,11 +4063,21 @@ function parseCommand(player: Player, msg: string, source: "chat" | "sign") {
       } else {
         system.run(() => {
           getArg.function(player, msg);
+          overworld.runCommandAsync(
+            `tellraw @a[tag=admin:bypass] {"rawtext": [{"text": "${`${
+              PREFIX.moderation
+            } §b${player.name} §cran §e${msg.split('"').join("'")}§c.`}"}]}`
+          );
         });
       }
     } else
       system.run(() => {
         cmd.function(player, msg);
+        overworld.runCommandAsync(
+          `tellraw @a[tag=admin:bypass] {"rawtext": [{"text": "${`${
+            PREFIX.moderation
+          } §b${player.name} §cran §e${msg.split('"').join("'")}§c.`}"}]}`
+        );
       });
     if (cmd.closeChat == true && source == "chat") {
       player.runCommandAsync(`damage @s 0 entity_attack`);

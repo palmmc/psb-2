@@ -10,7 +10,12 @@ import {
   system,
   world,
 } from "@minecraft/server";
-import { BlockOres, CROP_DROPS, CROP_TABLES } from "./miscellaneous";
+import {
+  BlockOres,
+  CROP_DROPS,
+  CROP_TABLES,
+  DEF_SEEDS_BREAK,
+} from "./miscellaneous";
 import { PREFIX, randomIntFromInterval } from "../main";
 import { itemsBanned } from "./miscellaneous";
 import { BREAK_XP } from "../island/levels";
@@ -59,6 +64,8 @@ export function orelepathy(data: { player: Player; block: Block }) {
 }
 
 // EVENT HANDLER
+let customItems = [["trapped_chest", "§r§2Public Chest"]];
+
 world.afterEvents.playerBreakBlock.subscribe((data) => {
   if (
     Object.values(genItems).includes(
@@ -66,6 +73,15 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
     )
   )
     return;
+  let customitem = customItems.find(
+    (x) => x[0] == data.brokenBlockPermutation.type.id.slice(10)
+  );
+  if (customitem) {
+    let item = new ItemStack(customitem[0], 1);
+    item.nameTag = customitem[1];
+    data.player.getComponent("inventory")?.container?.addItem(item);
+    return;
+  }
   const inv = (<EntityInventoryComponent>data.player.getComponent("inventory"))
     ?.container;
   if (inv && inv.emptySlotsCount == 0) {
@@ -147,17 +163,17 @@ world.afterEvents.playerBreakBlock.subscribe((data) => {
 
 // PREVENT PLACE/BREAK XP
 world.beforeEvents.itemUseOn.subscribe((data) => {
-  if (
-    data.block.typeId.includes("palm") &&
-    !data.block.typeId.includes("farmland")
-  ) {
+  if (DEF_SEEDS_BREAK.includes(data.block.typeId)) {
     data.cancel = true;
     return;
   }
-  let item = BREAK_XP.find((x) => {
-    return x[0] == data.itemStack.typeId && (x[1] as number) >= 0 && !x[3];
-  });
-  if (item) data.cancel = true;
+  //@ts-ignore
+  if (
+    (data.itemStack.typeId.endsWith("ore") &&
+      !data.itemStack.typeId.includes("deepslate")) ||
+    data.itemStack.typeId == "palm:farmland"
+  )
+    data.cancel = true;
 });
 
 world.beforeEvents.playerInteractWithBlock.subscribe((data) => {

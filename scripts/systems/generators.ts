@@ -15,6 +15,7 @@ import {
   IslandLimits,
   IslandMethods,
   PREFIX,
+  USER_PERMS,
   formatNumber,
   fromRomanNumeral,
   playTutorial,
@@ -509,7 +510,8 @@ function upgradeMenu(player: Player, gen: Generator) {
     22,
     "§9Statistics:",
     [
-      "§f- " +
+      (type == "spawner" ? "§f- §9Type: §d" + gen.identifier + "\n" : "") +
+        "§f- " +
         upgradeInfo.speed.name.replace(
           "$d",
           toRomanNumeral(gen.upgrades.speed + 1)
@@ -683,7 +685,7 @@ world.beforeEvents.playerInteractWithBlock.subscribe((data) => {
     if (
       (gen.ownerID == idata.operator.id &&
         idata.owners.find((x) => x.id == player.id)) ||
-      player.name == "The Palm Healer"
+      USER_PERMS.admins.includes(player.name)
     )
       upgradeMenu(player, gen);
     player.startItemCooldown("upgrade", 20);
@@ -766,7 +768,7 @@ world.beforeEvents.playerPlaceBlock.subscribe((data) => {
   if (!island) return;
   if (
     !island?.owners.find((x) => x.id == player.id) &&
-    player.name != "The Palm Healer"
+    !USER_PERMS.admins.includes(player.name)
   ) {
     data.cancel = true;
     system.run(() =>
@@ -890,7 +892,10 @@ world.beforeEvents.playerBreakBlock.subscribe((data) => {
     data.cancel = true;
     return;
   }
-  if (island.operator.id != player.id && player.name != "The Palm Healer") {
+  if (
+    island.operator.id != player.id &&
+    !USER_PERMS.admins.includes(player.name)
+  ) {
     data.cancel = true;
     system.run(() =>
       sendError(player, `§cYou must be §eIsland Owner §cto break that here.`)
@@ -972,7 +977,7 @@ const genBehavior = {
       location: gen.location,
       maxDistance: 64,
     });
-    if (!nearby[0]) return;
+    if (nearby.length == 0) return;
     let block = overworld.getBlock(
       new Vector(gen.location.x, gen.location.y + 1, gen.location.z)
     );
@@ -990,7 +995,7 @@ const genBehavior = {
       location: gen.location,
       maxDistance: 64,
     });
-    if (!nearby[0]) return;
+    if (nearby.length == 0) return;
     let block = overworld.getBlock(
       new Vector(gen.location.x, gen.location.y - 1, gen.location.z)
     );
@@ -1025,7 +1030,7 @@ const genBehavior = {
       location: gen.location,
       maxDistance: 64,
     });
-    if (!nearby[0]) return;
+    if (nearby.length == 0) return;
     let obj = world.scoreboard.getObjective("mobCount");
     let count = 1;
     let c = overworld.getEntities({

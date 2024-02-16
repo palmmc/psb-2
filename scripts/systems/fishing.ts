@@ -63,7 +63,7 @@ world.afterEvents.itemUse.subscribe((data) => {
       bobber.kill();
       return;
     }
-    player.startItemCooldown("fishing", 400);
+    player.startItemCooldown("fishing", 320);
     // Area Checks
     // Check if there is water.
     let bobberBlock = overworld.getBlock({
@@ -118,7 +118,7 @@ world.afterEvents.itemUse.subscribe((data) => {
         player.playSound(`random.ocean`);
         player.runCommand(`inputpermission set @s movement enabled`);
         player.runCommandAsync(
-          `camera @s set palm:cutscene ease 3 linear pos ~ ~8 ~ rot 70 ${rot}`
+          `camera @s set palm:cutscene ease 3 linear pos ~ ~6 ~ rot 70 ${rot}`
         );
         player.addTag("palm:fishing");
         let checkCamera = 0;
@@ -136,7 +136,9 @@ world.afterEvents.itemUse.subscribe((data) => {
           if (
             !bobber.isValid() ||
             elapsed > 90 ||
-            Math.abs((bobberBlock?.location.z ?? -9999) - player.location.z) > 8
+            Math.abs((bobberBlock?.location.z ?? -9999) - player.location.z) >
+              8 ||
+            overworld.getBlock(player.location)?.typeId == "minecraft:water"
           ) {
             player.removeTag("palm:fishing");
             player.runCommandAsync(`camera @s fade time 0.5 1 0.5`);
@@ -219,18 +221,18 @@ world.afterEvents.itemUse.subscribe((data) => {
                 );
                 if (variant.id < 3) {
                   let angler = enchants.find((x) => x.id == "angler");
-                  if (randomIntFromInterval(10, 75 - depth * 10) / 2 < 2) {
+                  if (randomIntFromInterval(10, 20 - depth * 2 + 2) < 12) {
                     if (randomIntFromInterval(1, 3) == 1) {
-                      giveMoney(player, variant, 500, 2500);
+                      giveMoney(player, variant, 50, 500);
                     } else
-                      giveXP(player, variant, 10, 25 + (angler?.level ?? 0));
+                      giveXP(player, variant, 6, 15 + (angler?.level ?? 0));
                   }
                 } else {
                   let m = 1;
                   if (variant.id == 4) m = 2;
                   if (randomIntFromInterval(1, 3) == 1) {
-                    giveMoney(player, variant, 5000 * m, 25000 * m);
-                  } else giveXP(player, variant, 80 * m, 250 * m);
+                    giveMoney(player, variant, 500 * m, 10000 * m);
+                  } else giveXP(player, variant, 80 * m, 180 * m);
                 }
                 let privateer = enchants.find((x) => x.id == "privateer");
                 if (privateer)
@@ -258,7 +260,7 @@ world.afterEvents.itemUse.subscribe((data) => {
           if (checkCamera < 3) checkCamera++;
           else {
             player.runCommandAsync(
-              `camera @s set palm:cutscene ease 0.5 linear pos ~ ~8 ~ rot 70 ${rot}`
+              `camera @s set palm:cutscene ease 0.5 linear pos ~ ~6 ~ rot 70 ${rot}`
             );
             checkCamera = 0;
           }

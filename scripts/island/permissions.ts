@@ -16,6 +16,7 @@ import {
   Island,
   MemberPermissions,
   IslandMethods,
+  IslandMember,
 } from "../main";
 import { ActionFormData, ModalFormData } from "@minecraft/server-ui";
 import { getIslandOn } from "./manage";
@@ -115,10 +116,7 @@ world.beforeEvents.playerBreakBlock.subscribe((data) => {
 world.beforeEvents.itemUse.subscribe((data) => {
   const player = data.source;
   const idata = getIslandOn(player);
-  if (
-    player.hasTag("admin:bypass") ||
-    data.itemStack.typeId == "minecraft:fishing_rod"
-  )
+  if (player.hasTag("admin:bypass") || data.itemStack.getComponent("food"))
     return;
   if (idata) {
     if (IslandMethods.isInBounds(idata, player.location) == true) {
@@ -128,7 +126,7 @@ world.beforeEvents.itemUse.subscribe((data) => {
       )
         return;
     }
-  }
+  } else if (data.itemStack.typeId == "minecraft:fishing_rod") return;
   data.cancel = true;
   system.run(() => {
     if (player.getItemCooldown("interact") != 0) return;
@@ -142,7 +140,11 @@ world.beforeEvents.playerInteractWithBlock.subscribe((data) => {
   const player = data.player;
   const idata = getIslandOn(player);
   let msg = `§cYou cannot interact here.`;
-  let bypassBlocks = ["minecraft:end_portal_frame", "palm:vending_machine"];
+  let bypassBlocks = [
+    "minecraft:end_portal_frame",
+    "palm:vending_machine",
+    "minecraft:trapped_chest",
+  ];
   if (bypassBlocks.includes(data.block.typeId)) return;
   if (player.hasTag("admin:bypass")) return;
   if (idata && !itemsBanned.includes(data.itemStack?.typeId.slice(10) ?? "")) {
@@ -229,7 +231,7 @@ export const ISLAND_ROLES = {
     permissions: {
       break: false,
       place: false,
-      interact: false,
+      interact: true,
       attack: false,
       container: false,
       mine: false,
@@ -244,7 +246,7 @@ export const ISLAND_ROLES = {
     permissions: {
       break: false,
       place: false,
-      interact: false,
+      interact: true,
       attack: false,
       container: false,
       mine: false,
@@ -259,7 +261,7 @@ export const ISLAND_ROLES = {
     permissions: {
       break: false,
       place: false,
-      interact: false,
+      interact: true,
       attack: false,
       container: false,
       mine: true,
@@ -274,7 +276,7 @@ export const ISLAND_ROLES = {
     permissions: {
       break: false,
       place: false,
-      interact: false,
+      interact: true,
       attack: true,
       container: false,
       mine: false,
@@ -290,7 +292,7 @@ export const ISLAND_ROLES = {
     permissions: {
       break: false,
       place: false,
-      interact: false,
+      interact: true,
       attack: true,
       container: false,
       mine: true,
@@ -377,77 +379,70 @@ export function islandEditPerms(player: Player) {
       );
       return;
     }
-    inviteDirect(player, ep);
   });
 }
 
-export function inviteDirect(player: Player, ep: Player | string) {
-  let island = playerDB.get(player.id).island;
-  let idata: Island = islandDB.get(island);
-  let members = idata.members;
-  let epMember = idata.members.find(
-    (x) => x.id == (ep instanceof Player ? ep.id : ep)
+export function inviteDirect(player: Player, ep: IslandMember) {
+  let gui = new ModalFormData();
+  gui.title("Edit Permissions");
+  gui.dropdown(
+    "Select a role:\n§f[§6§l?§r§f] §7Use §e-is roles§7 for more information on each role.",
+    Object.keys(ISLAND_ROLES)
   );
-  let id = epMember?.id ?? (ep as string);
-  let editPlayer = epMember?.name;
-  let perms = ISLAND_ROLES.guest.permissions;
-  let lm = idata.limits.members.max;
-  if (epMember) perms = epMember.permissions;
-  else if (idata.members.length >= lm && !epMember) {
-    sendError(
-      player,
-      `Island has reached the helper limit (§4${lm}§c).\n§dUse §e-is expand §dto increase it.`,
-      PREFIX.island
-    );
-    return;
-  }
-  let permGui = new ModalFormData();
-  permGui.title("Permissions Editor");
-  for (let x of ISLAND_PERMS) {
-    permGui.toggle(
-      `${x.id}\n§7${x.info}`,
-      perms[x.id.toLowerCase() as keyof MemberPermissions]
-    );
-  }
-  permGui.show(player).then((result) => {
+  gui.show(player).then((result) => {
     if (result.canceled || !result.formValues) return;
-    let i = 0;
-    for (let x of result.formValues) {
-      //@ts-ignore
-      perms[ISLAND_PERMS[i].id.toLowerCase() as boolean] = x;
-      i++;
-    }
-    sendAlert(
-      player,
-      `§aPermissions for §e${editPlayer} §ahave been saved.`,
-      PREFIX.island
-    );
-    if (!Object.values(perms).includes(true)) {
-      IslandMethods.removeMember(idata, id);
-    } else if (epMember) {
-      idata.members[idata.members.indexOf(epMember)].permissions = perms;
-    } else {
-      if (!(ep instanceof Player)) return;
-      IslandMethods.addMember(idata, ep as Player, perms);
-    }
-    if (ep instanceof Player)
-      sendAlert(
-        ep,
-        `§aYour permissions on island §e${island} §ahave been changed.`,
-        PREFIX.island,
-        "note.bit"
+    let rn = result.formValues[0] as number;
+    let role =
+      ISLAND_ROLES[Object.keys(ISLAND_ROLES)[rn] as keyof typeof ISLAND_ROLES];
+    let editPlayer = ep.name;
+    let island = playerDB.get(player.id).island;
+    let idata: Island = islandDB.get(island);
+    let lm = idata.limits.members.max;
+    let epOwner = idata.owners.find((x) => x.id == ep.id);
+    if (role.id == 8) {
+      sendError(
+        player,
+        `You cannot promote players to co-owner through this menu.`,
+        PREFIX.island
       );
+      return;
+    } else if (epOwner && role.id != 8) {
+      sendError(
+        player,
+        `You cannot demote players from co-owner through this menu.`,
+        PREFIX.island
+      );
+      return;
+    } else {
+      if (idata.members.length >= lm) {
+        sendError(
+          player,
+          `Island has reached the member limit (§4${lm}§c).\n§dUse §e-is expand §dto increase it.`,
+          PREFIX.island
+        );
+        return;
+      }
+      let index = idata.members.indexOf(ep);
+      if (role.id == 0) {
+        IslandMethods.removeMember(idata, ep.id);
+      } else idata.members[index].permissions = role.permissions;
+      IslandMethods.updateData(idata);
+      sendAlert(
+        player,
+        `§aSet §e${editPlayer}'s §aisland role to §6${
+          Object.keys(ISLAND_ROLES)[rn]
+        }§a.`,
+        PREFIX.island
+      );
+    }
   });
 }
 
 export function islandInvite(player: Player) {
   let playerList = world
     .getPlayers()
-    .map((x) => {
-      if (x.nameTag != player.nameTag) return x.nameTag;
-      else return "";
-    })
-    .filter((x) => x != "");
+    .filter((x) => x.name != "RB Relay" && x.id != player.id)
+    .map((x) => x.name);
   if (playerList.length == 0) playerList.push("No Online Players");
   let gui = new ModalFormData();
   gui.title("Invite Friends");
@@ -479,14 +474,6 @@ export function islandInvite(player: Player) {
       let perms = {};
       if (epMember) perms = epMember.permissions;
       let lm = idata.limits.members.max;
-      if (idata.members.length >= lm) {
-        sendError(
-          player,
-          `Island has reached the helper limit (§4${lm}§c).\n§dUse §e-is expand §dto increase it.`,
-          PREFIX.island
-        );
-        return;
-      }
       let epOwner = idata.owners.find((x) => x.id == ep.id);
       if (role.id == 8) {
         let lm = idata.limits.owners.max;
@@ -540,6 +527,14 @@ export function islandInvite(player: Player) {
         );
         return;
       } else {
+        if (idata.members.length >= lm) {
+          sendError(
+            player,
+            `Island has reached the member limit (§4${lm}§c).\n§dUse §e-is expand §dto increase it.`,
+            PREFIX.island
+          );
+          return;
+        }
         sendAlert(
           player,
           `§aSet §e${editPlayer}'s §aisland role to §6${
@@ -560,7 +555,10 @@ export function islandInvite(player: Player) {
         let index = idata.members.indexOf(epMember);
         if (role.id == 0) {
           IslandMethods.removeMember(idata, ep.id);
-        } else idata.members[index].permissions = role.permissions;
+        } else {
+          idata.members[index].permissions = role.permissions;
+          IslandMethods.updateData(idata);
+        }
       } else if (role.id != 0)
         IslandMethods.addMember(idata, ep, role.permissions);
       else return;

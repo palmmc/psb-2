@@ -6,11 +6,11 @@
  - [PSB] Horizontal Seperator
  - [PSB] Clock
  - ??
- - Prest.1
- - Prest.2
- - Prest.3
- - Prest.4
- - Prest.5
+ - [PSB] Trainee Badge
+ - [PSB] Helper Badge
+ - [PSB] Moderator Badge
+ - [PSB] Admin Badge
+ - [PSB] Palm Badge
  - [PSB] Heart
  - Yellow !
  - Confetti

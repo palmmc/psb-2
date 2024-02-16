@@ -217,91 +217,116 @@ export function xpUntilNextLevel(xp: number) {
 function emptyReward(player: Player) {}
 
 // XP WEIGHTS
-export const BREAK_XP = [
-  // Format: ["minecraft:tile": String, xpMin: number, xpMax: number, isCrop: boolean]
-  ["minecraft:coal_ore", 1, 3],
-  ["minecraft:iron_ore", 1, 3],
-  ["minecraft:lapis_ore", 2, 5],
-  ["minecraft:gold_ore", 1, 4],
-  ["minecraft:diamond_ore", 1, 6],
-  ["minecraft:emerald_ore", 1, 7],
-  ["palm:beetroots", 0, 4, true],
-  ["palm:wheat", 2, 4, true],
-  ["palm:carrots", 2, 6, true],
-  ["palm:potatoes", 2, 6, true],
-  ["palm:sweet_berry_bush", 1, 4, true],
-  ["palm:pumpkin_stem", 0, 0, true],
-  ["palm:melon_stem", 0, 0, true],
-  ["palm:farmland", 0, 0],
-  //["minecraft:reeds", 0, 0],
-  //["minecraft:cactus", 0, 0],
-  ["minecraft:pumpkin", 3, 6],
-  ["minecraft:melon_block", 3, 6],
-  ["minecraft:coal_block", -16],
-  ["minecraft:iron_block", -18],
-  ["minecraft:lapis_block", -20],
-  ["minecraft:gold_block", -22],
-  ["minecraft:diamond_block", -24],
-  ["minecraft:emerald_block", -28],
-];
-const PLACE_XP = [
-  // Format: ["minecraft:tile": String, xpMin: number, xpMax: number, isCrop: boolean]
-  ["minecraft:coal_block", 16],
-  ["minecraft:iron_block", 18],
-  ["minecraft:lapis_block", 20],
-  ["minecraft:gold_block", 22],
-  ["minecraft:diamond_block", 24],
-  ["minecraft:emerald_block", 28],
-];
+export const BREAK_XP = {
+  minecraft: {
+    coal_ore: [1, 3],
+    iron_ore: [1, 3],
+    lapis_ore: [2, 5],
+    gold_ore: [1, 4],
+    diamond_ore: [1, 6],
+    emerald_ore: [1, 7],
+    coal_block: -16,
+    iron_block: -18,
+    lapis_block: -20,
+    gold_block: -22,
+    diamond_block: -24,
+    emerald_block: -28,
+  },
+  palm: {
+    beetroots: [0, 4],
+    wheat: [2, 4],
+    carrots: [2, 6],
+    potatoes: [2, 6],
+    sweet_berry_bush: [1, 4],
+    pumpkin: [3, 6],
+    melon_block: [3, 6],
+  },
+};
 
-// LEVEL EVENTS
+export const PLACE_XP = {
+  minecraft: {
+    coal_block: 16,
+    iron_block: 18,
+    lapis_block: 20,
+    gold_block: 22,
+    diamond_block: 24,
+    emerald_block: 28,
+  },
+  palm: {},
+};
+
 world.beforeEvents.playerBreakBlock.subscribe((data) => {
-  let block = data.block;
-  let id = block.type.id;
-  let ldata = BREAK_XP.find((x) => x[0] == id);
-  // Copper additions
-  if (id.includes("copper") && id.includes("block"))
-    ldata = ["minecraft:copper", -28];
-  const player = data.player;
+  let id = data.block.type.id;
+  let player = data.player;
+  // Check for island
   let island = getIslandOn(player);
   if (!island) return;
-  if (id == "minecraft:hopper") IslandMethods.removeLimit(island, "hoppers", 1);
-  if (!ldata) return;
-  if (id.includes("ore") && randomIntFromInterval(1, 5) != 1) return;
-  if (ldata[3] && (ldata[3] as boolean) == true) {
-    IslandMethods.removeLimit(island, "crop", 1);
-    if (block.permutation.getState("palm:growth_stage") != 7) return;
-    giveRelic(data.player, rollRelic("FARM"));
-  } else if (id == "palm:farmland") {
-    let f = data.block.above(1);
-    if (f?.typeId.includes("palm") && !f.typeId.includes("farmland")) {
-      IslandMethods.removeLimit(island, "crop", 1);
-    }
+  if (
+    IslandMethods.getPermission(island, player, "farm") != true &&
+    !island.members.find((x) => x.id == player.id) &&
+    !island.owners.find((x) => x.id == player.id)
+  ) {
+    data.cancel = true;
+    return;
   }
+  //@ts-ignore
+  let xp = BREAK_XP[id.split(":")[0]][id.split(":")[1]];
+  // Extras
+  if (id.endsWith("copper")) xp = -28;
+  else if (id == "minecraft:hopper")
+    IslandMethods.removeLimit(island, "hoppers", 1);
+  //
+  if (!xp) return;
+  if (xp[1]) xp = randomIntFromInterval(xp[0], xp[1]);
   if (id == "minecraft:pumpkin" || id == "minecraft:melon_block") {
     giveRelic(data.player, rollRelic("MELON_PUMPKIN"));
+  } else if (id.includes("ore") && randomIntFromInterval(1, 5) != 1) return;
+  IslandMethods.addPoints(island, xp as number);
+});
+
+world.beforeEvents.playerBreakBlock.subscribe((data) => {
+  let id = data.block.type.id;
+  let player = data.player;
+  // Check for island
+  let island = getIslandOn(player);
+  if (!island) return;
+  if (
+    IslandMethods.getPermission(island, player, "farm") != true &&
+    !island.members.find((x) => x.id == player.id) &&
+    !island.owners.find((x) => x.id == player.id)
+  ) {
+    data.cancel = true;
+    return;
   }
-  let xp = ldata[1] as number;
-  if (ldata[2])
-    xp = randomIntFromInterval(ldata[1] as number, ldata[2] as number);
-  if (!xp) return;
-  let idata = getIslandOn(player);
-  if (!idata) return;
-  IslandMethods.addPoints(idata, xp);
+  //@ts-ignore
+  // Extras
+  if (id == "minecraft:hopper") {
+    IslandMethods.removeLimit(island, "hoppers", 1);
+    return;
+  }
+  //
+  if (DEF_SEEDS_BREAK.includes(id)) {
+    IslandMethods.removeLimit(island, "crop", 1);
+    if (data.block.permutation.getState("palm:growth_stage") != 7) return;
+    giveRelic(data.player, rollRelic("FARM"));
+  } else if (id == "palm:farmland") {
+    if (DEF_SEEDS_BREAK.includes(data.block.above(1)?.typeId ?? ""))
+      IslandMethods.removeLimit(island, "crop", 1);
+  }
 });
 
 world.afterEvents.playerPlaceBlock.subscribe((data) => {
-  let block = data.block;
-  let id = block.type.id;
-  let ldata = PLACE_XP.find((x) => x[0] == id);
+  let id = data.block.type.id;
+  let player = data.player;
+  // Check for island
+  let island = getIslandOn(player);
+  if (!island) return;
+  //@ts-ignore
+  let xp = PLACE_XP[id.split(":")[0]][id.split(":")[1]];
   // Copper additions
-  if (id.includes("copper") && id.includes("block"))
-    ldata = ["minecraft:copper", 28];
-  if (!ldata) return;
-  const player = data.player;
-  let idata = getIslandOn(player);
-  if (!idata) return;
-  IslandMethods.addPoints(idata, ldata[1] as number);
+  if (id.endsWith("copper")) xp = 28;
+  if (!xp) return;
+  IslandMethods.addPoints(island, xp as number);
 });
 
 // LIMIT EVENTS

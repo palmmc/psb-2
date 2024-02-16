@@ -34,9 +34,9 @@ world.afterEvents.playerSpawn.subscribe((data) => {
   if (!data.initialSpawn) return;
   if (data.player.hasTag("setData")) return;
   playerDB.set(data.player.id, {
-    name: data.player.nameTag,
+    name: data.player.name,
     coins: 100,
-    gems: 0,
+    gems: 5,
     island: "",
   });
   data.player.addTag("setData");

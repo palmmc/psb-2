@@ -266,7 +266,7 @@ const NPC_LIST: NPC[] = [
                   return e;
                 }
               }
-              return { slot: i, ench: matchEnch(), tier };
+              return { slot: i, ench: matchEnch(), tier, item: it };
             }
           }
           const inv = (<EntityInventoryComponent>(
@@ -308,7 +308,10 @@ const NPC_LIST: NPC[] = [
             }
           }
           if (!inv) return;
-          inv.setItem(ench?.slot ?? -1);
+          if (ench.item.amount > 1) {
+            ench.item.amount--;
+            inv.setItem(ench.slot, ench.item);
+          } else inv.setItem(ench.slot);
           let accuracy = randomIntFromInterval(20, 40);
           if (ench.tier == "Iron") accuracy = randomIntFromInterval(40, 60);
           if (ench.tier == "Gold") accuracy = randomIntFromInterval(60, 80);
@@ -357,6 +360,13 @@ const NPC_LIST: NPC[] = [
         } else return;
       });
     },
+    followPlayer: false,
+  },
+  {
+    name: "§b§lBeta is Coming!\n§cThanks to all of you who have helped test,\n§cwe're finally ready to release to the public!\n \n§aFor the start of our first official season,\n§dPalm's §uSkyblock§a will be §6closed for maintenance\n§aaround §eFebruary 23rd§a, §cfully §4reset§a, and re-opened\n§afor everyone to enjoy!\n \n§dIf you have any questions:\n§9discord.gg/y39XTT9zwE",
+    id: "palm:leaderboard",
+    location: new Vector(-7.5, 91.5, 4.5),
+    function: function (player: Player) {},
     followPlayer: false,
   },
 ];
@@ -426,7 +436,24 @@ world.afterEvents.itemUse.subscribe((data) => {
   }
 });
 
+let tips = [
+  "§eUsing §5-§dpiggybank§e, you can open your own personal storage §aanytime §eand §canywhere§e!",
+  "§aYou can invite other players to help on your island using the §g-§eis invite §acommand!",
+  "§eRelics can hold all sorts of §bgoodies§e; anything from §capples§f to §6CE §dBooks§e!",
+  "§dCharms§b can be used at the §8§lBlacksmith§r§b on §6Custom §dEnchants§b!",
+];
 system.runInterval(() => {
+  let tip = tips[randomIntFromInterval(1, tips.length) - 1];
+  // TIPS
+  if (randomIntFromInterval(1, 6) == 1) {
+    overworld.runCommandAsync(
+      `tellraw @a[tag=!pref:notips,name=!"RB Relay"] {"rawtext": [{"text": "§l§3[§b?§3] §bDid you know?\n§f>> §r${tip}"}]}`
+    );
+    overworld.runCommandAsync(
+      `playsound random.levelup @a[tag=!pref:notips,name=!"RB Relay"]`
+    );
+  }
+  //
   let completedIslands: Island[] = [];
   for (let player of world.getPlayers()) {
     if (randomIntFromInterval(1, 5) != 1) continue;
@@ -484,7 +511,10 @@ system.runInterval(() => {
 world.beforeEvents.playerInteractWithEntity.subscribe((data) => {
   // NOMAD CODE
   if (data.target.typeId == "palm:nomad") {
-    if (!getIslandOn(data.player)?.owners.find((x) => x.id == data.player.id)) {
+    if (
+      !getIslandOn(data.player)?.owners.find((x) => x.id == data.player.id) &&
+      !playerDB.hasTag("admin:bypass")
+    ) {
       data.cancel = true;
       return;
     }

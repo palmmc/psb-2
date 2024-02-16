@@ -19,7 +19,7 @@ world.afterEvents.worldInitialize.subscribe((data) => {
     clearEvents();
     system.runTimeout(() => {
       addEvent("1", " §cNow in §eAlpha§c!");
-      addEvent("2", " §l§a1.25x", 1.25);
+      //addEvent("2", " §l§a1.25x", 1.25);
     }, 10);
   }, 180);
 });
@@ -77,19 +77,19 @@ world.afterEvents.playerSpawn.subscribe((data) => {
 const CLEAR_INTERVAL = 25; // Interval in minutes.
 system.runInterval(() => {
   overworld.runCommandAsync(
-    `tellraw @a[name=!"PalmSkyblock"] {"rawtext": [{"text": "${"§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e10§c seconds...\n§6Warning: Dropped items will be lost."}"}]}`
+    `tellraw @a[name=!"RB Relay"] {"rawtext": [{"text": "${"§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e10§c seconds...\n§6Warning: Dropped items will be lost."}"}]}`
   );
   system.runTimeout(() => {
     overworld.runCommandAsync(
-      `tellraw @a[name=!"PalmSkyblock"] {"rawtext": [{"text": "${`§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e3§c seconds...`}"}]}`
+      `tellraw @a[name=!"RB Relay"] {"rawtext": [{"text": "${`§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e3§c seconds...`}"}]}`
     );
     system.runTimeout(() => {
       overworld.runCommandAsync(
-        `tellraw @a[name=!"PalmSkyblock"] {"rawtext": [{"text": "${`§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e2§c seconds...`}"}]}`
+        `tellraw @a[name=!"RB Relay"] {"rawtext": [{"text": "${`§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e2§c seconds...`}"}]}`
       );
       system.runTimeout(() => {
         overworld.runCommandAsync(
-          `tellraw @a[name=!"PalmSkyblock"] {"rawtext": [{"text": "${`§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e1§c seconds...`}"}]}`
+          `tellraw @a[name=!"RB Relay"] {"rawtext": [{"text": "${`§l§8[§cC§4T§8]§r §cGround entities will be cleared in §e1§c seconds...`}"}]}`
         );
         system.runTimeout(() => {
           for (let s of SpawnerEntities) {
@@ -97,7 +97,7 @@ system.runInterval(() => {
           }
           overworld.runCommand(`kill @e[type=item]`);
           overworld.runCommandAsync(
-            `tellraw @a[name=!"PalmSkyblock"] {"rawtext": [{"text": "${`§l§8[§cC§4T§8]§r §bGround entities have been cleared.\n§eIt is now safe to drop items.`}"}]}`
+            `tellraw @a[name=!"RB Relay"] {"rawtext": [{"text": "${`§l§8[§cC§4T§8]§r §bGround entities have been cleared.\n§eIt is now safe to drop items.`}"}]}`
           );
         }, 20);
       }, 20);

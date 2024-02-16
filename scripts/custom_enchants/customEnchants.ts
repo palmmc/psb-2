@@ -282,6 +282,23 @@ new Enchant("durable", {
       equip?.setEquipment(EquipmentSlot.Mainhand, data.item);
     });
   },
+  entityHit: (data) => {
+    if (
+      randomIntFromInterval(1, Math.floor(data.level + 1)) == 1 ||
+      !SpawnerEntities.find((x) => x.id == data.entity.typeId.slice(10))
+    )
+      return;
+    let dura = data.item.getComponent("minecraft:durability");
+    if (!dura) return;
+    if (dura.damage == 0) return;
+    dura.damage = dura.damage - 1;
+    let equip = data.player.getComponent("equippable");
+    system.run(() => {
+      let testI = equip?.getEquipment(EquipmentSlot.Mainhand);
+      if (!testI || !Enchant.getEnchant(testI, "durable")) return;
+      equip?.setEquipment(EquipmentSlot.Mainhand, data.item);
+    });
+  },
 });
 
 new Enchant("spring", {
@@ -332,11 +349,11 @@ new Enchant("quake", {
   description: "Increases speed and agility while worn.",
   hold: (data) => {
     if (data.player.hasTag("palm:fishing")) return;
-    data.player.addEffect("speed", 50, {
+    data.player.addEffect("speed", 80, {
       amplifier: Math.ceil(data.level / 3) - 1,
       showParticles: false,
     });
-    data.player.addEffect("jump_boost", 50, {
+    data.player.addEffect("jump_boost", 80, {
       amplifier: Math.ceil(data.level / 3) - 1,
       showParticles: false,
     });
@@ -430,6 +447,12 @@ new Enchant("splash", {
     data.player.addExperience(
       randomIntFromInterval(1, Math.ceil(data.level / 4))
     );
+  },
+  entityHit: (data) => {
+    if (!(randomIntFromInterval(1, 24 - data.level * 4) == 1)) return;
+    if (!SpawnerEntities.find((x) => x.id == data.entity.typeId.slice(10)))
+      return;
+    data.entity.setOnFire(Math.floor(data.level / 1.5), true);
   },
 });
 
@@ -766,6 +789,10 @@ export function useCharm(player: Player, type: keyof typeof CHARMS) {
     sendError(player, `You must hold the item to use the charm on.`, PREFIX.ce);
     return;
   }
+  if (item.typeId == "minecraft:enchanted_book") {
+    sendError(player, `You cannot use charms on this item.`, PREFIX.ce);
+    return;
+  }
   function findCharmInInv(player: Player) {
     const inventory = (<EntityInventoryComponent>(
       player.getComponent("inventory")
@@ -808,9 +835,12 @@ export function useCharm(player: Player, type: keyof typeof CHARMS) {
       );
       return;
     }
-    let ti = item.getLore()[1].slice(14);
+    let lore = item.getLore();
+    let ti =
+      lore[lore.indexOf(lore.find((x) => x.includes("§r§l§bTier")) ?? "")];
+    if (!ti) return;
     if (!item) return;
-    let t = gradeToTier(ti);
+    let t = gradeToTier(ti.split("§r")[2]);
     if (t >= 12) {
       sendError(player, `This enchantment already has max grade.`, PREFIX.ce);
       return;
@@ -821,9 +851,7 @@ export function useCharm(player: Player, type: keyof typeof CHARMS) {
     );
     t += t * (inc / 100);
     let newT = tierToGrade(t);
-    let lore = item.getLore();
-    lore.pop();
-    lore.push(`§r§l§bTier: §r${newT}`);
+    lore[lore.indexOf(ti)] = `§r§l§bTier: §r${newT}`;
     item.setLore(lore);
     equip.setEquipment(EquipmentSlot.Mainhand, item);
     overworld.spawnParticle(`minecraft:totem_particle`, {
@@ -874,7 +902,10 @@ export function useCharm(player: Player, type: keyof typeof CHARMS) {
       );
       if (!item) return;
       Enchant.removeEnchant(item, enchant.id);
+      let lore = item.getLore();
+      item.setLore([]);
       Enchant.addEnchant(item, enchant.id, level);
+      item.setLore(item.getLore().concat(lore));
       equip.setEquipment(EquipmentSlot.Mainhand, item);
       overworld.spawnParticle(`minecraft:totem_particle`, {
         x: player.location.x,
@@ -894,6 +925,10 @@ export function useCharm(player: Player, type: keyof typeof CHARMS) {
       } else inv.setItem(charms[0].slot);
     });
   } else if (type == "expulsion") {
+    if (item.typeId == "minecraft:ender_eye") {
+      sendError(player, `You cannot use charms on this item.`, PREFIX.ce);
+      return;
+    }
     const gui = new ChestFormData("magenta");
     gui.title(`Select an Enchantment:`);
     let i = 10;
@@ -1134,7 +1169,8 @@ export type CombinerItems =
   | "helmet"
   | "chestplate"
   | "leggings"
-  | "boots";
+  | "boots"
+  | "rod";
 
 export function animateBlacksmith(
   player: Player,
@@ -1155,7 +1191,6 @@ export function animateBlacksmith(
     );
     player.runCommandAsync(`inputpermission set @s movement disabled`);
     player.runCommandAsync(`inputpermission set @s camera disabled`);
-    player.runCommandAsync(`hud @s hide all`);
     let loc = new Vector(
       blacksmith.location.x,
       blacksmith.location.y,
@@ -1174,6 +1209,7 @@ export function animateBlacksmith(
           system.runTimeout(() => {
             let fail = false;
             if (!(randomIntFromInterval(1, 100) <= accuracy)) fail = true;
+            console.warn(accuracy);
             if (!fail) player.playSound(`block.false_permissions`);
             player.playSound(`beacon.deactivate`);
             const equip = <EntityEquippableComponent>(
@@ -1221,7 +1257,6 @@ export function animateBlacksmith(
               player.runCommandAsync(`camera @s clear`);
               player.runCommandAsync(`inputpermission set @s movement enabled`);
               player.runCommandAsync(`inputpermission set @s camera enabled`);
-              player.runCommandAsync(`hud @s reset all`);
               system.runTimeout(() => {
                 playTutorial(
                   player,
@@ -1281,7 +1316,6 @@ function refinementSequence(player: Player, enchant: EnchantData) {
     );
     player.runCommandAsync(`inputpermission set @s movement disabled`);
     player.runCommandAsync(`inputpermission set @s camera disabled`);
-    player.runCommandAsync(`hud @s hide all`);
     let loc = new Vector(orb.location.x + 2, orb.location.y, orb.location.z);
     player.teleport(loc, { facingLocation: orb.location });
   }, 10);
@@ -1322,7 +1356,6 @@ function refinementSequence(player: Player, enchant: EnchantData) {
             player.runCommandAsync(`camera @s clear`);
             player.runCommandAsync(`inputpermission set @s movement enabled`);
             player.runCommandAsync(`inputpermission set @s camera enabled`);
-            player.runCommandAsync(`hud @s reset all`);
             player.runCommandAsync(`event entity @e[type=palm:orb] npcdespawn`);
             system.runTimeout(() => {
               playTutorial(
